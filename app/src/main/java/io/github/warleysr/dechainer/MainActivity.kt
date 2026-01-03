@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import io.github.warleysr.dechainer.screens.setup.SetupRecovery
+import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.ui.theme.DechainerTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,10 +22,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             DechainerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    if (SecurityManager.isRecoveryPhraseSet(this))
+                        Greeting(
+                            name = "Android",
+                            modifier = Modifier.padding(innerPadding)
+                        )
+                    else
+                        SetupRecovery(innerPadding)
                 }
             }
         }
