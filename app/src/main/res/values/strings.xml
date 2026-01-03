@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">Dechainer</string>
+    <string name="attention">Atenção!</string>
+    <string name="self_lock_risk">Este app utiliza privilégios de Dono do Dispositivo para bloquear componentes de sistema e controlar o acesso a outros aplicativos. Há o risco de se \"auto trancar\" e não conseguir ter acesso as funcionalidades bloqueadas novamente. Para evitar isso você deve ter uma chave de recuperação. Essa chave pode ser gerada abaixo e deve ser salva em um local seguro ou anotada em um papel de forma física. Somente através dela você conseguirá remover este app. Gere a chave abaixo.</string>
+    <string name="confirm_key_saved">Confirmo que salvei a chave</string>
+    <string name="proceed">Prosseguir</string>
+    <string name="generate_key">Gerar chave</string>
+    <string name="your_key">Sua chave é:</string>
 </resources>
