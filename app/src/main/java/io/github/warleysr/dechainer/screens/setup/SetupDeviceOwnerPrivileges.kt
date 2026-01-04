@@ -1,0 +1,149 @@
+package io.github.warleysr.dechainer.screens.setup
+
+import android.content.pm.PackageManager
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.InstallMobile
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.QuestionMark
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.warleysr.dechainer.DechainerApplication
+import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import kotlinx.coroutines.delay
+import rikka.shizuku.Shizuku
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
+
+    var shizukuInstalled by remember { mutableStateOf(viewModel.isShizukuInstalled()) }
+    var shizukuRunning by remember { mutableStateOf(Shizuku.pingBinder()) }
+
+    LaunchedEffect(true) {
+        while (true) {
+            if (!shizukuInstalled)
+                shizukuInstalled = viewModel.isShizukuInstalled()
+
+            if (shizukuInstalled && !shizukuRunning)
+                shizukuRunning = Shizuku.pingBinder()
+
+            delay(500)
+        }
+    }
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if (!shizukuInstalled) {
+            ElevatedCard(Modifier.padding(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        stringResource(R.string.shizuku_not_installed),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    TextButton(onClick = {
+                        viewModel.installShizuku()
+                    }) {
+                        Row {
+                            Icon(Icons.Outlined.InstallMobile, null)
+                            Text(stringResource(R.string.install_shizuku))
+                        }
+                    }
+                }
+            }
+        }
+        else if (!shizukuRunning) {
+            ElevatedCard(Modifier.padding(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        stringResource(R.string.shizuku_not_running),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    TextButton(onClick = {
+                        viewModel.openShizukuSetupGuide()
+                    }) {
+                        Row {
+                            Icon(Icons.Outlined.Link, null)
+                            Text(stringResource(R.string.setup_shizuku))
+                        }
+                    }
+                }
+            }
+        }
+        else if (!viewModel.isShizukuPermissionGranted()) {
+            ElevatedCard(Modifier.padding(8.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        stringResource(R.string.no_permission_shizuku),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    TextButton(onClick = {
+                        Shizuku.requestPermission(911)
+                    }) {
+                        Row {
+                            Icon(Icons.Outlined.QuestionMark, null)
+                            Text(stringResource(R.string.ask_shizuku_permission))
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            if (!viewModel.isDeviceOwner()) {
+                val currentDeviceOwner = viewModel.getDeviceOwnerPackage()
+                if (currentDeviceOwner != null) {
+                    val appName = try {
+                        val packageManager = DechainerApplication.getInstance().packageManager
+                        val appInfo = packageManager.getApplicationInfo(currentDeviceOwner, 0)
+                        packageManager.getApplicationLabel(appInfo).toString()
+                    } catch (_: PackageManager.NameNotFoundException) {
+                        null
+                    }
+                    if (appName != null) {
+                        AlertDialog(
+                            onDismissRequest = {},
+                            confirmButton = {},
+                            text = {
+                                Column {
+                                    Text(stringResource(R.string.already_owner))
+                                    Text(appName, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        )
+                    }
+                }
+//                viewModel.processDeviceOwnerPrivileges()
+            } else {
+//                viewModel.processDeviceOwnerPrivileges(true)
+            }
+        }
+    }
+}
+

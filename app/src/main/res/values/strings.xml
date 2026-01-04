@@ -17,4 +17,15 @@
     <string name="dns_settings">DNS privado</string>
     <string name="granted">Concedido</string>
     <string name="not_granted">Não concedido</string>
+    <string name="vpn_settings">VPN permitida</string>
+    <string name="vpn_description">Selecione um aplicativo de VPN que terá permissão para ignorar a restrição</string>
+    <string name="language_settings">Idioma</string>
+    <string name="language_description">Selecione o idioma preferido para o app</string>
+    <string name="shizuku_not_installed">Shizuku não está instalado. Ele é necessário para que o obter os privilégios de dono.</string>
+    <string name="install_shizuku">Instalar Shizuku</string>
+    <string name="shizuku_not_running">Shizuku não está sendo executado</string>
+    <string name="setup_shizuku">Ver como configurar</string>
+    <string name="no_permission_shizuku">O app não tem permissão para acessar o Shizuku. Conceda para prosseguir.</string>
+    <string name="ask_shizuku_permission">Pedir permissão</string>
+    <string name="already_owner">Já existe um outro app com privilégios de dono neste dispositivo. Somente um app pode ter este privilégio, confirme que deseja remover o privilégio do app abaixo:</string>
 </resources>

@@ -1,11 +1,14 @@
 package io.github.warleysr.dechainer.screens.tabs
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material3.Badge
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,7 +39,8 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     Badge(containerColor = badgeColor, contentColor = Color.White) {
                         Text(badgeText, style = MaterialTheme.typography.bodyMedium)
                     }
-                }
+                },
+                modifier = Modifier.clickable(onClick = { viewModel.navigateTo("setup_device_owner") })
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
@@ -45,6 +49,22 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                 headlineContent = { Text(stringResource(R.string.dns_settings)) },
                 supportingContent = { Text(stringResource(R.string.dns_description)) },
                 leadingContent = { Icon(Icons.Outlined.Dns, "") }
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.vpn_settings)) },
+                supportingContent = { Text(stringResource(R.string.vpn_description)) },
+                leadingContent = { Icon(Icons.Outlined.VpnKey, "") }
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.language_settings)) },
+                supportingContent = { Text(stringResource(R.string.language_description)) },
+                leadingContent = { Icon(Icons.Outlined.Language, "") }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }

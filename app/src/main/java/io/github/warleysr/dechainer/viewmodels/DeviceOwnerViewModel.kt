@@ -2,7 +2,9 @@ package io.github.warleysr.dechainer.viewmodels
 
 import android.accounts.AccountManager
 import android.app.admin.DevicePolicyManager
+import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.Intent
 import android.content.Context.DEVICE_POLICY_SERVICE
 import android.content.pm.PackageManager
 import android.util.Log
@@ -11,6 +13,8 @@ import androidx.lifecycle.ViewModel
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.utils.ShizukuRunner
 import rikka.shizuku.Shizuku
+import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
+import androidx.core.net.toUri
 
 class DeviceOwnerViewModel() : ViewModel() {
 
@@ -18,6 +22,35 @@ class DeviceOwnerViewModel() : ViewModel() {
     private val packageName = DechainerApplication.getInstance().packageName
 
     private var selectedTabState = mutableStateOf("restrictions")
+    private var shizukuPermission = mutableStateOf(checkShizukuPermission())
+
+    companion object {
+        private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
+    }
+
+    private val requestResultPermissionListener =
+        OnRequestPermissionResultListener { requestCode: Int, permissions: Int ->
+            this.onRequestPermissionsResult(
+                requestCode,
+                permissions
+            )
+        }
+
+    private fun onRequestPermissionsResult(requestCode: Int, grantResult: Int) {
+        println("requestCode: $requestCode requestResult: $grantResult")
+        val granted = grantResult == PackageManager.PERMISSION_GRANTED
+        shizukuPermission.value = granted
+    }
+
+    fun isShizukuPermissionGranted() = shizukuPermission.value
+
+    fun addShizukuListener() {
+        Shizuku.addRequestPermissionResultListener(requestResultPermissionListener)
+    }
+
+    fun removeShizukuListener() {
+        Shizuku.removeRequestPermissionResultListener(requestResultPermissionListener)
+    }
 
     fun selectedTab() = selectedTabState.value
 
@@ -25,6 +58,45 @@ class DeviceOwnerViewModel() : ViewModel() {
 
     fun isDeviceOwner() : Boolean {
         return dpm.isDeviceOwnerApp(packageName)
+    }
+
+    fun getDeviceOwnerPackage(): String? {
+        return try {
+            val getDeviceOwnerMethod = dpm.javaClass.getMethod("getDeviceOwner")
+            getDeviceOwnerMethod.invoke(dpm) as? String
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun isShizukuInstalled(): Boolean {
+        return try {
+            DechainerApplication.getInstance().packageManager.getPackageInfo(SHIZUKU_PACKAGE, 0) != null
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+
+    fun installShizuku() {
+        val intent = try {
+            Intent(Intent.ACTION_VIEW, "market://details?id=$SHIZUKU_PACKAGE".toUri())
+                .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+        } catch (e: ActivityNotFoundException) {
+            Intent(
+                Intent.ACTION_VIEW,
+                "https://play.google.com/store/apps/details?id=$SHIZUKU_PACKAGE".toUri(),
+            ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+        }
+        DechainerApplication.getInstance().applicationContext.startActivity(intent)
+    }
+
+    fun openShizukuSetupGuide() {
+        val intent = Intent(
+            Intent.ACTION_VIEW,
+            "https://shizuku.rikka.app/guide/setup/".toUri(),
+        ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
+        DechainerApplication.getInstance().applicationContext.startActivity(intent)
     }
 
     fun checkShizukuPermission(): Boolean {
@@ -45,10 +117,11 @@ class DeviceOwnerViewModel() : ViewModel() {
         }
     }
 
-    fun processDeviceOwnerPrivileges(context: Context, remove: Boolean) {
+    fun processDeviceOwnerPrivileges(remove: Boolean = false) {
         val command = if (remove) "remove-active-admin" else "set-device-owner"
+        val packageName = DechainerApplication.getInstance().packageName
         ShizukuRunner.command(
-            command = "dpm $command ${context.packageName}/.DechainerDeviceAdminReceiver",
+            command = "dpm $command $packageName/.DechainerDeviceAdminReceiver",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     println("Output: $output Done: $done")

@@ -21,6 +21,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.warleysr.dechainer.screens.setup.SetupDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.setup.SetupRecovery
 import io.github.warleysr.dechainer.screens.tabs.AppsTab
 import io.github.warleysr.dechainer.screens.tabs.ConfigTab
@@ -37,6 +38,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DechainerTheme {
                 val viewModel: DeviceOwnerViewModel = viewModel()
+                viewModel.addShizukuListener()
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -77,11 +79,20 @@ class MainActivity : ComponentActivity() {
                                 "restrictions" -> RestrictionsTab()
                                 "apps" -> AppsTab()
                                 "config" -> ConfigTab()
+                                "setup_device_owner" -> SetupDeviceOwnerPrivileges()
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        setContent {
+            val viewModel: DeviceOwnerViewModel = viewModel()
+            viewModel.removeShizukuListener()
         }
     }
 }
