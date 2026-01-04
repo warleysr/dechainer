@@ -6,4 +6,15 @@
     <string name="proceed">Prosseguir</string>
     <string name="generate_key">Gerar chave</string>
     <string name="your_key">Sua chave é:</string>
+    <string name="restrictions">Restrições</string>
+    <string name="apps">Apps</string>
+    <string name="config">Config</string>
+    <string name="not_device_owner">Sem privilégios de Dono do dispositivo</string>
+    <string name="config_device_owner">Obter na config.</string>
+    <string name="device_owner_state">Privilégios de dono</string>
+    <string name="device_owner_description">Permissão necessária para aplicar restrições e impedir desinstalação do app</string>
+    <string name="dns_description">DNS privado usado para bloquear acesso a sites</string>
+    <string name="dns_settings">DNS privado</string>
+    <string name="granted">Concedido</string>
+    <string name="not_granted">Não concedido</string>
 </resources>
