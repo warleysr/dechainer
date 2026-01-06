@@ -1,16 +1,21 @@
 package io.github.warleysr.dechainer.screens.setup
 
 import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.InstallMobile
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.QuestionMark
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -117,23 +122,45 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
         }
         else {
             if (!viewModel.isDeviceOwner()) {
-                val currentDeviceOwner = viewModel.getDeviceOwnerPackage()
+                val currentDeviceOwner = viewModel.getCurrentDeviceOwner()
                 if (currentDeviceOwner != null) {
-                    val appName = try {
+                    var appName by remember { mutableStateOf("") }
+                    var confirmRemove by remember { mutableStateOf(false) }
+
+                    appName = try {
                         val packageManager = DechainerApplication.getInstance().packageManager
-                        val appInfo = packageManager.getApplicationInfo(currentDeviceOwner, 0)
+                        val appInfo = packageManager.getApplicationInfo(currentDeviceOwner.first, 0)
                         packageManager.getApplicationLabel(appInfo).toString()
                     } catch (_: PackageManager.NameNotFoundException) {
-                        null
+                        ""
                     }
-                    if (appName != null) {
+                    if (appName.isNotEmpty()) {
                         AlertDialog(
-                            onDismissRequest = {},
-                            confirmButton = {},
+                            onDismissRequest = { appName = "" },
+                            confirmButton = {
+                                TextButton(
+                                    enabled = confirmRemove,
+                                    onClick = {
+                                        appName = ""
+                                        Toast.makeText(DechainerApplication.getInstance(), currentDeviceOwner.second, Toast.LENGTH_LONG).show()
+                                    }
+                                ) { Text(stringResource(R.string.proceed)) }
+                            },
                             text = {
                                 Column {
                                     Text(stringResource(R.string.already_owner))
+                                    Spacer(Modifier.height(8.dp))
                                     Text(appName, fontWeight = FontWeight.Bold)
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.clickable(onClick = { confirmRemove = !confirmRemove })
+                                    ) {
+                                        Checkbox(
+                                            checked = confirmRemove,
+                                            onCheckedChange = { confirmRemove = it }
+                                        )
+                                        Text(stringResource(R.string.confirm_remove_owner))
+                                    }
                                 }
                             }
                         )

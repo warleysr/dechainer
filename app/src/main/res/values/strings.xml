@@ -28,4 +28,5 @@
     <string name="no_permission_shizuku">O app não tem permissão para acessar o Shizuku. Conceda para prosseguir.</string>
     <string name="ask_shizuku_permission">Pedir permissão</string>
     <string name="already_owner">Já existe um outro app com privilégios de dono neste dispositivo. Somente um app pode ter este privilégio, confirme que deseja remover o privilégio do app abaixo:</string>
+    <string name="confirm_remove_owner">Confirmar remoção de privilégios</string>
 </resources>
