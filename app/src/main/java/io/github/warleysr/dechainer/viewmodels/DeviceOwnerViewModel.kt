@@ -22,7 +22,8 @@ class DeviceOwnerViewModel() : ViewModel() {
     private val packageName = DechainerApplication.getInstance().packageName
 
     private var selectedTabState = mutableStateOf("restrictions")
-    private var shizukuPermission = mutableStateOf(checkShizukuPermission())
+    private var shizukuPermission = mutableStateOf(Shizuku.pingBinder() && checkShizukuPermission())
+    private var isDeviceOwner = mutableStateOf(dpm.isDeviceOwnerApp(packageName))
 
     companion object {
         private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
@@ -57,17 +58,7 @@ class DeviceOwnerViewModel() : ViewModel() {
     fun navigateTo(screen: String) { selectedTabState.value = screen }
 
     fun isDeviceOwner() : Boolean {
-        return dpm.isDeviceOwnerApp(packageName)
-    }
-
-    fun getDeviceOwnerPackage(): String? {
-        return try {
-            val getDeviceOwnerMethod = dpm.javaClass.getMethod("getDeviceOwner")
-            getDeviceOwnerMethod.invoke(dpm) as? String
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
+        return isDeviceOwner.value
     }
 
     fun isShizukuInstalled(): Boolean {
@@ -203,6 +194,41 @@ class DeviceOwnerViewModel() : ViewModel() {
             }
         } else {
             accountType
+        }
+    }
+
+    fun getCurrentDeviceOwner(): Pair<String, String>? {
+        return try {
+            var dpmOutput = ""
+            ShizukuRunner.command(
+                command = "dpm list-owners",
+                listener = object : ShizukuRunner.CommandResultListener {
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        println("Output: $output Done: $done")
+                        dpmOutput = output
+                    }
+
+                    override fun onCommandError(error: String) {
+                        Log.e("Shizuku", error)
+                    }
+                })
+            val componentPath = dpmOutput
+                .substringAfter("admin=", "")
+                .substringBefore(",", "")
+
+            if (componentPath.isEmpty() || !componentPath.contains("/")) return null
+
+            val parts = componentPath.split("/")
+            val packageName = parts[0].trim()
+            var receiverName = parts[1].trim()
+
+            if (receiverName.startsWith(".")) {
+                receiverName = "$packageName$receiverName"
+            }
+
+            Pair(packageName, receiverName)
+        } catch (e: Exception) {
+            null
         }
     }
 }
