@@ -34,7 +34,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                 leadingContent = { Icon(Icons.Outlined.Adb, "") },
                 trailingContent = {
                     val owner = viewModel.isDeviceOwner()
-                    val badgeColor = if (owner) Color.Green else Color.Red
+                    val badgeColor = if (owner) Color(26, 163, 63) else Color.Red
                     val badgeText = if (owner) stringResource(R.string.granted) else stringResource(R.string.not_granted)
                     Badge(containerColor = badgeColor, contentColor = Color.White) {
                         Text(badgeText, style = MaterialTheme.typography.bodyMedium)
