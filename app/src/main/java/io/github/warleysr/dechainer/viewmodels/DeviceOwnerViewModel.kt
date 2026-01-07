@@ -116,9 +116,11 @@ class DeviceOwnerViewModel() : ViewModel() {
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     println("Output: $output Done: $done")
+                    isDeviceOwner.value = dpm.isDeviceOwnerApp(packageName)
                 }
                 override fun onCommandError(error: String) {
                     Log.e("Shizuku", error)
+                    isDeviceOwner.value = dpm.isDeviceOwnerApp(packageName)
                 }
             })
     }
@@ -223,12 +225,55 @@ class DeviceOwnerViewModel() : ViewModel() {
             var receiverName = parts[1].trim()
 
             if (receiverName.startsWith(".")) {
-                receiverName = "$packageName$receiverName"
+                receiverName = "$packageName/$receiverName"
             }
 
             Pair(packageName, receiverName)
         } catch (e: Exception) {
             null
         }
+    }
+
+    fun removeCurrentDeviceOwner(currentOwnerPackage: String) {
+        ShizukuRunner.command(
+            command = "dpm remove-active-admin $currentOwnerPackage",
+            listener = object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+                    println("Output: $output Done: $done")
+                }
+
+                override fun onCommandError(error: String) {
+                    Log.e("Shizuku", error)
+                }
+        })
+    }
+
+    fun getExtraUsersInfo(): List<String> {
+        val users = mutableListOf<String>()
+
+        ShizukuRunner.command(
+            command = "pm list users",
+            listener = object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+                    println("Output: $output Done: $done")
+
+                    val regex = Regex("""UserInfo\{(\d+):([^:]+):""")
+
+                    val matches = regex.findAll(output)
+                    for (match in matches) {
+                        val id = match.groupValues[1].toInt()
+                        val name = match.groupValues[2]
+
+                        if (id != 0)
+                            users.add(name)
+                    }
+                }
+
+                override fun onCommandError(error: String) {
+                    Log.e("Shizuku", error)
+                }
+            })
+
+        return users
     }
 }
