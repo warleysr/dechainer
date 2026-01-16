@@ -157,7 +157,7 @@ class DeviceOwnerViewModel() : ViewModel() {
                 command = "dumpsys account",
                 listener = object : ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(output: String, done: Boolean) {
-                        val regex = "Account \\{name=(.*?), type=(.*?)\\}".toRegex()
+                        val regex = " {4}Account \\{name=(.*?), type=(.*?)\\}".toRegex()
 
                         output.lines().forEach { line ->
                             val match = regex.find(line)
@@ -167,6 +167,8 @@ class DeviceOwnerViewModel() : ViewModel() {
                                 accounts.add(Pair(accountType, accountName))
                             }
                         }
+
+                        println("Output: \n$output")
                     }
                     override fun onCommandError(error: String) {
                         Log.e("Shizuku", error)
