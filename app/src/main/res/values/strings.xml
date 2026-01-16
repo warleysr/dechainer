@@ -37,4 +37,19 @@
     <string name="no_account_allowed">Não pode haver nenhuma conta no dispositivo. Remova todas as contas abaixo:</string>
     <string name="extra_users_description">Seu dispositivo possui mais de um usuário. Apps duplicados podem criar usuários ocultos. Faça backup e desative todos os usuários abaixo:</string>
     <string name="remove_users">Remover usuários</string>
+    
+    <string name="search_apps">Pesquisar apps instalados…</string>
+    <string name="blocked">Bloqueado</string>
+    <string name="protected_label">Protegido</string>
+    <string name="manage_restrictions">Gerenciar restrições para %1$s</string>
+    <string name="block">Bloquear</string>
+    <string name="unblock">Desbloquear</string>
+    <string name="prevent_uninstall">Impedir Desinstalação</string>
+    <string name="allow_uninstall">Permitir Desinstalar</string>
+    <string name="apply_restrictions">Aplicar restrições</string>
+    <string name="recommended_configs">Configurações recomendadas</string>
+    <string name="block_vpn">Bloquear VPN</string>
+    <string name="block_private_dns">Bloquear alterar DNS privado</string>
+    <string name="block_factory_reset">Bloquear restauração</string>
+    <string name="active">Ativo</string>
 </resources>
