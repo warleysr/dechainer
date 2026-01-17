@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
+import kotlin.collections.forEach
 
 class RestrictionsViewModel : ViewModel() {
     private val context = DechainerApplication.getInstance()
@@ -20,11 +21,24 @@ class RestrictionsViewModel : ViewModel() {
     // Actual state applied in the system
     val appliedRestrictions = mutableStateMapOf<String, Boolean>()
 
-    private val restrictionKeys = listOf(
+    val recommendedKeys = listOf(
         UserManager.DISALLOW_CONFIG_VPN,
         UserManager.DISALLOW_CONFIG_PRIVATE_DNS,
-        UserManager.DISALLOW_FACTORY_RESET
+        UserManager.DISALLOW_FACTORY_RESET,
     )
+
+    val otherKeys = UserManager::class.java.fields
+        .filter { field ->
+
+            java.lang.reflect.Modifier.isStatic(field.modifiers) &&
+                    java.lang.reflect.Modifier.isFinal(field.modifiers) &&
+                    (field.name.startsWith("DISALLOW_") || field.name.startsWith("ALLOW_"))
+                    && !recommendedKeys.contains(field.get(null))
+        }
+        .map { it.get(null) as String }
+        .sorted()
+
+    private val allKeys = (recommendedKeys + otherKeys).distinct()
 
     init {
         loadRestrictions()
@@ -32,8 +46,8 @@ class RestrictionsViewModel : ViewModel() {
 
     fun loadRestrictions() {
         val currentRestrictions = dpm.getUserRestrictions(adminName)
-        restrictionKeys.forEach { key ->
-            val isEnabled = currentRestrictions.getBoolean(key)
+        allKeys.forEach { key ->
+            val isEnabled = currentRestrictions.getBoolean(key as String?)
             draftRestrictions[key] = isEnabled
             appliedRestrictions[key] = isEnabled
         }
@@ -43,23 +57,24 @@ class RestrictionsViewModel : ViewModel() {
         draftRestrictions[key] = enabled
     }
 
-    fun toggleAllDrafts(enabled: Boolean) {
-        restrictionKeys.forEach { key ->
+    fun toggleAllDrafts(keys: List<String>, enabled: Boolean) {
+        keys.forEach { key ->
             draftRestrictions[key] = enabled
         }
     }
 
     fun applyChanges() {
-        restrictionKeys.forEach { key ->
+        allKeys.forEach { key ->
             val shouldEnable = draftRestrictions[key] ?: false
+            val currentlyAppliedRestrictions = dpm.getUserRestrictions(adminName)
             if (shouldEnable) {
-                dpm.addUserRestriction(adminName, key)
-            } else {
-                dpm.clearUserRestriction(adminName, key)
+                dpm.addUserRestriction(adminName, key as String?)
+            } else if (currentlyAppliedRestrictions.containsKey(key)) {
+                dpm.clearUserRestriction(adminName, key as String?)
             }
         }
-        loadRestrictions() // Refresh states
+        loadRestrictions()
     }
 
-    fun isAllDraftsEnabled(): Boolean = restrictionKeys.all { draftRestrictions[it] == true }
+    fun isAllDraftsEnabled(keys: List<String>): Boolean = keys.all { draftRestrictions[it] == true }
 }

@@ -48,8 +48,22 @@
     <string name="allow_uninstall">Permitir Desinstalar</string>
     <string name="apply_restrictions">Aplicar restrições</string>
     <string name="recommended_configs">Configurações recomendadas</string>
+    <string name="other_restrictions">Outras Restrições</string>
     <string name="block_vpn">Bloquear VPN</string>
     <string name="block_private_dns">Bloquear alterar DNS privado</string>
-    <string name="block_factory_reset">Bloquear restauração</string>
+    <string name="block_factory_reset">Proibir restauração de fábrica</string>
     <string name="active">Ativo</string>
+    
+    <string name="disallow_safe_boot">Proibir modo de segurança</string>
+    <string name="disallow_usb_file_transfer">Proibir transferência USB</string>
+    <string name="disallow_debugging_features">Proibir depuração USB (ADB)</string>
+    <string name="disallow_install_unknown_sources">Proibir fontes desconhecidas</string>
+    <string name="disallow_modify_accounts">Proibir modificar contas</string>
+    <string name="disallow_add_user">Proibir adicionar usuários</string>
+    
+    <string name="enter_recovery_code">Digite o código de recuperação</string>
+    <string name="recovery_code_hint">XXXX-XXXX</string>
+    <string name="invalid_recovery_code">Código de recuperação inválido</string>
+    <string name="confirm">Confirmar</string>
+    <string name="cancel">Cancelar</string>
 </resources>

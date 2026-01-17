@@ -12,15 +12,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
+import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
+import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.AppItem
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
-import io.github.warleysr.dechainer.R
 
 @Composable
 fun AppsTab(
@@ -38,6 +41,8 @@ fun AppsTab(
 fun AppsScreen(viewModel: AppsViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedApp by remember { mutableStateOf<AppItem?>(null) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val context = LocalContext.current
 
     val filteredApps = remember(viewModel.apps, searchQuery) {
         viewModel.apps.filter {
@@ -78,14 +83,35 @@ fun AppsScreen(viewModel: AppsViewModel) {
             app = app,
             onDismiss = { selectedApp = null },
             onBlock = {
-                viewModel.blockApp(app.packageName, !app.isHidden)
+                pendingAction = { viewModel.blockApp(app.packageName, !app.isHidden) }
                 selectedApp = null
             },
             onToggleUninstall = {
-                viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked)
+                pendingAction = { viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked) }
                 selectedApp = null
             }
         )
+    }
+
+    if (pendingAction != null) {
+        val storedHash = SecurityManager.getRecoveryHash(context)
+        if (storedHash == null) {
+            pendingAction?.invoke()
+            pendingAction = null
+        } else {
+            RecoveryConfirmDialog(
+                onConfirm = { code ->
+                    if (SecurityManager.validatePassphrase(code, storedHash)) {
+                        pendingAction?.invoke()
+                        pendingAction = null
+                        true
+                    } else {
+                        false
+                    }
+                },
+                onDismiss = { pendingAction = null }
+            )
+        }
     }
 }
 
@@ -145,15 +171,15 @@ fun AppActionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(app.name) },
-        text = { Text("Gerenciar restrições para ${app.packageName}") },
+        text = { Text(stringResource(R.string.manage_restrictions, app.packageName)) },
         confirmButton = {
             TextButton(onClick = onBlock) {
-                Text(if (app.isHidden) "Desbloquear" else "Bloquear")
+                Text(if (app.isHidden) stringResource(R.string.unblock) else stringResource(R.string.block))
             }
         },
         dismissButton = {
             TextButton(onClick = onToggleUninstall) {
-                Text(if (app.isUninstallBlocked) "Permitir Desinstalar" else "Impedir Desinstalação")
+                Text(if (app.isUninstallBlocked) stringResource(R.string.allow_uninstall) else stringResource(R.string.prevent_uninstall))
             }
         }
     )
