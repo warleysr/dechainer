@@ -6,10 +6,13 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
+import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import kotlinx.coroutines.delay
 import rikka.shizuku.Shizuku
@@ -18,6 +21,8 @@ import rikka.shizuku.Shizuku
 fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
     var shizukuInstalled by remember { mutableStateOf(viewModel.isShizukuInstalled()) }
     var shizukuRunning by remember { mutableStateOf(Shizuku.pingBinder()) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -40,7 +45,31 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
             !shizukuInstalled -> ShizukuNotInstalledCard(viewModel)
             !shizukuRunning -> ShizukuNotRunningCard(viewModel)
             !viewModel.isShizukuPermissionGranted() -> ShizukuNoPermissionCard()
-            else -> DeviceOwnerSetupContent(viewModel)
+            else -> DeviceOwnerSetupContent(
+                viewModel, 
+                onRemoveAction = { pendingAction = { viewModel.processDeviceOwnerPrivileges(true) } }
+            )
+        }
+    }
+
+    if (pendingAction != null) {
+        val storedHash = SecurityManager.getRecoveryHash(context)
+        if (storedHash == null) {
+            pendingAction?.invoke()
+            pendingAction = null
+        } else {
+            RecoveryConfirmDialog(
+                onConfirm = { code ->
+                    if (SecurityManager.validatePassphrase(code, storedHash)) {
+                        pendingAction?.invoke()
+                        pendingAction = null
+                        true
+                    } else {
+                        false
+                    }
+                },
+                onDismiss = { pendingAction = null }
+            )
         }
     }
 }
@@ -76,7 +105,10 @@ private fun ShizukuNoPermissionCard() {
 }
 
 @Composable
-private fun DeviceOwnerSetupContent(viewModel: DeviceOwnerViewModel) {
+private fun DeviceOwnerSetupContent(
+    viewModel: DeviceOwnerViewModel,
+    onRemoveAction: () -> Unit
+) {
     val accounts = remember { mutableStateListOf<Pair<String, String>>() }
     LaunchedEffect(Unit) {
         accounts.addAll(viewModel.getAllAccountsViaShizuku())
@@ -119,7 +151,7 @@ private fun DeviceOwnerSetupContent(viewModel: DeviceOwnerViewModel) {
                 text = stringResource(R.string.remove_privileges_description),
                 buttonText = stringResource(R.string.remove_privileges),
                 buttonIcon = Icons.Outlined.DeleteForever,
-                onClick = { viewModel.processDeviceOwnerPrivileges(true) }
+                onClick = onRemoveAction
             )
         }
     }
