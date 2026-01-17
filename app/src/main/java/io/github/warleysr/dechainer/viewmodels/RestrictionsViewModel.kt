@@ -45,6 +45,7 @@ class RestrictionsViewModel : ViewModel() {
     }
 
     fun loadRestrictions() {
+        if (!dpm.isDeviceOwnerApp(adminName.packageName)) return
         val currentRestrictions = dpm.getUserRestrictions(adminName)
         allKeys.forEach { key ->
             val isEnabled = currentRestrictions.getBoolean(key as String?)
