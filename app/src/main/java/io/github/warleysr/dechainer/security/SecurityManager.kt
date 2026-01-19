@@ -12,7 +12,7 @@ class SecurityManager {
         private const val CHAR_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
         private val isRecoveryKeySet = mutableStateOf(false)
 
-        fun generatePassphrase(length: Int = 8): String {
+        fun generatePassphrase(length: Int = 16): String {
             val random = SecureRandom()
             return (1..length)
                 .map { CHAR_POOL[random.nextInt(CHAR_POOL.length)] }

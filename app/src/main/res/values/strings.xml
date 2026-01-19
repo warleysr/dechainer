@@ -62,7 +62,7 @@
     <string name="disallow_add_user">Proibir adicionar usuários</string>
     
     <string name="enter_recovery_code">Digite o código de recuperação</string>
-    <string name="recovery_code_hint">XXXX-XXXX</string>
+    <string name="recovery_code_hint">Código</string>
     <string name="invalid_recovery_code">Código de recuperação inválido</string>
     <string name="confirm">Confirmar</string>
     <string name="cancel">Cancelar</string>
