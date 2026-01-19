@@ -1,31 +1,36 @@
 package io.github.warleysr.dechainer.screens.tabs
 
+import android.content.Context
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.VpnKey
-import androidx.compose.material3.Badge
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
+import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 
 @Composable
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
+    var showDnsDialog by remember { mutableStateOf(false) }
+    var pendingDnsHost by remember { mutableStateOf<String?>(null) }
+    var showRecoveryDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             ListItem(
@@ -47,8 +52,11 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
         item {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.dns_settings)) },
-                supportingContent = { Text(stringResource(R.string.dns_description)) },
-                leadingContent = { Icon(Icons.Outlined.Dns, "") }
+                supportingContent = { 
+                    Text( stringResource(R.string.dns_description))
+                },
+                leadingContent = { Icon(Icons.Outlined.Dns, "") },
+                modifier = Modifier.clickable { showDnsDialog = true }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
@@ -69,4 +77,156 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
     }
+
+    if (showDnsDialog) {
+        val currentDns = context.getSharedPreferences("dns_prefs", Context.MODE_PRIVATE)
+            .getString("private_dns_host", null)
+        DnsSelectionDialog(
+            currentDns = currentDns,
+            onDismiss = { showDnsDialog = false },
+            onApply = { host ->
+                pendingDnsHost = host
+                showRecoveryDialog = true
+                showDnsDialog = false
+            }
+        )
+    }
+
+    if (showRecoveryDialog) {
+        val storedHash = SecurityManager.getRecoveryHash(context)
+        if (storedHash == null) {
+            applyDns(context, viewModel, pendingDnsHost)
+            showRecoveryDialog = false
+        } else {
+            RecoveryConfirmDialog(
+                onConfirm = { code ->
+                    if (SecurityManager.validatePassphrase(code, storedHash)) {
+                        applyDns(context, viewModel, pendingDnsHost)
+                        showRecoveryDialog = false
+                        true
+                    } else false
+                },
+                onDismiss = { showRecoveryDialog = false }
+            )
+        }
+    }
+}
+
+private fun applyDns(context: Context, viewModel: DeviceOwnerViewModel, host: String?) {
+    viewModel.setPrivateDNS(host)
+    val prefs = context.getSharedPreferences("dns_prefs", Context.MODE_PRIVATE)
+    if (host == null) {
+        prefs.edit().remove("private_dns_host").apply()
+    } else {
+        prefs.edit().putString("private_dns_host", host).apply()
+    }
+}
+
+@Composable
+fun DnsSelectionDialog(
+    currentDns: String?,
+    onDismiss: () -> Unit,
+    onApply: (String?) -> Unit
+) {
+    val options = listOf(
+        "Cloudflare" to "family.cloudflare-dns.com",
+        "AdGuard DNS" to "family.adguard-dns.com",
+        "CleanBrowsing" to "adult-filter-dns.cleanbrowsing.org"
+    )
+    
+    var selectedOption by remember { 
+        mutableStateOf(
+            when {
+                currentDns == null -> "none"
+                options.any { it.second == currentDns } -> currentDns
+                else -> "custom"
+            }
+        )
+    }
+    var customHost by remember { mutableStateOf(if (selectedOption == "custom") currentDns ?: "" else "") }
+
+    val isCustomValid = remember(customHost) {
+        customHost.matches(Regex("^([a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,}\$"))
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.dns_settings)) },
+        text = {
+            Column {
+                options.forEach { (name, host) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedOption = host }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selectedOption == host, onClick = { selectedOption = host })
+                        Column(Modifier.padding(start = 8.dp)) {
+                            Text(name, fontWeight = FontWeight.Bold)
+                            Text(host, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedOption = "custom" }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = selectedOption == "custom", onClick = { selectedOption = "custom" })
+                    Text(stringResource(R.string.custom), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                }
+                if (selectedOption == "custom") {
+                    OutlinedTextField(
+                        value = customHost,
+                        onValueChange = { customHost = it },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        placeholder = { Text(stringResource(R.string.dns_host_hint)) },
+                        singleLine = true,
+                        isError = !isCustomValid && customHost.isNotEmpty(),
+                        supportingText = {
+                            if (!isCustomValid && customHost.isNotEmpty()) {
+                                Text(stringResource(R.string.invalid_dns_host))
+                            }
+                        }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedOption = "none" }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = selectedOption == "none", onClick = { selectedOption = "none" })
+                    Text(stringResource(R.string.none), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                }
+            }
+        },
+        confirmButton = {
+            val canApply = selectedOption != "custom" || isCustomValid
+            TextButton(
+                enabled = canApply,
+                onClick = { 
+                    val finalHost = when(selectedOption) {
+                        "none" -> null
+                        "custom" -> customHost
+                        else -> selectedOption
+                    }
+                    onApply(finalHost) 
+                }
+            ) {
+                Text(stringResource(R.string.apply))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }

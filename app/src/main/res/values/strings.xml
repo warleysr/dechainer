@@ -30,7 +30,7 @@
     <string name="already_owner">Já existe um outro app com privilégios de dono neste dispositivo. Somente um app pode ter este privilégio, confirme que deseja remover o privilégio do app abaixo:</string>
     <string name="confirm_remove_owner">Confirmar remoção de privilégios</string>
     <string name="get_owner_privileges">Conceder privilégios</string>
-    <string name="privileges_description">Tudo certo! Para finalizar clique no botão abaixo para conceder privilégios de dono do dispositivo.</string>
+    <string name="privileges_description">Tudo certo! Para finalizar clique no botçao abaixo para conceder privilégios de dono do dispositivo.</string>
     <string name="remove_privileges_description">Privilégios concedidos! Para remover clique no botão abaixo.</string>
     <string name="remove_privileges">Remover privilégios</string>
     <string name="remove_accounts">Remover contas</string>
@@ -66,4 +66,9 @@
     <string name="invalid_recovery_code">Código de recuperação inválido</string>
     <string name="confirm">Confirmar</string>
     <string name="cancel">Cancelar</string>
+    <string name="apply">Aplicar</string>
+    <string name="custom">Customizado</string>
+    <string name="dns_host_hint">Ex: xxxxxx.dns.nextdns.io</string>
+    <string name="none">Nenhum</string>
+    <string name="invalid_dns_host">Host de DNS inválido</string>
 </resources>

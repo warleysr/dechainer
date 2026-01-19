@@ -3,10 +3,12 @@ package io.github.warleysr.dechainer.viewmodels
 import android.accounts.AccountManager
 import android.app.admin.DevicePolicyManager
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.Context.DEVICE_POLICY_SERVICE
 import android.content.pm.PackageManager
+import android.os.UserManager
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -15,10 +17,15 @@ import io.github.warleysr.dechainer.utils.ShizukuRunner
 import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
 import androidx.core.net.toUri
+import androidx.lifecycle.viewModelScope
+import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class DeviceOwnerViewModel() : ViewModel() {
 
     private val dpm = DechainerApplication.getInstance().getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+    private val adminName = ComponentName(DechainerApplication.getInstance(), DechainerDeviceAdminReceiver::class.java)
     private val packageName = DechainerApplication.getInstance().packageName
 
     private var selectedTabState = mutableStateOf("restrictions")
@@ -125,9 +132,12 @@ class DeviceOwnerViewModel() : ViewModel() {
             })
     }
 
-    fun setPrivateDNS(host: String) {
+    fun setPrivateDNS(host: String?) {
+        dpm.clearUserRestriction(adminName, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
+
+        val dnsMode = if (host != null) "hostname" else "opportunistic"
         ShizukuRunner.command(
-            command = "settings put global private_dns_mode host",
+            command = "settings put global private_dns_mode $dnsMode",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     println("Output: $output Done: $done")
@@ -137,8 +147,23 @@ class DeviceOwnerViewModel() : ViewModel() {
                 }
             }
         )
+        if (host != null)
+            ShizukuRunner.command(
+                command = "settings put global private_dns_specifier $host",
+                listener = object : ShizukuRunner.CommandResultListener {
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        println("Output: $output Done: $done")
+                    }
+                    override fun onCommandError(error: String) {
+                        Log.e("Shizuku", error)
+                    }
+                }
+            )
+
+        dpm.addUserRestriction(adminName, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
+
         ShizukuRunner.command(
-            command = "settings put global private_dns_specifier $host",
+            command = "cmd connectivity airplane-mode enable",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     println("Output: $output Done: $done")
@@ -148,7 +173,24 @@ class DeviceOwnerViewModel() : ViewModel() {
                 }
             }
         )
+
+        viewModelScope.launch {
+            delay(2000)
+            ShizukuRunner.command(
+                command = "cmd connectivity airplane-mode disable",
+                listener = object : ShizukuRunner.CommandResultListener {
+                    override fun onCommandResult(output: String, done: Boolean) {
+                        println("Output: $output Done: $done")
+                    }
+                    override fun onCommandError(error: String) {
+                        Log.e("Shizuku", error)
+                    }
+                }
+            )
+        }
+
     }
+
 
     fun getAllAccountsViaShizuku(): List<Pair<String, String>> {
         val accounts = mutableListOf<Pair<String, String>>()
