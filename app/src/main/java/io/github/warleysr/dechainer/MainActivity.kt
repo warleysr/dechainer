@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -23,7 +24,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.screens.setup.SetupDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.setup.SetupRecovery
+import io.github.warleysr.dechainer.screens.tabs.ActivityBlockerScreen
 import io.github.warleysr.dechainer.screens.tabs.AppsTab
+import io.github.warleysr.dechainer.screens.tabs.BrowserRestrictionsScreen
 import io.github.warleysr.dechainer.screens.tabs.ConfigTab
 import io.github.warleysr.dechainer.screens.tabs.RestrictionsTab
 import io.github.warleysr.dechainer.security.SecurityManager
@@ -42,7 +45,7 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) },
+                    topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name), color = MaterialTheme.colorScheme.primary) }) },
                     bottomBar = {
                         val tabs = listOf(
                             Pair("restrictions", stringResource(R.string.restrictions)),
@@ -79,6 +82,8 @@ class MainActivity : ComponentActivity() {
                                 "restrictions" -> RestrictionsTab()
                                 "apps" -> AppsTab()
                                 "config" -> ConfigTab()
+                                "browser_restrictions" -> BrowserRestrictionsScreen()
+                                "activity_blocker" -> ActivityBlockerScreen()
                                 "setup_device_owner" -> SetupDeviceOwnerPrivileges()
                             }
                         }
