@@ -5,10 +5,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.VpnKey
+import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +31,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var showDnsDialog by remember { mutableStateOf(false) }
     var pendingDnsHost by remember { mutableStateOf<String?>(null) }
     var showRecoveryDialog by remember { mutableStateOf(false) }
+    var blockSpecificActivity by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -57,6 +60,31 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                 },
                 leadingContent = { Icon(Icons.Outlined.Dns, "") },
                 modifier = Modifier.clickable { showDnsDialog = true }
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.browser_restrictions)) },
+                supportingContent = { Text(stringResource(R.string.browser_restrictions_desc)) },
+                leadingContent = { Icon(Icons.Outlined.Web, "") },
+                modifier = Modifier.clickable { viewModel.navigateTo("browser_restrictions") }
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.activity_blocker)) },
+                supportingContent = { Text(stringResource(R.string.activity_blocker_description)) },
+                leadingContent = { Icon(Icons.Outlined.Accessibility, "") },
+                trailingContent = {
+                    Switch(blockSpecificActivity, onCheckedChange = {
+                        blockSpecificActivity = it
+                        if (it)
+                            viewModel.grantAccessibilityPermission()
+                    })
+                },
+                modifier = Modifier.clickable { viewModel.navigateTo("activity_blocker") }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Dechainer</string>
+    <string name="app_name">Déchaîner</string>
     <string name="attention">Atenção!</string>
     <string name="self_lock_risk">Este app utiliza privilégios de Dono do Dispositivo para bloquear componentes de sistema e controlar o acesso a outros aplicativos. Há o risco de se \"auto trancar\" e não conseguir ter acesso as funcionalidades bloqueadas novamente. Para evitar isso você deve ter uma chave de recuperação. Essa chave pode ser gerada abaixo e deve ser salva em um local seguro ou anotada em um papel de forma física. Somente através dela você conseguirá remover este app. Gere a chave abaixo.</string>
     <string name="confirm_key_saved">Confirmo que salvei a chave</string>
@@ -62,13 +62,31 @@
     <string name="disallow_add_user">Proibir adicionar usuários</string>
     
     <string name="enter_recovery_code">Digite o código de recuperação</string>
-    <string name="recovery_code_hint">Código</string>
+    <string name="recovery_code_hint">Código de 16 letras</string>
     <string name="invalid_recovery_code">Código de recuperação inválido</string>
     <string name="confirm">Confirmar</string>
     <string name="cancel">Cancelar</string>
     <string name="apply">Aplicar</string>
     <string name="custom">Customizado</string>
-    <string name="dns_host_hint">Ex: xxxxxx.dns.nextdns.io</string>
+    <string name="dns_host_hint">Ex: dns.example.com</string>
     <string name="none">Nenhum</string>
     <string name="invalid_dns_host">Host de DNS inválido</string>
+
+    <string name="browser_restrictions">Restrições de navegador</string>
+    <string name="browser_restrictions_desc">Gerenciar permissões de navegadores e sites bloqueados</string>
+    <string name="allowed_browsers">Navegadores permitidos</string>
+    <string name="blocked_sites">Sites bloqueados</string>
+    <string name="add_site">Adicionar site</string>
+    <string name="site_url_hint">Ex: example.com</string>
+    <string name="remove">Remover</string>
+    <string name="firefox_warning">As restrições não funcionam no Firefox, recomenda-se desativá-lo.</string>
+    
+    <string name="activity_blocker">Bloquear Activity</string>
+    <string name="activity_blocker_description">Impedir abertura de telas específicas</string>
+    <string name="blocked_activities">Activities bloqueadas</string>
+    <string name="accessed_activities">Activities acessadas</string>
+    <string name="add_activity">Adicionar Activity</string>
+    <string name="activity_name_hint">Ex: com.android.settings.Settings</string>
+    <string name="copy">Copiar</string>
+    <string name="activity_blocked_toast">Activity bloqueada pelo Dechainer</string>
 </resources>

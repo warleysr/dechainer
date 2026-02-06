@@ -18,6 +18,7 @@ import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
+import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -319,5 +320,46 @@ class DeviceOwnerViewModel() : ViewModel() {
             })
 
         return users
+    }
+
+    fun grantAccessibilityPermission() {
+        dpm.setPermittedAccessibilityServices(adminName, null)
+//        val newServices = ArrayList<String>()
+//        val accessibilityServices = dpm.getPermittedAccessibilityServices(adminName)
+//        if (accessibilityServices != null)
+//            newServices.addAll(accessibilityServices)
+//
+//        if (!newServices.contains(packageName))
+//            newServices.add(packageName)
+//
+//        dpm.setPermittedAccessibilityServices(adminName, newServices)
+//
+//        dpm.setPermissionGrantState(adminName, packageName, "android.permission.BIND_ACCESSIBILITY_SERVICE",
+//            DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED)
+
+        val serviceComponent = "$packageName/.DechainerAccessibilityService"
+        ShizukuRunner.command(
+            "settings put secure enabled_accessibility_services $serviceComponent",
+            listener = object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+                    println("Output: $output Done: $done")
+                }
+
+                override fun onCommandError(error: String) {
+                    Log.e("Shizuku", error)
+                }
+            })
+
+        ShizukuRunner.command(
+            "settings put secure accessibility_enabled 1",
+            listener = object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+                    println("Output: $output Done: $done")
+                }
+
+                override fun onCommandError(error: String) {
+                    Log.e("Shizuku", error)
+                }
+            })
     }
 }
