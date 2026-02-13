@@ -1,5 +1,6 @@
 package io.github.warleysr.dechainer.viewmodels
 
+import android.Manifest
 import android.accounts.AccountManager
 import android.app.admin.DevicePolicyManager
 import android.content.ActivityNotFoundException
@@ -7,8 +8,11 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.Context.DEVICE_POLICY_SERVICE
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.UserManager
+import android.provider.Settings
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -18,7 +22,6 @@ import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
 import androidx.core.net.toUri
 import androidx.lifecycle.viewModelScope
-import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -322,20 +325,21 @@ class DeviceOwnerViewModel() : ViewModel() {
         return users
     }
 
+
+    fun requestUsageStatsPermission(context: Context) {
+        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+            flags = FLAG_ACTIVITY_NEW_TASK
+            data = Uri.fromParts("package", context.packageName, null)
+        }
+        if (intent.resolveActivity(context.packageManager) != null) {
+            context.startActivity(intent)
+        } else {
+            context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+    }
+
     fun grantAccessibilityPermission() {
         dpm.setPermittedAccessibilityServices(adminName, null)
-//        val newServices = ArrayList<String>()
-//        val accessibilityServices = dpm.getPermittedAccessibilityServices(adminName)
-//        if (accessibilityServices != null)
-//            newServices.addAll(accessibilityServices)
-//
-//        if (!newServices.contains(packageName))
-//            newServices.add(packageName)
-//
-//        dpm.setPermittedAccessibilityServices(adminName, newServices)
-//
-//        dpm.setPermissionGrantState(adminName, packageName, "android.permission.BIND_ACCESSIBILITY_SERVICE",
-//            DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED)
 
         val serviceComponent = "$packageName/.DechainerAccessibilityService"
         ShizukuRunner.command(
@@ -361,5 +365,7 @@ class DeviceOwnerViewModel() : ViewModel() {
                     Log.e("Shizuku", error)
                 }
             })
+
+        requestUsageStatsPermission(DechainerApplication.getInstance())
     }
 }

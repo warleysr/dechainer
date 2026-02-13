@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.security.SecurityManager
 
 @Composable
 fun RecoveryConfirmDialog(
@@ -17,7 +18,10 @@ fun RecoveryConfirmDialog(
 ) {
     var code by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
-
+    if (SecurityManager.isSessionActive()) {
+        onConfirm(code)
+        return
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.enter_recovery_code)) },
