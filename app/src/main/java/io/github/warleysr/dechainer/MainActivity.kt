@@ -5,33 +5,31 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AppBlocking
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.LockClock
+import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.screens.setup.SetupDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.setup.SetupRecovery
-import io.github.warleysr.dechainer.screens.tabs.ActivityBlockerScreen
-import io.github.warleysr.dechainer.screens.tabs.AppsTab
-import io.github.warleysr.dechainer.screens.tabs.BrowserRestrictionsScreen
-import io.github.warleysr.dechainer.screens.tabs.ConfigTab
-import io.github.warleysr.dechainer.screens.tabs.RestrictionsTab
+import io.github.warleysr.dechainer.screens.tabs.*
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.ui.theme.DechainerTheme
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -43,9 +41,39 @@ class MainActivity : ComponentActivity() {
                 val viewModel: DeviceOwnerViewModel = viewModel()
                 viewModel.addShizukuListener()
 
+                var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        currentTime = System.currentTimeMillis()
+                        delay(1000)
+                    }
+                }
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name), color = MaterialTheme.colorScheme.primary) }) },
+                    topBar = {
+                        TopAppBar(
+                            title = { Text(stringResource(R.string.app_name)) },
+                            actions = {
+                                if (SecurityManager.isSessionActive()) {
+                                    val remaining = SecurityManager.sessionEndTime - currentTime
+                                    val minutes = (remaining / 1000) / 60
+                                    val seconds = (remaining / 1000) % 60
+                                    
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Outlined.LockClock, null, modifier = Modifier.padding(end = 4.dp))
+                                        Text(
+                                            text = "%02d:%02d".format(minutes, seconds),
+                                            style = MaterialTheme.typography.labelLarge
+                                        )
+                                        IconButton(onClick = { SecurityManager.endSession() }) {
+                                            Icon(Icons.Outlined.Logout, null)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    },
                     bottomBar = {
                         val tabs = listOf(
                             Pair("restrictions", stringResource(R.string.restrictions)),
@@ -82,9 +110,9 @@ class MainActivity : ComponentActivity() {
                                 "restrictions" -> RestrictionsTab()
                                 "apps" -> AppsTab()
                                 "config" -> ConfigTab()
-                                "browser_restrictions" -> BrowserRestrictionsScreen()
-                                "activity_blocker" -> ActivityBlockerScreen()
                                 "setup_device_owner" -> SetupDeviceOwnerPrivileges()
+                                "activity_blocker" -> ActivityBlockerScreen()
+                                "browser_restrictions" -> BrowserRestrictionsScreen()
                             }
                         }
                     }
@@ -95,9 +123,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        setContent {
-            val viewModel: DeviceOwnerViewModel = viewModel()
-            viewModel.removeShizukuListener()
-        }
+        SecurityManager.endSession()
     }
 }
