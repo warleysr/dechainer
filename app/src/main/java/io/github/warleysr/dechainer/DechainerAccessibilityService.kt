@@ -2,10 +2,14 @@ package io.github.warleysr.dechainer
 
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
+import android.app.usage.UsageStatsManager
 import android.content.Context
+import android.content.Intent
+import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
+import java.util.concurrent.TimeUnit
 
 @SuppressLint("AccessibilityPolicy")
 class DechainerAccessibilityService : AccessibilityService() {
@@ -33,12 +37,34 @@ class DechainerAccessibilityService : AccessibilityService() {
             val packageName = event.packageName?.toString() ?: return
             val className = event.className?.toString() ?: return
 
+            // Check usage limits
+            val prefs = getSharedPreferences("app_limits", Context.MODE_PRIVATE)
+            val limitMinutes = prefs.getInt(packageName, 0)
+            
+            if (limitMinutes > 0) {
+                val statsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager?
+                val stats = statsManager?.queryAndAggregateUsageStats(
+                    System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1), 
+                    System.currentTimeMillis()
+                )
+                
+                val appStats = stats?.get(packageName)
+                if (appStats != null) {
+                    val usedMinutes = TimeUnit.MILLISECONDS.toMinutes(appStats.totalTimeInForeground)
+                    if (usedMinutes >= limitMinutes) {
+                        startActivity(Intent(this, TimeUpActivity::class.java).apply { 
+                            flags = FLAG_ACTIVITY_NEW_TASK 
+                        })
+                    }
+                }
+            }
+
             if (!className.endsWith("Activity", ignoreCase = true)) return
 
             addLog(packageName, className)
 
-            val prefs = getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
-            val blockedActivities = prefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
+            val blockerPrefs = getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
+            val blockedActivities = blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
 
             if (blockedActivities.contains(className)) {
                 performGlobalAction(GLOBAL_ACTION_BACK)
@@ -49,4 +75,3 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {}
 }
-

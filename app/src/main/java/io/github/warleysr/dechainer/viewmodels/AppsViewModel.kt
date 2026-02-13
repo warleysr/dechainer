@@ -16,6 +16,7 @@ import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.core.content.edit
 
 data class AppItem(
     val name: String,
@@ -23,7 +24,8 @@ data class AppItem(
     val icon: Drawable,
     val isSystem: Boolean,
     val isHidden: Boolean,
-    val isUninstallBlocked: Boolean
+    val isUninstallBlocked: Boolean,
+    val timeLimitMinutes: Int = 0
 )
 
 class AppsViewModel : ViewModel() {
@@ -47,6 +49,7 @@ class AppsViewModel : ViewModel() {
             isLoading = true
             apps = withContext(Dispatchers.IO) {
                 try {
+                    val prefs = context.getSharedPreferences("app_limits", Context.MODE_PRIVATE)
                     val installedApps = packageManager.getInstalledApplications(
                         PackageManager.MATCH_UNINSTALLED_PACKAGES
                     )
@@ -64,8 +67,10 @@ class AppsViewModel : ViewModel() {
                                 dpm.isUninstallBlocked(adminName, packageName)
                             } catch (_: Exception) { false }
                             
-                            // Filter: Only show non-system apps OR system apps interacted with (hidden/protected)
-                            if (isSystem && !isHidden && !isUninstallBlocked) return@mapNotNull null
+                            val timeLimit = prefs.getInt(packageName, 0)
+                            
+                            // Filter: Only show non-system apps OR system apps interacted with (hidden/protected/limited)
+                            if (isSystem && !isHidden && !isUninstallBlocked && timeLimit == 0) return@mapNotNull null
                             
                             AppItem(
                                 name = appInfo.loadLabel(packageManager).toString(),
@@ -73,7 +78,8 @@ class AppsViewModel : ViewModel() {
                                 icon = appInfo.loadIcon(packageManager),
                                 isSystem = isSystem,
                                 isHidden = isHidden,
-                                isUninstallBlocked = isUninstallBlocked
+                                isUninstallBlocked = isUninstallBlocked,
+                                timeLimitMinutes = timeLimit
                             )
                         }
                         .sortedBy { it.name.lowercase() }
@@ -106,5 +112,12 @@ class AppsViewModel : ViewModel() {
                 e.printStackTrace()
             }
         }
+    }
+
+    fun setAppTimeLimit(packageName: String, minutes: Int) {
+        context.getSharedPreferences("app_limits", Context.MODE_PRIVATE).edit {
+            if (minutes > 0) putInt(packageName, minutes) else remove(packageName)
+        }
+        loadApps()
     }
 }

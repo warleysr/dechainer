@@ -1,12 +1,13 @@
 package io.github.warleysr.dechainer.screens.tabs
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +25,10 @@ import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.AppItem
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun AppsTab(
@@ -41,6 +46,7 @@ fun AppsTab(
 fun AppsScreen(viewModel: AppsViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedApp by remember { mutableStateOf<AppItem?>(null) }
+    var showTimeLimitDialog by remember { mutableStateOf<AppItem?>(null) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val context = LocalContext.current
 
@@ -89,6 +95,21 @@ fun AppsScreen(viewModel: AppsViewModel) {
             onToggleUninstall = {
                 pendingAction = { viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked) }
                 selectedApp = null
+            },
+            onSetTimeLimit = {
+                showTimeLimitDialog = app
+                selectedApp = null
+            }
+        )
+    }
+
+    showTimeLimitDialog?.let { app ->
+        TimeLimitDialog(
+            app = app,
+            onDismiss = { showTimeLimitDialog = null },
+            onConfirm = { minutes ->
+                pendingAction = { viewModel.setAppTimeLimit(app.packageName, minutes) }
+                showTimeLimitDialog = null
             }
         )
     }
@@ -120,7 +141,20 @@ fun AppRow(app: AppItem, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(app.name) },
-        supportingContent = { Text(app.packageName, style = MaterialTheme.typography.bodySmall) },
+        supportingContent = { 
+            Column {
+                Text(app.packageName, style = MaterialTheme.typography.bodySmall)
+                if (app.timeLimitMinutes > 0) {
+                    val h = app.timeLimitMinutes / 60
+                    val m = app.timeLimitMinutes % 60
+                    Text(
+                        "Limite: ${if (h > 0) "${h}h " else ""}${m}min",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
         leadingContent = {
             Image(
                 bitmap = app.icon.toBitmap().asImageBitmap(),
@@ -166,12 +200,21 @@ fun AppActionDialog(
     app: AppItem,
     onDismiss: () -> Unit,
     onBlock: () -> Unit,
-    onToggleUninstall: () -> Unit
+    onToggleUninstall: () -> Unit,
+    onSetTimeLimit: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(app.name) },
-        text = { Text(stringResource(R.string.manage_restrictions, app.packageName)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.manage_restrictions, app.packageName))
+                Spacer(Modifier.height(16.dp))
+                Button(onClick = onSetTimeLimit, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.set_time_limit))
+                }
+            }
+        },
         confirmButton = {
             TextButton(onClick = onBlock) {
                 Text(if (app.isHidden) stringResource(R.string.unblock) else stringResource(R.string.block))
@@ -183,4 +226,142 @@ fun AppActionDialog(
             }
         }
     )
+}
+
+@Composable
+fun TimeLimitDialog(
+    app: AppItem,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var hours by remember { mutableIntStateOf(app.timeLimitMinutes / 60) }
+    var minutes by remember { mutableIntStateOf(app.timeLimitMinutes % 60) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.app_time_limit_dialog_title, app.name)) },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(150.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    NumberPickerWheel(
+                        value = hours,
+                        range = 0..23,
+                        onValueChange = { hours = it },
+                        label = stringResource(R.string.hours)
+                    )
+                    Text(
+                        ":",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    NumberPickerWheel(
+                        value = minutes,
+                        range = 0..59,
+                        onValueChange = { minutes = it },
+                        label = stringResource(R.string.minutes)
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                if (hours == 0 && minutes == 0) {
+                    Text(stringResource(R.string.none), style = MaterialTheme.typography.labelSmall)
+                } else {
+                    Text(
+                        "Total: ${hours}h ${minutes}min",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(hours * 60 + minutes) }) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun NumberPickerWheel(
+    value: Int,
+    range: IntRange,
+    onValueChange: (Int) -> Unit,
+    label: String
+) {
+    val items = range.toList()
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = items.indexOf(value))
+    val snapFlingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress) {
+            val centerIndex = listState.firstVisibleItemIndex
+            if (centerIndex in items.indices) {
+                onValueChange(items[centerIndex])
+            }
+        }
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(70.dp)
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(bottom = 4.dp))
+        Box(
+            modifier = Modifier
+                .height(120.dp)
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    MaterialTheme.shapes.medium
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Selection Highlight
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(40.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    )
+            )
+            
+            LazyColumn(
+                state = listState,
+                flingBehavior = snapFlingBehavior,
+                contentPadding = PaddingValues(vertical = 40.dp),
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                items(items) { item ->
+                    val isSelected = item == value
+                    Box(
+                        modifier = Modifier
+                            .height(40.dp)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = item.toString().padStart(2, '0'),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                            fontSize = if (isSelected) 22.sp else 18.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
