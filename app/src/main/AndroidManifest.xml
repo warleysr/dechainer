@@ -43,10 +43,16 @@
             android:exported="true"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
+        <activity
+            android:name=".TimeUpActivity"
+            android:showOnLockScreen="true"
+            android:theme="@style/Theme.Dechainer" />
+
         <service android:name=".DechainerAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:label="@string/activity_blocker"
-            android:exported="false">
+            android:label="@string/app_name"
+            android:exported="false"
+            tools:ignore="AccessibilityPolicy">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
@@ -58,5 +64,6 @@
 
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="ManifestOrder,PackageVisibilityPolicy,QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions"/>
 
 </manifest>

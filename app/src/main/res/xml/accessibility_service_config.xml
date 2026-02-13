@@ -5,4 +5,5 @@
     android:notificationTimeout="100"
     android:settingsActivity="io.github.warleysr.dechainer.MainActivity"
     android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_description"
     />
