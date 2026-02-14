@@ -9,6 +9,9 @@ import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.view.accessibility.AccessibilityEvent
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 @SuppressLint("AccessibilityPolicy")
@@ -28,7 +31,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 accessedActivities.removeIf { it.packageName == packageName && it.className == className }
             }
             accessedActivities.add(0, ActivityLog(packageName, className))
-            if (accessedActivities.size > 100) accessedActivities.removeLast()
+            if (accessedActivities.size > 100) accessedActivities.removeAt(accessedActivities.lastIndex)
         }
     }
 
@@ -40,20 +43,27 @@ class DechainerAccessibilityService : AccessibilityService() {
             // Check usage limits
             val prefs = getSharedPreferences("app_limits", Context.MODE_PRIVATE)
             val limitMinutes = prefs.getInt(packageName, 0)
-            
+
             if (limitMinutes > 0) {
+                val midnight = LocalDate.now()
+                    .atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli()
+
                 val statsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager?
                 val stats = statsManager?.queryAndAggregateUsageStats(
-                    System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1), 
-                    System.currentTimeMillis()
+                    midnight, Instant.now().toEpochMilli()
                 )
-                
+
                 val appStats = stats?.get(packageName)
                 if (appStats != null) {
                     val usedMinutes = TimeUnit.MILLISECONDS.toMinutes(appStats.totalTimeInForeground)
                     if (usedMinutes >= limitMinutes) {
-                        startActivity(Intent(this, TimeUpActivity::class.java).apply { 
-                            flags = FLAG_ACTIVITY_NEW_TASK 
+                        val appName = packageManager.getApplicationInfo(packageName, 0).loadLabel(packageManager)
+                        startActivity(Intent(this, TimeUpActivity::class.java).apply {
+                            flags = FLAG_ACTIVITY_NEW_TASK
+                            putExtra("appName", appName)
+                            putExtra("limitMinutes", limitMinutes)
                         })
                     }
                 }
