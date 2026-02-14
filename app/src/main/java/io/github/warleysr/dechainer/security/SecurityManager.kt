@@ -20,7 +20,7 @@ class SecurityManager {
             
         fun isSessionActive(): Boolean = System.currentTimeMillis() < sessionEndTime
 
-        fun startSession() {
+        private fun startSession() {
             sessionEndTime = System.currentTimeMillis() + (10 * 60 * 1000) // 10 minutes
         }
 

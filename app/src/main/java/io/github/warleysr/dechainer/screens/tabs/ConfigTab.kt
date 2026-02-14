@@ -25,14 +25,18 @@ import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import androidx.core.content.edit
 
 @Composable
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var showDnsDialog by remember { mutableStateOf(false) }
-    var pendingDnsHost by remember { mutableStateOf<String?>(null) }
-    var showRecoveryDialog by remember { mutableStateOf(false) }
-    var blockSpecificActivity by remember { mutableStateOf(false) }
+    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    
     val context = LocalContext.current
+    val blockerPrefs = remember { context.getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE) }
+    var blockSpecificActivity by remember { 
+        mutableStateOf(blockerPrefs.getBoolean("master_switch", false)) 
+    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -78,10 +82,14 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                 supportingContent = { Text(stringResource(R.string.activity_blocker_description)) },
                 leadingContent = { Icon(Icons.Outlined.Accessibility, "") },
                 trailingContent = {
-                    Switch(blockSpecificActivity, onCheckedChange = {
-                        blockSpecificActivity = it
-                        if (it)
-                            viewModel.grantAccessibilityPermission()
+                    Switch(blockSpecificActivity, onCheckedChange = { checked ->
+                        val action = {
+                            blockSpecificActivity = checked
+                            blockerPrefs.edit { putBoolean("master_switch", checked) }
+                            if (checked)
+                                viewModel.grantAccessibilityPermission()
+                        }
+                        pendingAction = action
                     })
                 },
                 modifier = Modifier.clickable { viewModel.navigateTo("activity_blocker") }
@@ -113,28 +121,28 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             currentDns = currentDns,
             onDismiss = { showDnsDialog = false },
             onApply = { host ->
-                pendingDnsHost = host
-                showRecoveryDialog = true
+                val action = { applyDns(context, viewModel, host) }
+                pendingAction = action
                 showDnsDialog = false
             }
         )
     }
 
-    if (showRecoveryDialog) {
+    if (pendingAction != null) {
         val storedHash = SecurityManager.getRecoveryHash(context)
-        if (storedHash == null) {
-            applyDns(context, viewModel, pendingDnsHost)
-            showRecoveryDialog = false
+        if (storedHash == null || SecurityManager.isSessionActive()) {
+            pendingAction?.invoke()
+            pendingAction = null
         } else {
             RecoveryConfirmDialog(
                 onConfirm = { code ->
                     if (SecurityManager.validatePassphrase(code, storedHash)) {
-                        applyDns(context, viewModel, pendingDnsHost)
-                        showRecoveryDialog = false
+                        pendingAction?.invoke()
+                        pendingAction = null
                         true
                     } else false
                 },
-                onDismiss = { showRecoveryDialog = false }
+                onDismiss = { pendingAction = null }
             )
         }
     }
@@ -144,9 +152,9 @@ private fun applyDns(context: Context, viewModel: DeviceOwnerViewModel, host: St
     viewModel.setPrivateDNS(host)
     val prefs = context.getSharedPreferences("dns_prefs", Context.MODE_PRIVATE)
     if (host == null) {
-        prefs.edit().remove("private_dns_host").apply()
+        prefs.edit { remove("private_dns_host") }
     } else {
-        prefs.edit().putString("private_dns_host", host).apply()
+        prefs.edit { putString("private_dns_host", host) }
     }
 }
 
@@ -182,6 +190,17 @@ fun DnsSelectionDialog(
         title = { Text(stringResource(R.string.dns_settings)) },
         text = {
             Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedOption = "none" }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = selectedOption == "none", onClick = { selectedOption = "none" })
+                    Text(stringResource(R.string.none), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                }
+
                 options.forEach { (name, host) ->
                     Row(
                         modifier = Modifier
@@ -221,17 +240,6 @@ fun DnsSelectionDialog(
                             }
                         }
                     )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedOption = "none" }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(selected = selectedOption == "none", onClick = { selectedOption = "none" })
-                    Text(stringResource(R.string.none), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
                 }
             }
         },
