@@ -2,6 +2,7 @@
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeViewClicked|typeViewFocused|typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackSpoken"
+    android:accessibilityFlags="flagIncludeNotImportantViews"
     android:notificationTimeout="100"
     android:settingsActivity="io.github.warleysr.dechainer.MainActivity"
     android:canRetrieveWindowContent="true"

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import java.time.Instant
@@ -36,6 +37,14 @@ class DechainerAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (event.className == "com.android.settings.SubSettings") {
+            val rootNode = rootInActiveWindow
+            if (rootNode != null) {
+                preventDisableService(rootNode)
+                rootNode.recycle()
+            }
+        }
+
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val packageName = event.packageName?.toString() ?: return
             val className = event.className?.toString() ?: return
@@ -80,6 +89,23 @@ class DechainerAccessibilityService : AccessibilityService() {
                 performGlobalAction(GLOBAL_ACTION_BACK)
                 Toast.makeText(this, getString(R.string.activity_blocked_toast), Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun preventDisableService(node: AccessibilityNodeInfo?) {
+        if (node == null) return
+
+        if (node.getText() != null) {
+            val text = node.getText().toString()
+            val description = getString(R.string.accessibility_description)
+            if (text == description)
+                performGlobalAction(GLOBAL_ACTION_BACK)
+        }
+
+        for (i in 0..<node.childCount) {
+            val child = node.getChild(i)
+            preventDisableService(child)
+            child?.recycle()
         }
     }
 
