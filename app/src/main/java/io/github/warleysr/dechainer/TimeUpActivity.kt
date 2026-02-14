@@ -33,15 +33,17 @@ class TimeUpActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContent {
-            TimeUpScreen {
-                finish()
-            }
+            TimeUpScreen(
+                appName = intent.getStringExtra("appName") ?: "",
+                limitMinutes = intent.getIntExtra("limitMinutes", 0),
+                onClose = { finish() }
+            )
         }
     }
 }
 
 @Composable
-fun TimeUpScreen(onClose: () -> Unit) {
+fun TimeUpScreen(appName: String, limitMinutes: Int, onClose: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.errorContainer
@@ -53,15 +55,15 @@ fun TimeUpScreen(onClose: () -> Unit) {
         ) {
             Icon(Icons.Default.TimerOff, contentDescription = null, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
-            Text("Tempo Esgotado!", style = MaterialTheme.typography.headlineMedium)
+            Text(stringResource(R.string.app_limit_reached), style = MaterialTheme.typography.headlineMedium)
             Text(
-                stringResource(R.string.app_limit_reached),
+                stringResource(R.string.time_limit_reached, limitMinutes, appName),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyLarge
             )
             Spacer(modifier = Modifier.height(32.dp))
             Button(onClick = onClose) {
-                Text("Entendido")
+                Text(stringResource(R.string.close))
             }
         }
     }

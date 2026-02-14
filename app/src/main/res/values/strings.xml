@@ -94,7 +94,8 @@
     <string name="app_time_limit_dialog_title">Limite para %1$s</string>
     <string name="hours">horas</string>
     <string name="minutes">minutos</string>
-    <string name="time_limit_reached">Limite de tempo atingido para %1$s</string>
+    <string name="time_limit_reached">Limite de %1$s minutos atingido para %2$s</string>
     <string name="accessibility_description">Bloqueio e limite precisos de apps</string>
-    <string name="app_limit_reached">Você atingiu o limite diário para este app.</string>
+    <string name="app_limit_reached">Limite atingido!</string>
+    <string name="close">Fechar</string>
 </resources>
