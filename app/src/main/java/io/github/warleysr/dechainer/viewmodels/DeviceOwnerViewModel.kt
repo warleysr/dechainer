@@ -325,19 +325,6 @@ class DeviceOwnerViewModel() : ViewModel() {
         return users
     }
 
-
-    fun requestUsageStatsPermission(context: Context) {
-        val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
-            flags = FLAG_ACTIVITY_NEW_TASK
-            data = Uri.fromParts("package", context.packageName, null)
-        }
-        if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(intent)
-        } else {
-            context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-        }
-    }
-
     fun grantAccessibilityPermission() {
         dpm.setPermittedAccessibilityServices(adminName, null)
 
@@ -365,7 +352,5 @@ class DeviceOwnerViewModel() : ViewModel() {
                     Log.e("Shizuku", error)
                 }
             })
-
-        requestUsageStatsPermission(DechainerApplication.getInstance())
     }
 }
