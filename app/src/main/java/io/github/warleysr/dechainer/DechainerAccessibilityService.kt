@@ -37,12 +37,16 @@ class DechainerAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (event.packageName == packageName) return
+
+        // Prevent disable accessibility service
         if (event.className == "com.android.settings.SubSettings") {
             val rootNode = rootInActiveWindow
             if (rootNode != null) {
                 preventDisableService(rootNode)
                 rootNode.recycle()
             }
+            return
         }
 
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
