@@ -79,7 +79,7 @@
     <string name="add_site">Adicionar site</string>
     <string name="site_url_hint">Ex: example.com</string>
     <string name="remove">Remover</string>
-    <string name="firefox_warning">As restrições não funcionam no Firefox, recomenda-se desativá-lo.</string>
+    <string name="browser_support_warning">As restrições não funcionam neste navegador, recomenda-se desativá-lo.</string>
     
     <string name="activity_blocker">Bloquear Activity</string>
     <string name="activity_blocker_description">Impedir abertura de telas específicas</string>

@@ -104,6 +104,17 @@ class AppsViewModel : ViewModel() {
         }
     }
 
+    fun suspendApp(packageName: String, suspended: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                dpm.setPackagesSuspended(adminName, arrayOf(packageName), suspended)
+                loadApps()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     fun setUninstallBlocked(packageName: String, block: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
