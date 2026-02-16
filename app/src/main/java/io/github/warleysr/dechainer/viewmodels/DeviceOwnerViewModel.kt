@@ -1,6 +1,5 @@
 package io.github.warleysr.dechainer.viewmodels
 
-import android.Manifest
 import android.accounts.AccountManager
 import android.app.admin.DevicePolicyManager
 import android.content.ActivityNotFoundException
@@ -8,11 +7,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.Context.DEVICE_POLICY_SERVICE
-import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.UserManager
-import android.provider.Settings
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -35,6 +31,7 @@ class DeviceOwnerViewModel() : ViewModel() {
     private var selectedTabState = mutableStateOf("restrictions")
     private var shizukuPermission = mutableStateOf(Shizuku.pingBinder() && checkShizukuPermission())
     private var isDeviceOwner = mutableStateOf(dpm.isDeviceOwnerApp(packageName))
+    private val serviceComponent = "$packageName/.DechainerAccessibilityService"
 
     companion object {
         private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
@@ -325,12 +322,38 @@ class DeviceOwnerViewModel() : ViewModel() {
         return users
     }
 
-    fun grantAccessibilityPermission() {
-        dpm.setPermittedAccessibilityServices(adminName, null)
-
-        val serviceComponent = "$packageName/.DechainerAccessibilityService"
+    fun getAccessibilityServices(): String {
+        var services = ""
         ShizukuRunner.command(
-            "settings put secure enabled_accessibility_services $serviceComponent",
+            "settings get secure enabled_accessibility_services",
+            listener = object : ShizukuRunner.CommandResultListener {
+                override fun onCommandResult(output: String, done: Boolean) {
+                    println("Output: $output Done: $done")
+                    services = output
+                }
+
+                override fun onCommandError(error: String) {
+                    Log.e("Shizuku", error)
+                }
+            })
+        return services.replace("\n", "")
+    }
+
+    fun changeAccessibilityPermission(grant: Boolean) {
+        var services = getAccessibilityServices()
+        val isGranted = isAccessibilityGranted()
+
+        if (grant && !isGranted) {
+            if (services.isNotEmpty())
+                services += ":"
+            services += serviceComponent
+        }
+        else if (!grant && isGranted)
+            services = services.split(":")
+                .filter { it != serviceComponent }.joinToString(":")
+
+        ShizukuRunner.command(
+            "settings put secure enabled_accessibility_services $services",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     println("Output: $output Done: $done")
@@ -353,4 +376,9 @@ class DeviceOwnerViewModel() : ViewModel() {
                 }
             })
     }
+
+    fun isAccessibilityGranted(): Boolean {
+        return getAccessibilityServices().contains(serviceComponent)
+    }
+
 }
