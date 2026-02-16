@@ -3,15 +3,12 @@ package io.github.warleysr.dechainer.viewmodels
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import android.os.Bundle
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import io.github.warleysr.dechainer.DechainerApplication
-import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
 import androidx.core.content.edit
+import io.github.warleysr.dechainer.BrowserRestrictionsManager
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -32,7 +29,9 @@ class BrowserRestrictionsViewModel : ViewModel() {
     private val context = DechainerApplication.getInstance()
     private val packageManager = context.packageManager
     private val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    private val adminName = ComponentName(context, DechainerDeviceAdminReceiver::class.java)
+    private val adminName = ComponentName(context, io.github.warleysr.dechainer.DechainerDeviceAdminReceiver::class.java)
+
+    private val manager = BrowserRestrictionsManager(context)
 
     var browsers = mutableStateListOf<BrowserApp>()
         private set
@@ -46,23 +45,20 @@ class BrowserRestrictionsViewModel : ViewModel() {
     }
 
     private fun loadBrowsers() {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_APP_BROWSER)
-        }
-        val resolveInfos = packageManager.queryIntentActivities(intent, 0)
+        val possibleBrowsers = manager.getPossibleBrowsers()
         browsers.clear()
-        resolveInfos.forEach { info ->
+        possibleBrowsers.forEach { info ->
             val packageName = info.activityInfo.packageName
-            val isHidden = try { 
-                dpm.isApplicationHidden(adminName, packageName) 
+            val isSuspended = try {
+                dpm.isPackageSuspended(adminName, packageName)
             } catch (_: Exception) { false }
-            
+
             browsers.add(
                 BrowserApp(
                     name = info.loadLabel(packageManager).toString(),
                     packageName = packageName,
                     icon = info.loadIcon(packageManager),
-                    isEnabled = !isHidden
+                    isEnabled = !isSuspended
                 )
             )
         }
@@ -70,7 +66,6 @@ class BrowserRestrictionsViewModel : ViewModel() {
 
     private fun loadBlockedLists() {
         val prefs = context.getSharedPreferences("browser_prefs", Context.MODE_PRIVATE)
-
         val json = prefs.getString("blocked_lists_json", null)
         blockedLists.clear()
         if (json != null) {
@@ -92,9 +87,7 @@ class BrowserRestrictionsViewModel : ViewModel() {
                 }
                 targetList.add(BlockedList(id, title, sites))
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.printStackTrace() }
     }
 
     fun saveOrUpdateList(id: String?, title: String, sitesString: String) {
@@ -108,48 +101,34 @@ class BrowserRestrictionsViewModel : ViewModel() {
         } else {
             blockedLists.add(newList)
         }
-        
+
         saveBlockedLists()
-        applyRestrictionsToBrowsers()
+        manager.applyRestrictions()
     }
 
     fun removeList(id: String) {
         if (blockedLists.removeIf { it.id == id }) {
             saveBlockedLists()
-            applyRestrictionsToBrowsers()
+            manager.applyRestrictions()
         }
     }
 
     private fun saveBlockedLists() {
         val prefs = context.getSharedPreferences("browser_prefs", Context.MODE_PRIVATE)
-        val key = "blocked_lists_json"
-        
         val array = JSONArray()
         blockedLists.forEach { list ->
-            val obj = JSONObject()
-            obj.put("id", list.id)
-            obj.put("title", list.title)
-            val sitesArray = JSONArray()
-            list.sites.forEach { sitesArray.put(it) }
-            obj.put("sites", sitesArray)
+            val obj = JSONObject().apply {
+                put("id", list.id)
+                put("title", list.title)
+                put("sites", JSONArray(list.sites))
+            }
             array.put(obj)
         }
-        prefs.edit { putString(key, array.toString()) }
+        prefs.edit { putString("blocked_lists_json", array.toString()) }
     }
 
+
     fun applyRestrictionsToBrowsers() {
-        val allSites = blockedLists.flatMap { it.sites }.distinct()
-        
-        val restrictions = Bundle().apply {
-            putStringArray("URLBlocklist", allSites.toTypedArray())
-        }
-        
-        browsers.forEach { browser ->
-            try {
-                dpm.setApplicationRestrictions(adminName, browser.packageName, restrictions)
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
+        manager.applyRestrictions()
     }
 }

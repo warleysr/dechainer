@@ -2,9 +2,13 @@ package io.github.warleysr.dechainer
 
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
+import android.app.admin.DevicePolicyManager
+import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
@@ -16,7 +20,6 @@ import androidx.compose.runtime.mutableStateListOf
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
-
 @SuppressLint("AccessibilityPolicy")
 class DechainerAccessibilityService : AccessibilityService() {
 
@@ -28,6 +31,30 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private lateinit var limitPrefs: SharedPreferences
     private lateinit var usagePrefs: SharedPreferences
+
+    private val stateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != Intent.ACTION_PACKAGE_ADDED) return
+            val packageName = intent.data?.encodedSchemeSpecificPart ?: return
+
+            val manager = BrowserRestrictionsManager(applicationContext)
+            val isBrowser = manager.isBrowser(packageName)
+
+            if (!isBrowser) return
+
+            val supportsRestrictions = manager.supportsRestrictions(packageName)
+            if (supportsRestrictions) {
+                manager.applyRestrictions()
+                return
+            }
+
+            val dpm = applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
+            if (!dpm.isAdminActive(admin)) return
+
+            dpm.setPackagesSuspended(admin, arrayOf(packageName), true)
+        }
+    }
 
     private val limitListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
         if (key == currentPackage) {
@@ -63,6 +90,23 @@ class DechainerAccessibilityService : AccessibilityService() {
         limitPrefs = getSharedPreferences("app_limits", Context.MODE_PRIVATE)
         usagePrefs = getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)
         limitPrefs.registerOnSharedPreferenceChangeListener(limitListener)
+
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addDataScheme("package")
+        }
+        registerReceiver(stateReceiver, filter)
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(stateReceiver)
+        limitPrefs.unregisterOnSharedPreferenceChangeListener(limitListener)
+        stopTrackingAndSave()
+        super.onDestroy()
+    }
+
+    override fun onInterrupt() {
+        handler.removeCallbacks(blockRunnable)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -92,12 +136,13 @@ class DechainerAccessibilityService : AccessibilityService() {
 
             if (className.endsWith("Activity", ignoreCase = true)) {
                 addLog(newPackage, className)
-                val blockerPrefs = getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
-                val blockedActivities = blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
+                val blockerPrefs =
+                    getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
+                val blockedActivities =
+                    blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
 
                 if (blockedActivities.contains(className)) {
                     performGlobalAction(GLOBAL_ACTION_BACK)
-                    Toast.makeText(this, getString(R.string.activity_blocked_toast), Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -134,7 +179,9 @@ class DechainerAccessibilityService : AccessibilityService() {
         val pkg = currentPackage ?: return
         val appName = try {
             packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString()
-        } catch (e: Exception) { pkg }
+        } catch (e: Exception) {
+            pkg
+        }
 
         if (showLimitScreen) {
             startActivity(Intent(this, TimeUpActivity::class.java).apply {
@@ -149,7 +196,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     private fun checkDateReset() {
         val today = LocalDate.now().toString()
         if (today != lastCheckDate) {
-            usagePrefs.edit().clear().apply()
+            usagePrefs.edit { clear() }
             lastCheckDate = today
         }
     }
@@ -166,13 +213,4 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
-    override fun onInterrupt() {
-        handler.removeCallbacks(blockRunnable)
-    }
-
-    override fun onDestroy() {
-        limitPrefs.unregisterOnSharedPreferenceChangeListener(limitListener)
-        stopTrackingAndSave()
-        super.onDestroy()
-    }
 }
