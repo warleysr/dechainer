@@ -2,31 +2,53 @@ package io.github.warleysr.dechainer
 
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
-import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 import java.util.concurrent.TimeUnit
+import androidx.core.content.edit
 
 @SuppressLint("AccessibilityPolicy")
 class DechainerAccessibilityService : AccessibilityService() {
 
+    private val handler = Handler(Looper.getMainLooper())
+    private var currentPackage: String? = null
+    private var sessionStartTime: Long = 0
+    private var lastCheckDate: String = LocalDate.now().toString()
+    private var showLimitScreen = true
+
+    private lateinit var limitPrefs: SharedPreferences
+    private lateinit var usagePrefs: SharedPreferences
+
+    private val limitListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        if (key == currentPackage) {
+            handler.removeCallbacks(blockRunnable)
+            currentPackage?.let { startTracking(it) }
+        }
+    }
+
+    private val blockRunnable = Runnable {
+        executeBlocking()
+    }
+
     companion object {
         val accessedActivities = mutableStateListOf<ActivityLog>()
-        
+
         data class ActivityLog(
             val packageName: String,
             val className: String,
             val timestamp: Long = System.currentTimeMillis()
         )
-        
+
         private fun addLog(packageName: String, className: String) {
             if (accessedActivities.any { it.packageName == packageName && it.className == className }) {
                 accessedActivities.removeIf { it.packageName == packageName && it.className == className }
@@ -36,10 +58,16 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        limitPrefs = getSharedPreferences("app_limits", Context.MODE_PRIVATE)
+        usagePrefs = getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)
+        limitPrefs.registerOnSharedPreferenceChangeListener(limitListener)
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.packageName == packageName) return
 
-        // Prevent disable accessibility service
         if (event.className == "com.android.settings.SubSettings") {
             val rootNode = rootInActiveWindow
             if (rootNode != null) {
@@ -50,68 +78,101 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
 
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            val packageName = event.packageName?.toString() ?: return
+            val newPackage = event.packageName?.toString() ?: return
             val className = event.className?.toString() ?: return
 
-            // Check usage limits
-            val prefs = getSharedPreferences("app_limits", Context.MODE_PRIVATE)
-            val limitMinutes = prefs.getInt(packageName, 0)
+            if (newPackage != currentPackage) {
+                stopTrackingAndSave()
+                currentPackage = newPackage
+                sessionStartTime = SystemClock.elapsedRealtime()
+                showLimitScreen = true
+                checkDateReset()
+                startTracking(newPackage)
+            }
 
-            if (limitMinutes > 0) {
-                val midnight = LocalDate.now()
-                    .atStartOfDay(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli()
+            if (className.endsWith("Activity", ignoreCase = true)) {
+                addLog(newPackage, className)
+                val blockerPrefs = getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
+                val blockedActivities = blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
 
-                val statsManager = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager?
-                val stats = statsManager?.queryAndAggregateUsageStats(
-                    midnight, Instant.now().toEpochMilli()
-                )
-
-                val appStats = stats?.get(packageName)
-                if (appStats != null) {
-                    val usedMinutes = TimeUnit.MILLISECONDS.toMinutes(appStats.totalTimeInForeground)
-                    if (usedMinutes >= limitMinutes) {
-                        val appName = packageManager.getApplicationInfo(packageName, 0).loadLabel(packageManager)
-                        startActivity(Intent(this, TimeUpActivity::class.java).apply {
-                            flags = FLAG_ACTIVITY_NEW_TASK
-                            putExtra("appName", appName)
-                            putExtra("limitMinutes", limitMinutes)
-                        })
-                    }
+                if (blockedActivities.contains(className)) {
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    Toast.makeText(this, getString(R.string.activity_blocked_toast), Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
 
-            if (!className.endsWith("Activity", ignoreCase = true)) return
+    private fun startTracking(pkg: String) {
+        val limitMinutes = limitPrefs.getInt(pkg, 0)
+        if (limitMinutes <= 0) return
 
-            addLog(packageName, className)
+        val alreadyUsedMillis = usagePrefs.getLong(pkg, 0L)
+        val limitMillis = TimeUnit.MINUTES.toMillis(limitMinutes.toLong())
+        val remainingMillis = limitMillis - alreadyUsedMillis
 
-            val blockerPrefs = getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
-            val blockedActivities = blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
+        if (remainingMillis <= 0) {
+            executeBlocking()
+        } else {
+            handler.postDelayed(blockRunnable, remainingMillis)
+        }
+    }
 
-            if (blockedActivities.contains(className)) {
-                performGlobalAction(GLOBAL_ACTION_BACK)
-                Toast.makeText(this, getString(R.string.activity_blocked_toast), Toast.LENGTH_SHORT).show()
-            }
+    private fun stopTrackingAndSave() {
+        handler.removeCallbacks(blockRunnable)
+        val pkg = currentPackage ?: return
+        if (sessionStartTime == 0L) return
+
+        val currentSessionMillis = SystemClock.elapsedRealtime() - sessionStartTime
+        val total = usagePrefs.getLong(pkg, 0L) + currentSessionMillis
+
+        usagePrefs.edit { putLong(pkg, total) }
+        sessionStartTime = 0
+    }
+
+    private fun executeBlocking() {
+        val pkg = currentPackage ?: return
+        val appName = try {
+            packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString()
+        } catch (e: Exception) { pkg }
+
+        if (showLimitScreen) {
+            startActivity(Intent(this, TimeUpActivity::class.java).apply {
+                flags = FLAG_ACTIVITY_NEW_TASK
+                putExtra("appName", appName)
+                putExtra("limitMinutes", limitPrefs.getInt(pkg, 0))
+            })
+            showLimitScreen = false
+        }
+    }
+
+    private fun checkDateReset() {
+        val today = LocalDate.now().toString()
+        if (today != lastCheckDate) {
+            usagePrefs.edit().clear().apply()
+            lastCheckDate = today
         }
     }
 
     private fun preventDisableService(node: AccessibilityNodeInfo?) {
         if (node == null) return
-
-        if (node.getText() != null) {
-            val text = node.getText().toString()
-            val description = getString(R.string.accessibility_description)
-            if (text == description)
-                performGlobalAction(GLOBAL_ACTION_BACK)
+        if (node.text != null && node.text.toString() == getString(R.string.accessibility_description)) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
         }
-
-        for (i in 0..<node.childCount) {
+        for (i in 0 until node.childCount) {
             val child = node.getChild(i)
             preventDisableService(child)
             child?.recycle()
         }
     }
 
-    override fun onInterrupt() {}
+    override fun onInterrupt() {
+        handler.removeCallbacks(blockRunnable)
+    }
+
+    override fun onDestroy() {
+        limitPrefs.unregisterOnSharedPreferenceChangeListener(limitListener)
+        stopTrackingAndSave()
+        super.onDestroy()
+    }
 }
