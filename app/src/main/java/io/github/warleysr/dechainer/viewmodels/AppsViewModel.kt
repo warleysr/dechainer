@@ -55,6 +55,7 @@ class AppsViewModel : ViewModel() {
                     )
                     
                     installedApps.asSequence()
+                        .filter { it.packageName != DechainerApplication.getInstance().packageName }
                         .mapNotNull { appInfo ->
                             val packageName = appInfo.packageName
                             val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
