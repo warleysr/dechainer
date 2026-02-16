@@ -26,6 +26,7 @@ import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.core.content.edit
+import rikka.shizuku.Shizuku
 
 @Composable
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
@@ -34,9 +35,12 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     
     val context = LocalContext.current
     val blockerPrefs = remember { context.getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE) }
-    var blockSpecificActivity by remember { 
-        mutableStateOf(blockerPrefs.getBoolean("master_switch", false)) 
-    }
+    val switchInitialState = if (Shizuku.pingBinder())
+        viewModel.isAccessibilityGranted()
+    else
+        blockerPrefs.getBoolean("switch_blocker", false)
+
+    var blockSpecificActivity by remember { mutableStateOf(switchInitialState) }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -85,9 +89,8 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     Switch(blockSpecificActivity, onCheckedChange = { checked ->
                         val action = {
                             blockSpecificActivity = checked
-                            blockerPrefs.edit { putBoolean("master_switch", checked) }
-                            if (checked)
-                                viewModel.grantAccessibilityPermission()
+                            blockerPrefs.edit { putBoolean("switch_blocker", checked) }
+                            viewModel.changeAccessibilityPermission(checked)
                         }
                         pendingAction = action
                     })

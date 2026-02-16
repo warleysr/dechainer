@@ -27,6 +27,7 @@ import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
@@ -211,6 +212,7 @@ fun AppActionDialog(
                 Text(stringResource(R.string.manage_restrictions, app.packageName))
                 Spacer(Modifier.height(16.dp))
                 Button(onClick = onSetTimeLimit, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Timer, null)
                     Text(stringResource(R.string.set_time_limit))
                 }
             }
