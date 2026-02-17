@@ -36,7 +36,7 @@ class TimeUpActivity : ComponentActivity() {
             TimeUpScreen(
                 appName = intent.getStringExtra("appName") ?: "",
                 limit = intent.getIntExtra("limit", 0),
-                onClose = { finish() }
+                onClose = { finishAfterTransition() }
             )
         }
     }

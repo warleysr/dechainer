@@ -41,15 +41,10 @@ class ReopeningLimitActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContent {
-            val context = LocalContext.current
-            val activity = context as? Activity
-
             ReopeningLimitScreen(
                 appName = intent.getStringExtra("appName") ?: "",
                 limit = intent.getIntExtra("limit", 0),
-                onClose = {
-                    activity?.finishAffinity()
-                }
+                onClose = { finishAfterTransition() }
             )
         }
     }

@@ -205,6 +205,13 @@ class DechainerAccessibilityService : AccessibilityService() {
             limit = limitPrefs.getInt(pkg, 0)
         }
 
+        val dpm = applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
+        if (dpm.isAdminActive(admin)) {
+            dpm.setPackagesSuspended(admin, arrayOf(pkg), true)
+            dpm.setPackagesSuspended(admin, arrayOf(pkg), false)
+        }
+
         startActivity(Intent(this, activityClass).apply {
             flags = FLAG_ACTIVITY_NEW_TASK
             putExtra("appName", appName)
