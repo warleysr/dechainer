@@ -139,6 +139,7 @@ fun AppsScreen(viewModel: AppsViewModel) {
 
 @Composable
 fun AppRow(app: AppItem, onClick: () -> Unit) {
+    val viewModel: AppsViewModel = viewModel()
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(app.name) },
@@ -148,11 +149,28 @@ fun AppRow(app: AppItem, onClick: () -> Unit) {
                 if (app.timeLimitMinutes > 0) {
                     val h = app.timeLimitMinutes / 60
                     val m = app.timeLimitMinutes % 60
-                    Text(
-                        "Limite: ${if (h > 0) "${h}h " else ""}${m}min",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    val fmtLimit = "${if (h > 0) "${h}h " else ""}${if (m > 0) "${m}min" else ""}"
+
+                    val used = viewModel.getAppUsage(app.packageName, inMinutes = true)
+                    val usedH = used / 60
+                    val usedM = used % 60
+                    val fmtUsed = "${if (usedH > 0) "${usedH}h " else ""}${if (usedM > 0) "${usedM}min" else ""}"
+
+                    Row {
+                        Text(
+                            stringResource(R.string.limit, fmtLimit),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (used > 0) {
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                stringResource(R.string.used, fmtUsed),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
                 }
             }
         },

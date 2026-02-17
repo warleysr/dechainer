@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.core.content.edit
+import java.util.concurrent.TimeUnit
 
 data class AppItem(
     val name: String,
@@ -131,5 +132,15 @@ class AppsViewModel : ViewModel() {
             if (minutes > 0) putInt(packageName, minutes) else remove(packageName)
         }
         loadApps()
+    }
+
+    fun getAppUsage(packageName: String, inMinutes: Boolean = false): Long {
+        val prefs = context.getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)
+        val used = prefs.getLong(packageName, 0L)
+
+        if (inMinutes)
+            return TimeUnit.MILLISECONDS.toMinutes(used)
+
+        return used
     }
 }
