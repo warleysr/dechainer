@@ -25,12 +25,19 @@
         <activity
             android:name=".TimeUpActivity"
             android:showOnLockScreen="true"
-            android:theme="@style/Theme.Dechainer" />
-
+            android:theme="@style/Theme.Dechainer"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="" />
         <activity
             android:name=".ReopeningLimitActivity"
             android:showOnLockScreen="true"
-            android:theme="@style/Theme.Dechainer" />
+            android:theme="@style/Theme.Dechainer"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="" />
 
         <receiver
             android:name=".DechainerDeviceAdminReceiver"
