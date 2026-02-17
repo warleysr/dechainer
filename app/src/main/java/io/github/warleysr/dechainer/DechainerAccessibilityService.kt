@@ -128,6 +128,9 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val newPackage = event.packageName?.toString() ?: return
             val className = event.className?.toString() ?: return
+            if (newPackage == "com.android.systemui") return
+            if (className.contains("InputMethodService", ignoreCase = true)
+                || className.contains("SoftInputWindow", ignoreCase = true)) return
 
             if (newPackage != currentPackage) {
                 stopTrackingAndSave()
