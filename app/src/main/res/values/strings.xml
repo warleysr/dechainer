@@ -100,4 +100,8 @@
     <string name="close">Fechar</string>
     <string name="limit">Limite: %1$s</string>
     <string name="used">Usado: %1$s</string>
+    <string name="reopen_time">Tempo entre aberturas do mesmo app</string>
+    <string name="seconds">Segundos</string>
+    <string name="app_reopening">Aguarde!</string>
+    <string name="app_reopening_description">Você abriu o {appName} muito rapidamente desde que o fechou. Aguarde {seconds} segundos para abri-lo novamente.</string>
 </resources>

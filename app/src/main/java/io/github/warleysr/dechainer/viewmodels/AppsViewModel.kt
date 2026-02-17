@@ -26,7 +26,8 @@ data class AppItem(
     val isSystem: Boolean,
     val isHidden: Boolean,
     val isUninstallBlocked: Boolean,
-    val timeLimitMinutes: Int = 0
+    val timeLimitMinutes: Int = 0,
+    val reopeningSeconds: Int = 0
 )
 
 class AppsViewModel : ViewModel() {
@@ -81,7 +82,8 @@ class AppsViewModel : ViewModel() {
                                 isSystem = isSystem,
                                 isHidden = isHidden,
                                 isUninstallBlocked = isUninstallBlocked,
-                                timeLimitMinutes = timeLimit
+                                timeLimitMinutes = timeLimit,
+                                reopeningSeconds = getAppReopenTime(packageName)
                             )
                         }
                         .sortedBy { it.name.lowercase() }
@@ -142,5 +144,15 @@ class AppsViewModel : ViewModel() {
             return TimeUnit.MILLISECONDS.toMinutes(used)
 
         return used
+    }
+
+    fun setAppReopenTime(packageName: String, seconds: Int) {
+        context.getSharedPreferences("reopen_times", Context.MODE_PRIVATE).edit {
+            if (seconds > 0) putInt(packageName, seconds) else remove(packageName)
+        }
+    }
+
+    fun getAppReopenTime(packageName: String): Int {
+        return context.getSharedPreferences("reopen_times", Context.MODE_PRIVATE).getInt(packageName, 0)
     }
 }

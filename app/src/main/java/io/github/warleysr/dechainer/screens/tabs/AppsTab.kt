@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,6 +30,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
 
 @Composable
@@ -108,8 +111,11 @@ fun AppsScreen(viewModel: AppsViewModel) {
         TimeLimitDialog(
             app = app,
             onDismiss = { showTimeLimitDialog = null },
-            onConfirm = { minutes ->
-                pendingAction = { viewModel.setAppTimeLimit(app.packageName, minutes) }
+            onConfirm = { minutes, reopeningSeconds ->
+                pendingAction = {
+                    viewModel.setAppTimeLimit(app.packageName, minutes)
+                    viewModel.setAppReopenTime(app.packageName, reopeningSeconds)
+                }
                 showTimeLimitDialog = null
             }
         )
@@ -252,10 +258,11 @@ fun AppActionDialog(
 fun TimeLimitDialog(
     app: AppItem,
     onDismiss: () -> Unit,
-    onConfirm: (Int) -> Unit
+    onConfirm: (Int, Int) -> Unit
 ) {
     var hours by remember { mutableIntStateOf(app.timeLimitMinutes / 60) }
     var minutes by remember { mutableIntStateOf(app.timeLimitMinutes % 60) }
+    var reopeningSeconds by remember { mutableIntStateOf(app.reopeningSeconds) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -298,10 +305,17 @@ fun TimeLimitDialog(
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
+                HorizontalDivider()
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.reopen_time))
+                SecondInputField(
+                    initialSeconds = reopeningSeconds,
+                    onValueChange = { reopeningSeconds = it }
+                )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(hours * 60 + minutes) }) {
+            TextButton(onClick = { onConfirm(hours * 60 + minutes, reopeningSeconds) }) {
                 Text(stringResource(R.string.confirm))
             }
         },
@@ -383,5 +397,62 @@ fun NumberPickerWheel(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun SecondInputField(
+    initialSeconds: Int = 0,
+    onValueChange: (Int) -> Unit
+) {
+    var seconds by remember { mutableIntStateOf(initialSeconds) }
+    var textFieldValue by remember { mutableStateOf(seconds.toString()) }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth().padding(16.dp)
+    ) {
+        SmallIncrementButton(label = "-15") {
+            seconds = (seconds - 15).coerceAtLeast(0)
+            textFieldValue = seconds.toString()
+            onValueChange(seconds)
+        }
+
+        OutlinedTextField(
+            value = textFieldValue,
+            onValueChange = { newValue ->
+                if (newValue.all { it.isDigit() } || newValue.isEmpty()) {
+                    textFieldValue = newValue
+                    val parsed = newValue.toIntOrNull() ?: 0
+                    seconds = parsed
+                    onValueChange(parsed)
+                }
+            },
+            modifier = Modifier
+                .width(120.dp)
+                .padding(horizontal = 8.dp),
+            label = { Text(stringResource(R.string.seconds), fontSize = 12.sp) },
+            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true
+        )
+
+        SmallIncrementButton(label = "+15") {
+            seconds += 15
+            textFieldValue = seconds.toString()
+            onValueChange(seconds)
+        }
+    }
+}
+
+@Composable
+fun SmallIncrementButton(label: String, onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+        modifier = Modifier.height(40.dp)
+    ) {
+        Text(text = label, fontSize = 12.sp)
     }
 }

@@ -15,22 +15,25 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
+import kotlin.math.max
+
 @SuppressLint("AccessibilityPolicy")
 class DechainerAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var currentPackage: String? = null
+    private var blockedPackageReopening: String? = null
     private var sessionStartTime: Long = 0
     private var lastCheckDate: String = LocalDate.now().toString()
-    private var showLimitScreen = true
+    private val lastClosedTimes = HashMap<String, Long>();
 
     private lateinit var limitPrefs: SharedPreferences
     private lateinit var usagePrefs: SharedPreferences
+    private lateinit var reopenPrefs: SharedPreferences
 
     private val stateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -48,7 +51,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 return
             }
 
-            val dpm = applicationContext.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val dpm = applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
             if (!dpm.isAdminActive(admin)) return
 
@@ -87,8 +90,9 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     override fun onCreate() {
         super.onCreate()
-        limitPrefs = getSharedPreferences("app_limits", Context.MODE_PRIVATE)
-        usagePrefs = getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)
+        limitPrefs = getSharedPreferences("app_limits", MODE_PRIVATE)
+        usagePrefs = getSharedPreferences("internal_usage_stats", MODE_PRIVATE)
+        reopenPrefs = getSharedPreferences("reopen_times", MODE_PRIVATE)
         limitPrefs.registerOnSharedPreferenceChangeListener(limitListener)
 
         val filter = IntentFilter().apply {
@@ -129,7 +133,6 @@ class DechainerAccessibilityService : AccessibilityService() {
                 stopTrackingAndSave()
                 currentPackage = newPackage
                 sessionStartTime = SystemClock.elapsedRealtime()
-                showLimitScreen = true
                 checkDateReset()
                 startTracking(newPackage)
             }
@@ -137,7 +140,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             if (className.endsWith("Activity", ignoreCase = true)) {
                 addLog(newPackage, className)
                 val blockerPrefs =
-                    getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
+                    getSharedPreferences("activity_blocker_prefs", MODE_PRIVATE)
                 val blockedActivities =
                     blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
 
@@ -159,13 +162,21 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (remainingMillis <= 0) {
             executeBlocking()
         } else {
-            handler.postDelayed(blockRunnable, remainingMillis)
+            val remainingSeconds = getRemainingSecondsToReopen(pkg)
+            if (remainingSeconds > 0)
+                executeBlocking(reopening = true, remainingSeconds = remainingSeconds)
+            else
+                handler.postDelayed(blockRunnable, remainingMillis)
         }
     }
 
     private fun stopTrackingAndSave() {
         handler.removeCallbacks(blockRunnable)
         val pkg = currentPackage ?: return
+
+        if (getRemainingSecondsToReopen(pkg) == 0)
+            lastClosedTimes[pkg] = SystemClock.elapsedRealtime()
+
         if (sessionStartTime == 0L) return
 
         val currentSessionMillis = SystemClock.elapsedRealtime() - sessionStartTime
@@ -175,7 +186,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         sessionStartTime = 0
     }
 
-    private fun executeBlocking() {
+    private fun executeBlocking(reopening: Boolean = false, remainingSeconds: Int = 0) {
         val pkg = currentPackage ?: return
         val appName = try {
             packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString()
@@ -183,14 +194,22 @@ class DechainerAccessibilityService : AccessibilityService() {
             pkg
         }
 
-        if (showLimitScreen) {
-            startActivity(Intent(this, TimeUpActivity::class.java).apply {
-                flags = FLAG_ACTIVITY_NEW_TASK
-                putExtra("appName", appName)
-                putExtra("limitMinutes", limitPrefs.getInt(pkg, 0))
-            })
-            showLimitScreen = false
+        var activityClass: Any?
+        var limit: Int?
+
+        if (reopening) {
+            activityClass = ReopeningLimitActivity::class.java
+            limit = remainingSeconds
+        } else {
+            activityClass = TimeUpActivity::class.java
+            limit = limitPrefs.getInt(pkg, 0)
         }
+
+        startActivity(Intent(this, activityClass).apply {
+            flags = FLAG_ACTIVITY_NEW_TASK
+            putExtra("appName", appName)
+            putExtra("limit", limit)
+        })
     }
 
     private fun checkDateReset() {
@@ -211,6 +230,18 @@ class DechainerAccessibilityService : AccessibilityService() {
             preventDisableService(child)
             child?.recycle()
         }
+    }
+
+    private fun getRemainingSecondsToReopen(pkg: String): Int {
+        val reopenSeconds = reopenPrefs.getInt(pkg, 0)
+        val lastClosedTime = lastClosedTimes.getOrDefault(pkg, 0L)
+        if (reopenSeconds > 0 && lastClosedTime > 0) {
+            val elapsed = SystemClock.elapsedRealtime() - lastClosedTime
+            val elapsedSeconds = TimeUnit.MILLISECONDS.toSeconds(elapsed)
+            if (elapsedSeconds <= reopenSeconds)
+                return max(reopenSeconds - elapsedSeconds.toInt(), 0)
+        }
+        return 0
     }
 
 }
