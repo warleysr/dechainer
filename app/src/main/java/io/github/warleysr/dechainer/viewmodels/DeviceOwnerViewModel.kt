@@ -378,7 +378,7 @@ class DeviceOwnerViewModel() : ViewModel() {
     }
 
     fun isAccessibilityGranted(): Boolean {
-        return getAccessibilityServices().contains(serviceComponent)
+        return getAccessibilityServices().contains(".DechainerAccessibilityService")
     }
 
 }
