@@ -26,7 +26,6 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var currentPackage: String? = null
-    private var blockedPackageReopening: String? = null
     private var sessionStartTime: Long = 0
     private var lastCheckDate: String = LocalDate.now().toString()
     private val lastClosedTimes = HashMap<String, Long>();
@@ -35,7 +34,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var usagePrefs: SharedPreferences
     private lateinit var reopenPrefs: SharedPreferences
 
-    private val stateReceiver = object : BroadcastReceiver() {
+    private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != Intent.ACTION_PACKAGE_ADDED) return
             val packageName = intent.data?.encodedSchemeSpecificPart ?: return
@@ -56,6 +55,28 @@ class DechainerAccessibilityService : AccessibilityService() {
             if (!dpm.isAdminActive(admin)) return
 
             dpm.setPackagesSuspended(admin, arrayOf(packageName), true)
+        }
+    }
+
+    private var lastForegroundPackage: String? = null
+
+    private val screenReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    lastForegroundPackage = currentPackage
+                    stopTrackingAndSave(screenOff = true)
+                    currentPackage = null
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    lastForegroundPackage?.let {
+                        currentPackage = it
+                        sessionStartTime = SystemClock.elapsedRealtime()
+                        checkDateReset()
+                        startTracking(it)
+                    }
+                }
+            }
         }
     }
 
@@ -95,15 +116,22 @@ class DechainerAccessibilityService : AccessibilityService() {
         reopenPrefs = getSharedPreferences("reopen_times", MODE_PRIVATE)
         limitPrefs.registerOnSharedPreferenceChangeListener(limitListener)
 
-        val filter = IntentFilter().apply {
+        val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addDataScheme("package")
         }
-        registerReceiver(stateReceiver, filter)
+        registerReceiver(packageReceiver, packageFilter)
+
+        val screenFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        registerReceiver(screenReceiver, screenFilter)
     }
 
     override fun onDestroy() {
-        unregisterReceiver(stateReceiver)
+        unregisterReceiver(packageReceiver)
+        unregisterReceiver(screenReceiver)
         limitPrefs.unregisterOnSharedPreferenceChangeListener(limitListener)
         stopTrackingAndSave()
         super.onDestroy()
@@ -140,7 +168,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 startTracking(newPackage)
             }
 
-            if (className.endsWith("Activity", ignoreCase = true)) {
+            if (className.contains("Activity", ignoreCase = true)) {
                 addLog(newPackage, className)
                 val blockerPrefs =
                     getSharedPreferences("activity_blocker_prefs", MODE_PRIVATE)
@@ -156,7 +184,8 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private fun startTracking(pkg: String) {
         val limitMinutes = limitPrefs.getInt(pkg, 0)
-        if (limitMinutes <= 0) return
+        val remainingSeconds = getRemainingSecondsToReopen(pkg)
+        if (limitMinutes <= 0 && remainingSeconds <= 0) return
 
         val alreadyUsedMillis = usagePrefs.getLong(pkg, 0L)
         val limitMillis = TimeUnit.MINUTES.toMillis(limitMinutes.toLong())
@@ -165,7 +194,6 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (remainingMillis <= 0) {
             executeBlocking()
         } else {
-            val remainingSeconds = getRemainingSecondsToReopen(pkg)
             if (remainingSeconds > 0)
                 executeBlocking(reopening = true, remainingSeconds = remainingSeconds)
             else
@@ -173,11 +201,11 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun stopTrackingAndSave() {
+    private fun stopTrackingAndSave(screenOff: Boolean = false) {
         handler.removeCallbacks(blockRunnable)
         val pkg = currentPackage ?: return
 
-        if (getRemainingSecondsToReopen(pkg) == 0)
+        if (getRemainingSecondsToReopen(pkg) == 0 && !screenOff)
             lastClosedTimes[pkg] = SystemClock.elapsedRealtime()
 
         if (sessionStartTime == 0L) return
@@ -191,22 +219,16 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private fun executeBlocking(reopening: Boolean = false, remainingSeconds: Int = 0) {
         val pkg = currentPackage ?: return
+
+        stopTrackingAndSave()
+        currentPackage = null
+
         val appName = try {
             packageManager.getApplicationInfo(pkg, 0).loadLabel(packageManager).toString()
-        } catch (e: Exception) {
-            pkg
-        }
+        } catch (e: Exception) { pkg }
 
-        var activityClass: Any?
-        var limit: Int?
-
-        if (reopening) {
-            activityClass = ReopeningLimitActivity::class.java
-            limit = remainingSeconds
-        } else {
-            activityClass = TimeUpActivity::class.java
-            limit = limitPrefs.getInt(pkg, 0)
-        }
+        val activityClass = if (reopening) ReopeningLimitActivity::class.java else TimeUpActivity::class.java
+        val limit = if (reopening) remainingSeconds else limitPrefs.getInt(pkg, 0)
 
         val dpm = applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
