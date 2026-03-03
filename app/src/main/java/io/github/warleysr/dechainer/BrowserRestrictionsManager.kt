@@ -8,14 +8,38 @@ import android.os.Bundle
 import org.json.JSONArray
 import android.app.admin.DevicePolicyManager
 import android.content.pm.PackageManager
+import androidx.core.net.toUri
 
 class BrowserRestrictionsManager(private val context: Context) {
     private val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
     private val adminName = ComponentName(context, DechainerDeviceAdminReceiver::class.java)
 
     fun getPossibleBrowsers(): List<ResolveInfo> {
-        val intent = Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_APP_BROWSER) }
-        return context.packageManager.queryIntentActivities(intent, 0)
+        val pm = context.packageManager
+        val resolvedPackages = mutableSetOf<String>()
+        val results = mutableListOf<ResolveInfo>()
+
+        val browserCategoryIntent = Intent(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_APP_BROWSER)
+        }
+
+        val httpIntent = Intent(Intent.ACTION_VIEW, "http://www.example.com".toUri())
+        val httpsIntent = Intent(Intent.ACTION_VIEW, "https://www.example.com".toUri())
+
+        val flags =
+            PackageManager.MATCH_ALL
+
+        listOf(browserCategoryIntent, httpIntent, httpsIntent).forEach { intent ->
+            pm.queryIntentActivities(intent, flags).forEach { resolveInfo ->
+                val packageName = resolveInfo.activityInfo.packageName
+
+                if (packageName != context.packageName && resolvedPackages.add(packageName)) {
+                    results.add(resolveInfo)
+                }
+            }
+        }
+
+        return results
     }
 
     fun isBrowser(packageName: String): Boolean {

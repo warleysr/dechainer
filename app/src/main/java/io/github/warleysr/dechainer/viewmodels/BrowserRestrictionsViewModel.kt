@@ -126,9 +126,4 @@ class BrowserRestrictionsViewModel : ViewModel() {
         }
         prefs.edit { putString("blocked_lists_json", array.toString()) }
     }
-
-
-    fun applyRestrictionsToBrowsers() {
-        manager.applyRestrictions()
-    }
 }
