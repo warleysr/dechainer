@@ -230,13 +230,6 @@ class DechainerAccessibilityService : AccessibilityService() {
         val activityClass = if (reopening) ReopeningLimitActivity::class.java else TimeUpActivity::class.java
         val limit = if (reopening) remainingSeconds else limitPrefs.getInt(pkg, 0)
 
-        val dpm = applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
-        if (dpm.isAdminActive(admin)) {
-            dpm.setPackagesSuspended(admin, arrayOf(pkg), true)
-            dpm.setPackagesSuspended(admin, arrayOf(pkg), false)
-        }
-
         startActivity(Intent(this, activityClass).apply {
             flags = FLAG_ACTIVITY_NEW_TASK
             putExtra("appName", appName)
