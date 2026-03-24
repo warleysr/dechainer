@@ -38,7 +38,7 @@
     <string name="extra_users_description">Seu dispositivo possui mais de um usuário. Apps duplicados podem criar usuários ocultos. Faça backup e desative todos os usuários abaixo:</string>
     <string name="remove_users">Remover usuários</string>
     
-    <string name="search_apps">Pesquisar apps instalados…</string>
+    <string name="search_apps">Pesquisar apps…</string>
     <string name="blocked">Bloqueado</string>
     <string name="protected_label">Protegido</string>
     <string name="manage_restrictions">Gerenciar restrições para %1$s</string>
@@ -104,4 +104,16 @@
     <string name="seconds">Segundos</string>
     <string name="app_reopening">Aguarde!</string>
     <string name="app_reopening_description">Você abriu o {appName} muito rapidamente desde que o fechou. Aguarde {seconds} segundos para abri-lo novamente.</string>
+    <string name="blocked_word">Palavra proibida!</string>
+    <string name="blocked_word_description">Uma palavra proibida foi detectada. Feche o app e vá fazer outra coisa!</string>
+    <string name="blocked_words_feat">Palavras proibidas</string>
+    <string name="blocked_words_feat_description">Bloqueia palavras que possam levar a conteúdo indesejado nos apps</string>
+    <string name="add_word">Adicionar palavra</string>
+    <string name="word_hint">Ex: pussy</string>
+    <string name="apply_to_apps">Aplicar aos apps</string>
+    <string name="select_apps">Selecionar apps</string>
+    <string name="no_words">Nenhuma palavra bloqueada</string>
+    <string name="no_apps">Nenhum app selecionado</string>
+    <string name="blocked_words_list">Lista de palavras bloqueadas</string>
+    <string name="one_word_per_line">Uma palavra por linha</string>
 </resources>

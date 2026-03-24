@@ -19,6 +19,16 @@ import androidx.compose.runtime.mutableStateListOf
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
+import io.github.warleysr.dechainer.activities.BlockedWordActivity
+import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
+import io.github.warleysr.dechainer.activities.TimeUpActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 @SuppressLint("AccessibilityPolicy")
@@ -33,6 +43,13 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var limitPrefs: SharedPreferences
     private lateinit var usagePrefs: SharedPreferences
     private lateinit var reopenPrefs: SharedPreferences
+    private lateinit var blockedWordsPrefs: SharedPreferences
+
+    private var forbiddenPatterns: List<Regex> = emptyList()
+    private var targetPackages: Set<String> = emptySet()
+
+    private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private var debounceJob: Job? = null
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -80,11 +97,29 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
-    private val limitListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
-        if (key == currentPackage) {
-            handler.removeCallbacks(blockRunnable)
-            currentPackage?.let { startTracking(it) }
+    private val prefsListener = SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+        when (prefs) {
+            limitPrefs -> {
+                if (key == currentPackage) {
+                    handler.removeCallbacks(blockRunnable)
+                    currentPackage?.let { startTracking(it) }
+                }
+            }
+            blockedWordsPrefs -> {
+                updateForbiddenPatterns()
+            }
         }
+    }
+
+    private fun updateForbiddenPatterns() {
+        val words = blockedWordsPrefs.getStringSet("blocked_words", emptySet()) ?: emptySet()
+        forbiddenPatterns = words.map { word ->
+            Regex(
+                "(?<![\\p{L}\\p{N}_])${Regex.escape(word)}(?![\\p{L}\\p{N}_])",
+                RegexOption.IGNORE_CASE
+            )
+        }
+        targetPackages = blockedWordsPrefs.getStringSet("target_packages", emptySet()) ?: emptySet()
     }
 
     private val blockRunnable = Runnable {
@@ -107,6 +142,8 @@ class DechainerAccessibilityService : AccessibilityService() {
             accessedActivities.add(0, ActivityLog(packageName, className))
             if (accessedActivities.size > 100) accessedActivities.removeAt(accessedActivities.lastIndex)
         }
+
+        private const val DEBOUNCE_MS = 300L
     }
 
     override fun onCreate() {
@@ -114,7 +151,12 @@ class DechainerAccessibilityService : AccessibilityService() {
         limitPrefs = getSharedPreferences("app_limits", MODE_PRIVATE)
         usagePrefs = getSharedPreferences("internal_usage_stats", MODE_PRIVATE)
         reopenPrefs = getSharedPreferences("reopen_times", MODE_PRIVATE)
-        limitPrefs.registerOnSharedPreferenceChangeListener(limitListener)
+        blockedWordsPrefs = getSharedPreferences("blocked_words_prefs", MODE_PRIVATE)
+
+        limitPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
+
+        updateForbiddenPatterns()
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -132,7 +174,8 @@ class DechainerAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         unregisterReceiver(packageReceiver)
         unregisterReceiver(screenReceiver)
-        limitPrefs.unregisterOnSharedPreferenceChangeListener(limitListener)
+        limitPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        blockedWordsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         stopTrackingAndSave()
         super.onDestroy()
     }
@@ -175,27 +218,72 @@ class DechainerAccessibilityService : AccessibilityService() {
                 val blockedActivities =
                     blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
 
-                if (blockedActivities.contains(className)) {
+                if (blockedActivities.contains(className))
                     performGlobalAction(GLOBAL_ACTION_BACK)
+            }
+        }
+
+        else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            val pkg = currentPackage ?: return
+            if (!targetPackages.contains(pkg)) return
+            
+            val text = buildScreenText(event) ?: return
+
+            debounceJob?.cancel()
+            debounceJob = serviceScope.launch {
+                delay(DEBOUNCE_MS)
+                if (hasForbiddenWord(text)) {
+                    withContext(Dispatchers.Main) {
+                        val intent = Intent(
+                            this@DechainerAccessibilityService, BlockedWordActivity::class.java
+                        ).apply {
+                            flags = FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                    }
                 }
             }
         }
     }
 
+    private fun buildScreenText(event: AccessibilityEvent): String? {
+        val sb = StringBuilder()
+
+        // Texto direto do evento
+        event.text?.forEach { sb.append(it).append(' ') }
+
+        // Texto dos nós filhos (cobre textos que não vêm no evento diretamente)
+        event.source?.also { root ->
+            fun traverse(node: AccessibilityNodeInfo?) {
+                node ?: return
+                node.text?.let { sb.append(it).append(' ') }
+                node.contentDescription?.let { sb.append(it).append(' ') }
+                for (i in 0 until node.childCount) traverse(node.getChild(i))
+            }
+            traverse(root)
+            root.recycle() // ⚠️ obrigatório para evitar leak de memória
+        }
+
+        return sb.toString().trim().takeIf { it.isNotBlank() }
+    }
+
+    private fun hasForbiddenWord(text: String): Boolean =
+        forbiddenPatterns.any { it.containsMatchIn(text) }
+
     private fun startTracking(pkg: String) {
         val limitMinutes = limitPrefs.getInt(pkg, 0)
-        val remainingSeconds = getRemainingSecondsToReopen(pkg)
-        if (limitMinutes <= 0 && remainingSeconds <= 0) return
+        val remainingSecondsReopening = getRemainingSecondsToReopen(pkg)
+        if (limitMinutes <= 0 && remainingSecondsReopening <= 0) return
 
         val alreadyUsedMillis = usagePrefs.getLong(pkg, 0L)
         val limitMillis = TimeUnit.MINUTES.toMillis(limitMinutes.toLong())
         val remainingMillis = limitMillis - alreadyUsedMillis
 
-        if (remainingMillis <= 0) {
-            executeBlocking()
-        } else {
-            if (remainingSeconds > 0)
-                executeBlocking(reopening = true, remainingSeconds = remainingSeconds)
+        if (remainingSecondsReopening > 0)
+            executeBlocking(reopening = true, remainingSeconds = remainingSecondsReopening)
+        else {
+            if (remainingMillis <= 0)
+                executeBlocking()
             else
                 handler.postDelayed(blockRunnable, remainingMillis)
         }
@@ -209,6 +297,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             lastClosedTimes[pkg] = SystemClock.elapsedRealtime()
 
         if (sessionStartTime == 0L) return
+        if (limitPrefs.getInt(pkg, 0) == 0) return
 
         val currentSessionMillis = SystemClock.elapsedRealtime() - sessionStartTime
         val total = usagePrefs.getLong(pkg, 0L) + currentSessionMillis
