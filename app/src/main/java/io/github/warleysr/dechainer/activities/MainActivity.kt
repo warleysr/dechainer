@@ -1,4 +1,4 @@
-package io.github.warleysr.dechainer
+package io.github.warleysr.dechainer.activities
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.setup.SetupDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.setup.SetupRecovery
 import io.github.warleysr.dechainer.screens.tabs.*
@@ -111,6 +112,7 @@ class MainActivity : ComponentActivity() {
                                 "setup_device_owner" -> SetupDeviceOwnerPrivileges()
                                 "activity_blocker" -> ActivityBlockerScreen()
                                 "browser_restrictions" -> BrowserRestrictionsScreen()
+                                "blocked_words" -> BlockedWordsScreen()
                             }
                         }
                     }

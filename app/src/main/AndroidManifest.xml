@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Dechainer">
         <activity
-            android:name=".MainActivity"
+            android:name=".activities.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Dechainer">
             <intent-filter>
@@ -23,7 +23,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".TimeUpActivity"
+            android:name=".activities.TimeUpActivity"
             android:showOnLockScreen="true"
             android:theme="@style/Theme.Dechainer"
             android:excludeFromRecents="true"
@@ -31,7 +31,15 @@
             android:launchMode="singleInstance"
             android:taskAffinity="" />
         <activity
-            android:name=".ReopeningLimitActivity"
+            android:name=".activities.ReopeningLimitActivity"
+            android:showOnLockScreen="true"
+            android:theme="@style/Theme.Dechainer"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="" />
+        <activity
+            android:name=".activities.BlockedWordActivity"
             android:showOnLockScreen="true"
             android:theme="@style/Theme.Dechainer"
             android:excludeFromRecents="true"

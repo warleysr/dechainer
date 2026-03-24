@@ -9,6 +9,7 @@ import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.NoAdultContent
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.*
@@ -101,9 +102,10 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
         }
         item {
             ListItem(
-                headlineContent = { Text(stringResource(R.string.vpn_settings)) },
-                supportingContent = { Text(stringResource(R.string.vpn_description)) },
-                leadingContent = { Icon(Icons.Outlined.VpnKey, "") }
+                headlineContent = { Text(stringResource(R.string.blocked_words_feat)) },
+                supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
+                leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
+                modifier = Modifier.clickable { viewModel.navigateTo("blocked_words") }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
