@@ -13,6 +13,7 @@ import android.content.SharedPreferences
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.runtime.mutableStateListOf
@@ -45,11 +46,12 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var reopenPrefs: SharedPreferences
     private lateinit var blockedWordsPrefs: SharedPreferences
 
-    private var forbiddenPatterns: List<Regex> = emptyList()
+    private var forbiddenPatterns: Map<String, Regex> = emptyMap()
     private var targetPackages: Set<String> = emptySet()
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private var debounceJob: Job? = null
+
+    @Volatile private var isBlocking = false
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -67,7 +69,8 @@ class DechainerAccessibilityService : AccessibilityService() {
                 return
             }
 
-            val dpm = applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val dpm =
+                applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
             if (!dpm.isAdminActive(admin)) return
 
@@ -85,6 +88,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                     stopTrackingAndSave(screenOff = true)
                     currentPackage = null
                 }
+
                 Intent.ACTION_SCREEN_ON -> {
                     lastForegroundPackage?.let {
                         currentPackage = it
@@ -105,6 +109,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                     currentPackage?.let { startTracking(it) }
                 }
             }
+
             blockedWordsPrefs -> {
                 updateForbiddenPatterns()
             }
@@ -113,7 +118,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private fun updateForbiddenPatterns() {
         val words = blockedWordsPrefs.getStringSet("blocked_words", emptySet()) ?: emptySet()
-        forbiddenPatterns = words.map { word ->
+        forbiddenPatterns = words.associateWith { word ->
             Regex(
                 "(?<![\\p{L}\\p{N}_])${Regex.escape(word)}(?![\\p{L}\\p{N}_])",
                 RegexOption.IGNORE_CASE
@@ -143,7 +148,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             if (accessedActivities.size > 100) accessedActivities.removeAt(accessedActivities.lastIndex)
         }
 
-        private const val DEBOUNCE_MS = 300L
+        private const val DEBOUNCE_MS = 1000L
     }
 
     override fun onCreate() {
@@ -201,7 +206,8 @@ class DechainerAccessibilityService : AccessibilityService() {
             val className = event.className?.toString() ?: return
             if (newPackage == "com.android.systemui") return
             if (className.contains("InputMethodService", ignoreCase = true)
-                || className.contains("SoftInputWindow", ignoreCase = true)) return
+                || className.contains("SoftInputWindow", ignoreCase = true)
+            ) return
 
             if (newPackage != currentPackage) {
                 stopTrackingAndSave()
@@ -221,27 +227,32 @@ class DechainerAccessibilityService : AccessibilityService() {
                 if (blockedActivities.contains(className))
                     performGlobalAction(GLOBAL_ACTION_BACK)
             }
-        }
-
-        else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+        } else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             val pkg = currentPackage ?: return
             if (!targetPackages.contains(pkg)) return
-            
-            val text = buildScreenText(event) ?: return
 
-            debounceJob?.cancel()
-            debounceJob = serviceScope.launch {
+            val text = buildScreenText(event) ?: return
+            val forbiddenWord = checkForbiddenWord(text) ?: return
+
+            if (isBlocking) return
+            isBlocking = true
+
+            Log.d("Dechainer", "FORBIDDEN WORD: $forbiddenWord")
+            performGlobalAction(GLOBAL_ACTION_BACK)
+
+            serviceScope.launch {
                 delay(DEBOUNCE_MS)
-                if (hasForbiddenWord(text)) {
-                    withContext(Dispatchers.Main) {
-                        val intent = Intent(
-                            this@DechainerAccessibilityService, BlockedWordActivity::class.java
-                        ).apply {
-                            flags = FLAG_ACTIVITY_NEW_TASK
-                        }
-                        startActivity(intent)
+                withContext(Dispatchers.Main) {
+                    val intent = Intent(
+                        this@DechainerAccessibilityService, BlockedWordActivity::class.java
+                    ).apply {
+                        flags = FLAG_ACTIVITY_NEW_TASK
+                        putExtra("word", forbiddenWord)
                     }
+                    startActivity(intent)
                 }
+                delay(DEBOUNCE_MS)
+                isBlocking = false
             }
         }
     }
@@ -249,10 +260,8 @@ class DechainerAccessibilityService : AccessibilityService() {
     private fun buildScreenText(event: AccessibilityEvent): String? {
         val sb = StringBuilder()
 
-        // Texto direto do evento
-        event.text?.forEach { sb.append(it).append(' ') }
+        event.text.forEach { sb.append(it).append(' ') }
 
-        // Texto dos nós filhos (cobre textos que não vêm no evento diretamente)
         event.source?.also { root ->
             fun traverse(node: AccessibilityNodeInfo?) {
                 node ?: return
@@ -261,14 +270,19 @@ class DechainerAccessibilityService : AccessibilityService() {
                 for (i in 0 until node.childCount) traverse(node.getChild(i))
             }
             traverse(root)
-            root.recycle() // ⚠️ obrigatório para evitar leak de memória
+            root.recycle()
         }
 
         return sb.toString().trim().takeIf { it.isNotBlank() }
     }
 
-    private fun hasForbiddenWord(text: String): Boolean =
-        forbiddenPatterns.any { it.containsMatchIn(text) }
+    private fun checkForbiddenWord(text: String): String? {
+        forbiddenPatterns.forEach { (word: String, regex: Regex) ->
+            if (regex.containsMatchIn(text))
+                return word
+        }
+        return null
+    }
 
     private fun startTracking(pkg: String) {
         val limitMinutes = limitPrefs.getInt(pkg, 0)
