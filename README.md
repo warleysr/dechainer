@@ -29,6 +29,36 @@ To gain the "Superpowers" required to lock down the system, Dechainer uses **Shi
 3.  Follow the steps required in Settings tab.
 4.  Dechainer will then promote itself to **Device Owner**—the highest level of authority on an Android device.
 
+
+## ⚙️ How to compile the apk
+
+```bash
+nix develop
+```
+
+```bash
+./gradlew assembleDebug
+```
+
+---
+
+
+## ⚙️ How to set this all up (without shizuku) (modern androids like miui, oneui, etc.. might block from becoming the device admin)
+
+
+
+
+1. Drop into the Android Shell
+```bash
+adb shell
+```
+
+2. Execute the device admin command
+
+```bash
+dpm set-device-owner io.github.warleysr.dechainer/.DechainerDeviceAdminReceiver
+```
+
 ---
 
 ## ⚠️ THE NUCLEAR WARNING: RISK OF SELF-LOCKOUT
