@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.utils.LocaleUtils
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.core.content.edit
 import rikka.shizuku.Shizuku
@@ -32,6 +33,7 @@ import rikka.shizuku.Shizuku
 @Composable
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var showDnsDialog by remember { mutableStateOf(false) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     
     val context = LocalContext.current
@@ -113,7 +115,8 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             ListItem(
                 headlineContent = { Text(stringResource(R.string.language_settings)) },
                 supportingContent = { Text(stringResource(R.string.language_description)) },
-                leadingContent = { Icon(Icons.Outlined.Language, "") }
+                leadingContent = { Icon(Icons.Outlined.Language, "") },
+                modifier = Modifier.clickable { showLanguageDialog = true }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
@@ -129,6 +132,16 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                 val action = { applyDns(context, viewModel, host) }
                 pendingAction = action
                 showDnsDialog = false
+            }
+        )
+    }
+
+    if (showLanguageDialog) {
+        LanguageSelectionDialog(
+            onDismiss = { showLanguageDialog = false },
+            onApply = { languageCode ->
+                LocaleUtils.setLocale(context, languageCode)
+                showLanguageDialog = false
             }
         )
     }
@@ -271,3 +284,54 @@ fun DnsSelectionDialog(
         }
     )
 }
+
+@Composable
+fun LanguageSelectionDialog(
+    onDismiss: () -> Unit,
+    onApply: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val currentLocale = LocaleUtils.getLocale(context)
+    val options = listOf(
+        "en" to "English",
+        "pt" to "Português"
+    )
+    
+    var selectedOption by remember { 
+        mutableStateOf(if (currentLocale.startsWith("pt")) "pt" else "en")
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.language_settings)) },
+        text = {
+            Column {
+                options.forEach { (code, name) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedOption = code }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selectedOption == code, onClick = { selectedOption = code })
+                        Text(name, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onApply(selectedOption) }
+            ) {
+                Text(stringResource(R.string.apply))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
