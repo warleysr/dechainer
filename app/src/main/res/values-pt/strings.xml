@@ -1,0 +1,119 @@
+<resources>
+    <string name="app_name" translatable="false">Déchaîner</string>
+    <string name="attention">Atenção!</string>
+    <string name="self_lock_risk">Este app utiliza privilégios de Dono do Dispositivo para bloquear componentes de sistema e controlar o acesso a outros aplicativos. Há o risco de se \"auto trancar\" e não conseguir ter acesso as funcionalidades bloqueadas novamente. Para evitar isso você deve ter uma chave de recuperação. Essa chave pode ser gerada abaixo e deve ser salva em um local seguro ou anotada em um papel de forma física. Somente através dela você conseguirá remover este app. Gere a chave abaixo.</string>
+    <string name="confirm_key_saved">Confirmo que salvei a chave</string>
+    <string name="proceed">Prosseguir</string>
+    <string name="generate_key">Gerar chave</string>
+    <string name="your_key">Sua chave é:</string>
+    <string name="restrictions">Restrições</string>
+    <string name="apps" translatable="false">Apps</string>
+    <string name="config" translatable="false">Config</string>
+    <string name="not_device_owner">Sem privilégios de Dono do dispositivo</string>
+    <string name="config_device_owner">Obter na config.</string>
+    <string name="device_owner_state">Privilégios de dono</string>
+    <string name="device_owner_description">Permissão necessária para aplicar restrições e impedir desinstalação do app</string>
+    <string name="dns_description">DNS privado usado para bloquear acesso a sites</string>
+    <string name="dns_settings">DNS privado</string>
+    <string name="granted">Concedido</string>
+    <string name="not_granted">Não concedido</string>
+    <string name="vpn_settings">VPN permitida</string>
+    <string name="vpn_description">Selecione um aplicativo de VPN que terá permissão para ignorar a restrição</string>
+    <string name="language_settings">Idioma</string>
+    <string name="language_description">Selecione o idioma preferido para o app</string>
+    <string name="shizuku_not_installed">Shizuku não está instalado. Ele é necessário para que o obter os privilégios de dono.</string>
+    <string name="install_shizuku">Instalar Shizuku</string>
+    <string name="shizuku_not_running">Shizuku não está sendo executado</string>
+    <string name="setup_shizuku">Ver como configurar</string>
+    <string name="no_permission_shizuku">O app não tem permissão para acessar o Shizuku. Conceda para prosseguir.</string>
+    <string name="ask_shizuku_permission">Pedir permissão</string>
+    <string name="already_owner">Já existe um outro app com privilégios de dono neste dispositivo. Somente um app pode ter este privilégio, confirme que deseja remover o privilégio do app abaixo:</string>
+    <string name="confirm_remove_owner">Confirmar remoção de privilégios</string>
+    <string name="get_owner_privileges">Conceder privilégios</string>
+    <string name="privileges_description">Tudo certo! Para finalizar clique no botçao abaixo para conceder privilégios de dono do dispositivo.</string>
+    <string name="remove_privileges_description">Privilégios concedidos! Para remover clique no botão abaixo.</string>
+    <string name="remove_privileges">Remover privilégios</string>
+    <string name="remove_accounts">Remover contas</string>
+    <string name="no_account_allowed">Não pode haver nenhuma conta no dispositivo. Remova todas as contas abaixo:</string>
+    <string name="extra_users_description">Seu dispositivo possui mais de um usuário. Apps duplicados podem criar usuários ocultos. Faça backup e desative todos os usuários abaixo:</string>
+    <string name="remove_users">Remover usuários</string>
+    
+    <string name="search_apps">Pesquisar apps…</string>
+    <string name="blocked">Bloqueado</string>
+    <string name="protected_label">Protegido</string>
+    <string name="manage_restrictions">Gerenciar restrições para %1$s</string>
+    <string name="block">Bloquear</string>
+    <string name="unblock">Desbloquear</string>
+    <string name="prevent_uninstall">Impedir Desinstalação</string>
+    <string name="allow_uninstall">Permitir Desinstalar</string>
+    <string name="apply_restrictions">Aplicar restrições</string>
+    <string name="recommended_configs">Configurações recomendadas</string>
+    <string name="other_restrictions">Outras Restrições</string>
+    <string name="block_vpn">Bloquear VPN</string>
+    <string name="block_private_dns">Bloquear alterar DNS privado</string>
+    <string name="block_factory_reset">Proibir restauração de fábrica</string>
+    <string name="active">Ativo</string>
+    
+    <string name="disallow_safe_boot">Proibir modo de segurança</string>
+    <string name="disallow_usb_file_transfer">Proibir transferência USB</string>
+    <string name="disallow_debugging_features">Proibir depuração USB (ADB)</string>
+    <string name="disallow_install_unknown_sources">Proibir fontes desconhecidas</string>
+    <string name="disallow_modify_accounts">Proibir modificar contas</string>
+    <string name="disallow_add_user">Proibir adicionar usuários</string>
+    
+    <string name="enter_recovery_code">Digite o código de recuperação</string>
+    <string name="recovery_code_hint">Código de 16 letras</string>
+    <string name="invalid_recovery_code">Código de recuperação inválido</string>
+    <string name="confirm">Confirmar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="apply">Aplicar</string>
+    <string name="custom">Customizado</string>
+    <string name="dns_host_hint">Ex: dns.example.com</string>
+    <string name="none">Nenhum</string>
+    <string name="invalid_dns_host">Host de DNS inválido</string>
+
+    <string name="browser_restrictions">Restrições de navegador</string>
+    <string name="browser_restrictions_desc">Gerenciar permissões de navegadores e sites bloqueados</string>
+    <string name="allowed_browsers">Navegadores permitidos</string>
+    <string name="blocked_sites">Sites bloqueados</string>
+    <string name="add_site">Adicionar site</string>
+    <string name="site_url_hint">Ex: example.com</string>
+    <string name="remove">Remover</string>
+    <string name="browser_support_warning">As restrições não funcionam neste navegador, recomenda-se desativá-lo.</string>
+    
+    <string name="activity_blocker">Bloquear Activity</string>
+    <string name="activity_blocker_description">Impedir abertura de telas específicas</string>
+    <string name="blocked_activities">Activities bloqueadas</string>
+    <string name="accessed_activities">Activities acessadas</string>
+    <string name="add_activity">Adicionar Activity</string>
+    <string name="activity_name_hint">Ex: com.android.settings.Settings</string>
+    <string name="copy">Copiar</string>
+    <string name="activity_blocked_toast">Activity bloqueada pelo Dechainer</string>
+
+    <string name="set_time_limit">Limite de tempo</string>
+    <string name="app_time_limit_dialog_title">Limite para %1$s</string>
+    <string name="hours">horas</string>
+    <string name="minutes">minutos</string>
+    <string name="time_limit_reached">Limite de %1$s minutos atingido para %2$s</string>
+    <string name="accessibility_description">Bloqueio e limite precisos de apps</string>
+    <string name="app_limit_reached">Limite atingido!</string>
+    <string name="close">Fechar</string>
+    <string name="limit">Limite: %1$s</string>
+    <string name="used">Usado: %1$s</string>
+    <string name="reopen_time">Tempo entre aberturas do mesmo app</string>
+    <string name="seconds">Segundos</string>
+    <string name="app_reopening">Aguarde!</string>
+    <string name="app_reopening_description">Você abriu o {appName} muito rapidamente desde que o fechou. Aguarde {seconds} segundos para abri-lo novamente.</string>
+    <string name="blocked_word">Palavra proibida!</string>
+    <string name="blocked_word_description">Uma palavra proibida foi detectada. Feche o app e vá fazer outra coisa!</string>
+    <string name="blocked_words_feat">Palavras proibidas</string>
+    <string name="blocked_words_feat_description">Bloqueia palavras que possam levar a conteúdo indesejado nos apps</string>
+    <string name="add_word">Adicionar palavra</string>
+    <string name="word_hint">Ex: pussy</string>
+    <string name="apply_to_apps">Aplicar aos apps</string>
+    <string name="select_apps">Selecionar apps</string>
+    <string name="no_words">Nenhuma palavra bloqueada</string>
+    <string name="no_apps">Nenhum app selecionado</string>
+    <string name="blocked_words_list">Lista de palavras bloqueadas</string>
+    <string name="one_word_per_line">Uma palavra por linha</string>
+</resources>
