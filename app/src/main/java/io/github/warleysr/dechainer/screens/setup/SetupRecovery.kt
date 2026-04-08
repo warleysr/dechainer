@@ -35,13 +35,13 @@ import io.github.warleysr.dechainer.security.SecurityManager
 fun SetupRecovery(paddingValues: PaddingValues) {
     var showGenerateDialog by remember { mutableStateOf(false) }
     var confirmKeySaved by remember { mutableStateOf(false) }
+    val generatedKey by remember { mutableStateOf(SecurityManager.generatePassphrase()) }
     val context = LocalContext.current
     Column(
         modifier = Modifier.padding(paddingValues).fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (showGenerateDialog) {
-            val generatedKey = SecurityManager.generatePassphrase()
             AlertDialog(
                 onDismissRequest = { showGenerateDialog = false },
                 confirmButton = {
@@ -58,7 +58,7 @@ fun SetupRecovery(paddingValues: PaddingValues) {
                     Column( horizontalAlignment = Alignment.CenterHorizontally ) {
                         Text(stringResource(R.string.your_key), fontWeight = FontWeight.Bold)
                         Text(
-                            text = "${generatedKey.take(4)}-${generatedKey.substring(4)}",
+                            text = generatedKey,
                             style = MaterialTheme.typography.titleLarge
                         )
                         Spacer(Modifier.height(8.dp))
