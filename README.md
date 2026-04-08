@@ -1,3 +1,5 @@
+<b style='color: red'>THIS APP IS STILL IN DEVELOPMENT. BE CAREFUL WHEN USING IT.</b>
+
 # ⛓️ Dechainer: Reclaim Your Freedom
 
 **Break the digital chains. Reclaim your focus. Reclaim your life.**
