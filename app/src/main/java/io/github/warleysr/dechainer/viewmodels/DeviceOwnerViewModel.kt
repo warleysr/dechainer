@@ -117,10 +117,15 @@ class DeviceOwnerViewModel() : ViewModel() {
     }
 
     fun processDeviceOwnerPrivileges(remove: Boolean = false) {
-        val command = if (remove) "remove-active-admin" else "set-device-owner"
+        if (remove && dpm.isAdminActive(adminName)) {
+            dpm.removeActiveAdmin(adminName)
+            dpm.clearDeviceOwnerApp(packageName)
+            isDeviceOwner.value = false
+            return
+        }
         val packageName = DechainerApplication.getInstance().packageName
         ShizukuRunner.command(
-            command = "dpm $command $packageName/.DechainerDeviceAdminReceiver",
+            command = "dpm set-device-owner $packageName/.DechainerDeviceAdminReceiver",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     println("Output: $output Done: $done")
@@ -277,20 +282,6 @@ class DeviceOwnerViewModel() : ViewModel() {
         } catch (e: Exception) {
             null
         }
-    }
-
-    fun removeCurrentDeviceOwner(currentOwnerPackage: String) {
-        ShizukuRunner.command(
-            command = "dpm remove-active-admin $currentOwnerPackage",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                }
-
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                }
-        })
     }
 
     fun getExtraUsersInfo(): List<String> {
