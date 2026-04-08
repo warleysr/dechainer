@@ -47,7 +47,9 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
             !viewModel.isShizukuPermissionGranted() -> ShizukuNoPermissionCard()
             else -> DeviceOwnerSetupContent(
                 viewModel, 
-                onRemoveAction = { pendingAction = { viewModel.processDeviceOwnerPrivileges(true) } }
+                onRemoveAction = {
+                    pendingAction = { viewModel.processDeviceOwnerPrivileges(true) }
+                }
             )
         }
     }
@@ -116,43 +118,48 @@ private fun DeviceOwnerSetupContent(
 
     val extraUsers = remember { viewModel.getExtraUsersInfo() }
 
-    when {
-        accounts.isNotEmpty() -> {
-            AccountWarningDialog(
-                accounts = accounts,
-                onDismiss = { accounts.clear() },
-                getAppName = { type -> 
-                    viewModel.getAppNameFromAccountType(DechainerApplication.getInstance(), type) 
-                }
-            )
-        }
-        extraUsers.isNotEmpty() -> {
-            UserWarningDialog(extraUsers = extraUsers)
-        }
-        !viewModel.isDeviceOwner() -> {
-            val currentDeviceOwner = viewModel.getCurrentDeviceOwner()
-            if (currentDeviceOwner != null) {
-                ExistingOwnerDialog(
-                    ownerPackage = currentDeviceOwner.first,
-                    ownerReceiver = currentDeviceOwner.second,
-                    onRemove = { viewModel.removeCurrentDeviceOwner(it) }
-                )
-            } else {
-                SetupStepCard(
-                    text = stringResource(R.string.privileges_description),
-                    buttonText = stringResource(R.string.get_owner_privileges),
-                    buttonIcon = Icons.Outlined.Adb,
-                    onClick = { viewModel.processDeviceOwnerPrivileges() }
+    if (!viewModel.isDeviceOwner()) {
+        when {
+            accounts.isNotEmpty() -> {
+                AccountWarningDialog(
+                    accounts = accounts,
+                    onDismiss = { accounts.clear() },
+                    getAppName = { type ->
+                        viewModel.getAppNameFromAccountType(
+                            DechainerApplication.getInstance(),
+                            type
+                        )
+                    }
                 )
             }
+
+            extraUsers.isNotEmpty() -> {
+                UserWarningDialog(extraUsers = extraUsers)
+            }
+
+            else -> {
+                val currentDeviceOwner = viewModel.getCurrentDeviceOwner()
+                if (currentDeviceOwner != null) {
+                    ExistingOwnerDialog(
+                        ownerPackage = currentDeviceOwner.first
+                    )
+                } else {
+                    SetupStepCard(
+                        text = stringResource(R.string.privileges_description),
+                        buttonText = stringResource(R.string.get_owner_privileges),
+                        buttonIcon = Icons.Outlined.Adb,
+                        onClick = { viewModel.processDeviceOwnerPrivileges() }
+                    )
+                }
+            }
         }
-        else -> {
-            SetupStepCard(
-                text = stringResource(R.string.remove_privileges_description),
-                buttonText = stringResource(R.string.remove_privileges),
-                buttonIcon = Icons.Outlined.DeleteForever,
-                onClick = onRemoveAction
-            )
-        }
+    }
+    else {
+        SetupStepCard(
+            text = stringResource(R.string.remove_privileges_description),
+            buttonText = stringResource(R.string.remove_privileges),
+            buttonIcon = Icons.Outlined.DeleteForever,
+            onClick = onRemoveAction
+        )
     }
 }

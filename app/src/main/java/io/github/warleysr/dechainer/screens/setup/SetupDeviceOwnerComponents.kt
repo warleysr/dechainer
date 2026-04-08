@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.R
+import kotlin.system.exitProcess
 
 @Composable
 fun SetupStepCard(
@@ -99,10 +100,7 @@ fun UserWarningDialog(extraUsers: List<String>) {
 @Composable
 fun ExistingOwnerDialog(
     ownerPackage: String,
-    ownerReceiver: String,
-    onRemove: (String) -> Unit
 ) {
-    var confirmRemove by remember { mutableStateOf(false) }
     val context = DechainerApplication.getInstance()
     val appName = remember(ownerPackage) {
         try {
@@ -118,25 +116,14 @@ fun ExistingOwnerDialog(
         onDismissRequest = { },
         confirmButton = {
             TextButton(
-                enabled = confirmRemove,
-                onClick = { onRemove(ownerReceiver) }
-            ) { Text(stringResource(R.string.proceed)) }
+                onClick = { exitProcess(0) }
+            ) { Text(stringResource(R.string.close)) }
         },
         text = {
             Column {
                 Text(stringResource(R.string.already_owner))
                 Spacer(Modifier.height(8.dp))
                 Text(appName, fontWeight = FontWeight.Bold)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable(onClick = { confirmRemove = !confirmRemove })
-                ) {
-                    Checkbox(
-                        checked = confirmRemove,
-                        onCheckedChange = { confirmRemove = it }
-                    )
-                    Text(stringResource(R.string.confirm_remove_owner))
-                }
             }
         }
     )
