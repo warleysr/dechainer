@@ -81,14 +81,13 @@
     <string name="remove">Remover</string>
     <string name="browser_support_warning">As restrições não funcionam neste navegador, recomenda-se desativá-lo.</string>
     
-    <string name="activity_blocker">Bloquear Activity</string>
-    <string name="activity_blocker_description">Impedir abertura de telas específicas</string>
+    <string name="activity_blocker">Bloqueio avançado</string>
+    <string name="activity_blocker_description">Controle de tempo, bloqueio de telas específicas e de palavras proibidas nos apps</string>
     <string name="blocked_activities">Activities bloqueadas</string>
     <string name="accessed_activities">Activities acessadas</string>
     <string name="add_activity">Adicionar Activity</string>
     <string name="activity_name_hint">Ex: com.android.settings.Settings</string>
     <string name="copy">Copiar</string>
-    <string name="activity_blocked_toast">Activity bloqueada pelo Dechainer</string>
 
     <string name="set_time_limit">Limite de tempo</string>
     <string name="app_time_limit_dialog_title">Limite para %1$s</string>
@@ -109,7 +108,7 @@
     <string name="blocked_words_feat">Palavras proibidas</string>
     <string name="blocked_words_feat_description">Bloqueia palavras que possam levar a conteúdo indesejado nos apps</string>
     <string name="add_word">Adicionar palavra</string>
-    <string name="word_hint">Ex: pussy</string>
+    <string name="word_hint">Ex: buceta</string>
     <string name="apply_to_apps">Aplicar aos apps</string>
     <string name="select_apps">Selecionar apps</string>
     <string name="no_words">Nenhuma palavra bloqueada</string>
