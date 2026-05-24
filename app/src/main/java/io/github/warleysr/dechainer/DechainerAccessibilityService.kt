@@ -227,7 +227,8 @@ class DechainerAccessibilityService : AccessibilityService() {
                 if (blockedActivities.contains(className))
                     performGlobalAction(GLOBAL_ACTION_BACK)
             }
-        } else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+        }
+        else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             val pkg = currentPackage ?: return
             if (!targetPackages.contains(pkg)) return
 
@@ -289,18 +290,21 @@ class DechainerAccessibilityService : AccessibilityService() {
         val remainingSecondsReopening = getRemainingSecondsToReopen(pkg)
         if (limitMinutes <= 0 && remainingSecondsReopening <= 0) return
 
-        val alreadyUsedMillis = usagePrefs.getLong(pkg, 0L)
         val limitMillis = TimeUnit.MINUTES.toMillis(limitMinutes.toLong())
-        val remainingMillis = limitMillis - alreadyUsedMillis
+
+        if (limitMillis > 0) {
+            val alreadyUsedMillis = usagePrefs.getLong(pkg, 0L)
+            val remainingMillis = limitMillis - alreadyUsedMillis
+
+            if (remainingMillis <= 0) {
+                executeBlocking()
+                return
+            } else
+                handler.postDelayed(blockRunnable, remainingMillis)
+        }
 
         if (remainingSecondsReopening > 0)
             executeBlocking(reopening = true, remainingSeconds = remainingSecondsReopening)
-        else {
-            if (remainingMillis <= 0)
-                executeBlocking()
-            else
-                handler.postDelayed(blockRunnable, remainingMillis)
-        }
     }
 
     private fun stopTrackingAndSave(screenOff: Boolean = false) {
