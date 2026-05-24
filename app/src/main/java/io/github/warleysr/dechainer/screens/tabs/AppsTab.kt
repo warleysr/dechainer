@@ -59,6 +59,7 @@ fun AppsScreen(viewModel: AppsViewModel) {
             it.name.contains(searchQuery, ignoreCase = true) ||
             it.packageName.contains(searchQuery, ignoreCase = true)
         }
+        .sortedBy { it.timeLimitMinutes == 0 }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
