@@ -1,5 +1,6 @@
 package io.github.warleysr.dechainer
 
+import android.content.RestrictionsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -47,18 +48,11 @@ class BrowserRestrictionsManager(private val context: Context) {
     }
 
     fun supportsRestrictions(packageName: String): Boolean {
-        try {
-            val appInfo = context.packageManager.getApplicationInfo(
-                packageName,
-                PackageManager.GET_META_DATA
-            )
-
-            val bundle = appInfo.metaData
-
-            return bundle != null && bundle.containsKey("android.content.APP_RESTRICTIONS")
-
-        } catch (e: PackageManager.NameNotFoundException) {
-            return false
+        return try {
+            val rm = context.getSystemService(Context.RESTRICTIONS_SERVICE) as RestrictionsManager
+            rm.getManifestRestrictions(packageName).any { it.key == "URLBlocklist" }
+        } catch (_: Exception) {
+            false
         }
     }
 
