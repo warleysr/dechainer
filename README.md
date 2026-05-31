@@ -1,56 +1,60 @@
-<b style='color: red'>THIS APP IS STILL IN DEVELOPMENT. BE CAREFUL WHEN USING IT.</b>
+# Déchaîner
+<img src="https://i.imgur.com/oEDcaTf.png" width="50%" alt="Déchaîner">
 
-# ⛓️ Dechainer: Reclaim Your Freedom
-
-**Break the digital chains. Reclaim your focus. Reclaim your life.**
-
-Dechainer is not just another porn blocker—it is an **iron-clad commitment** to a life free from digital addiction. Designed for those who are serious about quitting, Dechainer leverages deep Android system privileges to create barriers that are nearly impossible to bypass, ensuring you stay on the path to recovery even in moments of weakness.
+---
+> **Caution:** This software implements deep system-level modifications. It is designed to be difficult to bypass. Proceed only if you fully understand the implications of Device Owner privileges.
 
 ---
 
-## 🛡️ Iron-Clad Protection
-
-Most blockers are easily disabled in a moment of urge. Dechainer is different. By utilizing **Device Owner** privileges, it locks the system down from the inside out.
-
-### 🚀 Key Features
-
-*   **🌐 Nuclear DNS Blocking:** Force the system to use family-safe Private DNS providers (like Cloudflare Family or AdGuard DNS). Content is filtered at the network level before it even reaches your screen.
-*   **🚫 VPN Lockdown:** Prevents the installation or configuration of VPNs. No more "backdoors" to bypass your filters.
-*   **📱 App Management:**
-    *   **Total Block:** Hide specific apps completely from your launcher.
-    *   **Uninstall Protection:** Prevent apps from being removed, ensuring your defensive tools stay put.
-*   **🔒 System Integrity:** Blocks factory resets, safe boot, and ADB debugging to ensure the only way out is through your recovery key.
+## Overview
+**Déchaîner** (pronounced [/de.ʃɛ.ne/](https://en.wiktionary.org/wiki/d%C3%A9cha%C3%AEner)) is a French verb that means to unleash, unchain, or let loose. It is a specialized security utility for Android designed to function as an absolute barrier against pornography and digital addiction. By leveraging deep system-level integration, it provides a persistent defensive layer that remains effective even when willpower is compromised.
 
 ---
 
-## ⚙️ How it Works (The Shizuku Bridge)
+## Technical Architecture
+Unlike standard application-level blockers, Déchaîner operates through **Device Owner** privileges. This administrative tier allows the application to enforce restrictions directly at the Operating System level, preventing unauthorized removal or circumvention.
 
-To gain the "Superpowers" required to lock down the system, Dechainer uses **Shizuku**. 
-1.  Install [Shizuku](https://shizuku.rikka.app/).
-2.  Grant Dechainer permission through Shizuku.
-3.  Follow the steps required in Settings tab.
-4.  Dechainer will then promote itself to **Device Owner**—the highest level of authority on an Android device.
+### Core Capabilities
+
+| Feature Category      | Implementation Detail                                                                              |
+|:----------------------|:---------------------------------------------------------------------------------------------------|
+| **System Integrity**  | Prevents uninstallation, factory resets, safe mode booting, and ADB debugging.                     |
+| **Network Security**  | Enforces family-safe Private DNS (e.g., Cloudflare Family, AdGuard DNS) and blocks VPN subsystems. |
+| **Content Filtering** | Enforces `URLBlocklist` policies on compatible browsers and auto-blocks incompatible ones.         |
+| **App Analysis**      | Uses an Accessibility Service for keyword detection and specific Activity interception.            |
+| **App Management**    | Block, prevent uninstall or set usage time limit for any app.                                      |
+---
+
+## Installation and Configuration
+The elevation to Device Owner status requires a bridge between user-space and system-space. Follow these steps precisely:
+
+1.  **Environment Setup**: Install the [Shizuku](https://shizuku.rikka.app/) application. This is required to execute the necessary ADB commands.
+2.  **Developer Authorization**: Enable **Wireless Debugging** in your Android Developer Options and pair it with Shizuku.
+3.  **Application Pairing**: Open Déchaîner and grant it permission to access the Shizuku service.
+4.  **Privilege Elevation**: Navigate to the Settings tab in Déchaîner and follow the prompts to register the application as the **Device Owner**. This will execute the required `dpm set-device-owner` command via the Shizuku bridge.
 
 ---
 
-## ⚠️ THE NUCLEAR WARNING: RISK OF SELF-LOCKOUT
+## Recovery and Safety Protocol
+Upon configuration, Déchaîner generates a unique **16-character alphanumeric recovery key**. This key is the only method to disable restrictions or uninstall the application without a complete device wipe (if a wipe is even permitted by your active settings).
 
-**PLEASE READ CAREFULLY.**
+### Mandatory Safety Steps:
+*   **Physical Record**: You must manually write this key on a physical piece of paper.
+*   **Secure Storage**: Store the paper in a physical location that is difficult to access (e.g., a safe, a high shelf, or a separate building).
+*   **Digital Prohibition**: Do **not** save this key in digital notes, emails, or cloud storage. You may inadvertently block access to the very tools needed to retrieve it.
 
-Dechainer is designed to be **unforgiving**. If you enable all restrictions and lose your **16-character Recovery Key**, you may be permanently locked out of certain system settings or unable to uninstall the app without a total device wipe (if even allowed).
+---
 
-*   **This is a feature, not a bug.** It is meant to stop "your future self" from relapsing.
-*   **Store your Recovery Key physically.** Write it on a piece of paper and hide it. Do not rely on digital notes that you might block yourself from accessing.
+## Critical Security Advisory
+**Déchaîner is designed to be uncompromising.**
+
+The activation of full system restrictions combined with the loss of your Recovery Key may result in a **permanent inability** to modify system parameters or restore the device to its original state. 
+
+*   **Self-Lockout Risk**: This is an intentional feature designed to stop "your future self" from relapsing.
+*   **No Backdoors**: There are no alternative recovery methods. If the key is lost, the lockdown is absolute.
 
 ---
 
-## 🌱 The Path to Freedom
-
-Pornography rewires the brain, affecting focus, relationships, and self-worth. Dechainer acts as the "external willpower" you need while your brain heals. 
-
-By removing the *possibility* of a relapse, you free up mental energy to focus on what truly matters: your goals, your family, and your future.
-
-**Stop fighting the urges with just willpower. Use Dechainer to change the rules of the game.**
+**Disclaimer**: This software is provided "as is" without warranty of any kind. The developers are not liable for any data loss, system instability, or permanent device lockouts resulting from the use of Device Owner privileges.
 
 ---
-*Disclaimer: Use this software at your own risk. The developers are not responsible for any data loss or device issues resulting from the use of Device Owner privileges.*
