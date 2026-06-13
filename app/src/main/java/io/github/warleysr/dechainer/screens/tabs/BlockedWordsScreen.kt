@@ -23,17 +23,16 @@ import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.BlockedWordsViewModel
-import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+
+var changingAppPackage: String? = null
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BlockedWordsScreen(
-    deviceOwnerViewModel: DeviceOwnerViewModel = viewModel(),
-    blockedWordsViewModel: BlockedWordsViewModel = viewModel()
+    viewModel: BlockedWordsViewModel = viewModel()
 ) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
     var showRecoveryDialog by remember { mutableStateOf(false) }
-    var isSessionActive by remember { mutableStateOf(SecurityManager.isSessionActive()) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -41,11 +40,13 @@ fun BlockedWordsScreen(
         ListItem(
             headlineContent = { Text(stringResource(R.string.apply_to_apps)) },
             supportingContent = {
-                val count = blockedWordsViewModel.targetPackages.size
+                val count = viewModel.targetPackages.size
                 Text(if (count == 0) stringResource(R.string.no_apps) else "$count apps")
             },
             trailingContent = {
-                Button(onClick = { showAppSelectionDialog = true }) {
+                Button(onClick = {
+                    showAppSelectionDialog = true
+                }) {
                     Text(stringResource(R.string.select_apps))
                 }
             }
@@ -58,30 +59,36 @@ fun BlockedWordsScreen(
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(8.dp)
             )
-            IconButton(onClick = { showRecoveryDialog = true }, enabled = !isSessionActive) {
+            IconButton(onClick = { showRecoveryDialog = true }, enabled = !SecurityManager.isSessionActive()) {
                 Icon(Icons.Outlined.Edit, null)
             }
         }
 
         OutlinedTextField(
-            value = blockedWordsViewModel.blockedWordsText,
+            value = viewModel.blockedWordsText,
             onValueChange = {
-                blockedWordsViewModel.updateWords(it)
-                isSessionActive = SecurityManager.isSessionActive()
+                viewModel.updateWords(it)
             },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             placeholder = { Text(stringResource(R.string.word_hint)) },
             supportingText = { Text(stringResource(R.string.one_word_per_line)) },
-            enabled = isSessionActive
+            enabled = SecurityManager.isSessionActive()
         )
     }
 
     if (showAppSelectionDialog) {
         AppSelectionDialog(
-            viewModel = blockedWordsViewModel,
-            onDismiss = { showAppSelectionDialog = false }
+            viewModel = viewModel,
+            onDismiss = { showAppSelectionDialog = false },
+            onChange = {
+                if (SecurityManager.isSessionActive()) {
+                    showAppSelectionDialog = false
+                } else {
+                    showRecoveryDialog = true
+                }
+            }
         )
     }
 
@@ -90,7 +97,9 @@ fun BlockedWordsScreen(
         RecoveryConfirmDialog(
             onConfirm = { code ->
                 if (SecurityManager.validatePassphrase(code, storedHash!!)) {
-                    isSessionActive = true
+                    showRecoveryDialog = false
+                    changingAppPackage?.let { viewModel.toggleAppSelection(it) }
+                    changingAppPackage = null
                     true
                 }
                 else false
@@ -103,11 +112,17 @@ fun BlockedWordsScreen(
 @Composable
 fun AppSelectionDialog(
     viewModel: BlockedWordsViewModel,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onChange: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val filteredApps = remember(searchQuery, viewModel.apps) {
-        viewModel.apps.filter { it.name.contains(searchQuery, ignoreCase = true) || it.packageName.contains(searchQuery, ignoreCase = true) }
+        viewModel.apps
+            .filter {
+                it.name.contains(searchQuery, ignoreCase = true)
+                        || it.packageName.contains(searchQuery, ignoreCase = true)
+            }
+            .sortedBy { !it.isSelected }
     }
 
     AlertDialog(
@@ -149,7 +164,14 @@ fun AppSelectionDialog(
                                 }
                                 Checkbox(
                                     checked = app.isSelected,
-                                    onCheckedChange = { viewModel.toggleAppSelection(app.packageName) }
+                                    onCheckedChange = {
+                                        if (SecurityManager.isSessionActive())
+                                            viewModel.toggleAppSelection(app.packageName)
+                                        else {
+                                            changingAppPackage = app.packageName
+                                            onChange()
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -157,10 +179,6 @@ fun AppSelectionDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.confirm))
-            }
-        }
+        confirmButton = {}
     )
 }
