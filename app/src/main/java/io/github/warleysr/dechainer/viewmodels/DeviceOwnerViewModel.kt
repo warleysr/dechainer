@@ -7,7 +7,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.Context.DEVICE_POLICY_SERVICE
+import android.content.RestrictionEntry
+import android.content.RestrictionsManager
 import android.content.pm.PackageManager
+import android.os.Bundle
 import android.os.UserManager
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
@@ -371,4 +374,28 @@ class DeviceOwnerViewModel() : ViewModel() {
         return getAccessibilityServices().contains(".DechainerAccessibilityService")
     }
 
+    fun getApplicationRestrictions(packageName: String): Bundle {
+        return dpm.getApplicationRestrictions(adminName, packageName)
+    }
+
+    fun setApplicationRestrictions(packageName: String, restrictions: Bundle) {
+        dpm.setApplicationRestrictions(adminName, packageName, restrictions)
+    }
+
+    fun getAvailableRestrictions(packageName: String): List<RestrictionEntry> {
+        val rm = DechainerApplication.getInstance().getSystemService(Context.RESTRICTIONS_SERVICE) as RestrictionsManager
+
+        try {
+            val appInfo = DechainerApplication.getInstance().packageManager.getApplicationInfo(
+                packageName,
+                PackageManager.GET_META_DATA
+            )
+            if (appInfo.metaData == null) return emptyList()
+        } catch (_: PackageManager.NameNotFoundException) {
+            return emptyList()
+        }
+
+        val restrictions = rm.getManifestRestrictions(packageName)
+        return restrictions?.toList() ?: emptyList()
+    }
 }

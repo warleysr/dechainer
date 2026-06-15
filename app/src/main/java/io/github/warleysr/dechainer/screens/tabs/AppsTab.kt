@@ -28,11 +28,18 @@ import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+
+import android.content.RestrictionEntry
+import android.os.Bundle
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.foundation.layout.heightIn
 
 @Composable
 fun AppsTab(
@@ -42,38 +49,67 @@ fun AppsTab(
     if (!deviceOwnerViewModel.isDeviceOwner()) {
         NoDeviceOwnerPrivileges(deviceOwnerViewModel)
     } else {
-        AppsScreen(appsViewModel)
+        AppsScreen(appsViewModel, deviceOwnerViewModel)
     }
 }
 
 @Composable
-fun AppsScreen(viewModel: AppsViewModel) {
+fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedApp by remember { mutableStateOf<AppItem?>(null) }
     var showTimeLimitDialog by remember { mutableStateOf<AppItem?>(null) }
+    var showRestrictionsDialog by remember { mutableStateOf<AppItem?>(null) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showSystemApps by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    val filteredApps = remember(viewModel.apps, searchQuery) {
+    val filteredApps = remember(viewModel.apps, searchQuery, showSystemApps) {
         viewModel.apps.filter {
-            it.name.contains(searchQuery, ignoreCase = true) ||
-            it.packageName.contains(searchQuery, ignoreCase = true)
+            (showSystemApps || !it.isSystem || it.isHidden || it.isUninstallBlocked || it.timeLimitMinutes > 0) &&
+            (it.name.contains(searchQuery, ignoreCase = true) ||
+            it.packageName.contains(searchQuery, ignoreCase = true))
         }
         .sortedBy { it.timeLimitMinutes == 0 }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
         Surface(tonalElevation = 3.dp) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                placeholder = { Text(stringResource(R.string.search_apps)) },
-                leadingIcon = { Icon(Icons.Default.Search, null) },
-                singleLine = true
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 8.dp),
+                    placeholder = { Text(stringResource(R.string.search_apps)) },
+                    leadingIcon = { Icon(Icons.Default.Search, null) },
+                    singleLine = true
+                )
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, null)
+                    }
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.show_system_apps)) },
+                            onClick = {
+                                showSystemApps = !showSystemApps
+                                showMenu = false
+                            },
+                            trailingIcon = {
+                                Checkbox(checked = showSystemApps, onCheckedChange = null)
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         if (viewModel.isLoading) {
@@ -104,6 +140,10 @@ fun AppsScreen(viewModel: AppsViewModel) {
             onSetTimeLimit = {
                 showTimeLimitDialog = app
                 selectedApp = null
+            },
+            onManageRestrictions = {
+                showRestrictionsDialog = app
+                selectedApp = null
             }
         )
     }
@@ -118,6 +158,20 @@ fun AppsScreen(viewModel: AppsViewModel) {
                     viewModel.setAppReopenTime(app.packageName, reopeningSeconds)
                 }
                 showTimeLimitDialog = null
+            }
+        )
+    }
+
+    showRestrictionsDialog?.let { app ->
+        AppRestrictionsDialog(
+            app = app,
+            viewModel = deviceOwnerViewModel,
+            onDismiss = { showRestrictionsDialog = null },
+            onSave = { restrictions ->
+                pendingAction = {
+                    deviceOwnerViewModel.setApplicationRestrictions(app.packageName, restrictions)
+                }
+                showRestrictionsDialog = null
             }
         )
     }
@@ -142,6 +196,94 @@ fun AppsScreen(viewModel: AppsViewModel) {
             )
         }
     }
+}
+
+@Composable
+fun AppRestrictionsDialog(
+    app: AppItem,
+    viewModel: DeviceOwnerViewModel,
+    onDismiss: () -> Unit,
+    onSave: (Bundle) -> Unit
+) {
+    val availableRestrictions = remember { viewModel.getAvailableRestrictions(app.packageName) }
+    val currentRestrictions = remember { viewModel.getApplicationRestrictions(app.packageName) }
+    
+    val selectedRestrictions = remember { 
+        val map = mutableStateMapOf<String, Boolean>()
+        availableRestrictions.forEach { entry ->
+            if (entry.type == RestrictionEntry.TYPE_BOOLEAN) {
+                map[entry.key] = currentRestrictions.getBoolean(entry.key, entry.selectedState)
+            }
+        }
+        map
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.manage_app_restrictions)) },
+        text = {
+            if (availableRestrictions.isEmpty()) {
+                Text(stringResource(R.string.no_restrictions_available, app.name))
+            } else {
+                Column {
+                    Text(
+                        stringResource(R.string.restrictions_available, app.name),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                        items(availableRestrictions) { entry ->
+                            if (entry.type == RestrictionEntry.TYPE_BOOLEAN) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedRestrictions[entry.key] =
+                                                !(selectedRestrictions[entry.key] ?: false)
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            entry.title ?: entry.key,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        if (entry.description != null) {
+                                            Text(
+                                                entry.description,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        }
+                                    }
+                                    Checkbox(
+                                        checked = selectedRestrictions[entry.key] ?: false,
+                                        onCheckedChange = { selectedRestrictions[entry.key] = it }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val bundle = Bundle()
+                selectedRestrictions.forEach { (key, value) ->
+                    bundle.putBoolean(key, value)
+                }
+                onSave(bundle)
+            }) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -227,7 +369,8 @@ fun AppActionDialog(
     onDismiss: () -> Unit,
     onBlock: () -> Unit,
     onToggleUninstall: () -> Unit,
-    onSetTimeLimit: () -> Unit
+    onSetTimeLimit: () -> Unit,
+    onManageRestrictions: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -236,9 +379,14 @@ fun AppActionDialog(
             Column {
                 Text(stringResource(R.string.manage_restrictions, app.packageName))
                 Spacer(Modifier.height(16.dp))
-                Button(onClick = onSetTimeLimit, modifier = Modifier.fillMaxWidth()) {
+                TextButton(onClick = onSetTimeLimit, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Timer, null)
                     Text(stringResource(R.string.set_time_limit))
+                }
+                Spacer(Modifier.height(16.dp))
+                TextButton(onClick = onManageRestrictions, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Settings, null)
+                    Text(stringResource(R.string.manage_app_restrictions))
                 }
             }
         },

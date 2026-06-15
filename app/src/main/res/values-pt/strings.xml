@@ -115,4 +115,8 @@
     <string name="no_apps">Nenhum app selecionado</string>
     <string name="blocked_words_list">Lista de palavras bloqueadas</string>
     <string name="one_word_per_line">Uma palavra por linha</string>
+    <string name="manage_app_restrictions">Configurações gerenciadas</string>
+    <string name="no_restrictions_available">Nenhuma configuração gerenciada disponível para %1$s.</string>
+    <string name="show_system_apps">Mostrar apps do sistema</string>
+    <string name="restrictions_available">Restrições disponíveis para %1$s</string>
 </resources>

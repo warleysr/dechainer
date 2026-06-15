@@ -72,9 +72,6 @@ class AppsViewModel : ViewModel() {
                             
                             val timeLimit = prefs.getInt(packageName, 0)
                             
-                            // Filter: Only show non-system apps OR system apps interacted with (hidden/protected/limited)
-                            if (isSystem && !isHidden && !isUninstallBlocked && timeLimit == 0) return@mapNotNull null
-                            
                             AppItem(
                                 name = appInfo.loadLabel(packageManager).toString(),
                                 packageName = packageName,
