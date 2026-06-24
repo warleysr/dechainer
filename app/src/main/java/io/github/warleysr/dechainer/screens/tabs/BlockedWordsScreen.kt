@@ -93,10 +93,10 @@ fun BlockedWordsScreen(
     }
 
     if (showRecoveryDialog) {
-        val storedHash = SecurityManager.getRecoveryHash(LocalContext.current)
+        val storedCode = SecurityManager.getRecoveryCode(LocalContext.current)
         RecoveryConfirmDialog(
             onConfirm = { code ->
-                if (SecurityManager.validatePassphrase(code, storedHash!!)) {
+                if (SecurityManager.validateRecoveryCode(code, storedCode!!)) {
                     showRecoveryDialog = false
                     changingAppPackage?.let { viewModel.toggleAppSelection(it) }
                     changingAppPackage = null

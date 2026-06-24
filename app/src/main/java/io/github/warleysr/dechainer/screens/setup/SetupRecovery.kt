@@ -35,7 +35,7 @@ import io.github.warleysr.dechainer.security.SecurityManager
 fun SetupRecovery(paddingValues: PaddingValues) {
     var showGenerateDialog by remember { mutableStateOf(false) }
     var confirmKeySaved by remember { mutableStateOf(false) }
-    val generatedKey by remember { mutableStateOf(SecurityManager.generatePassphrase()) }
+    val generatedKey by remember { mutableStateOf(SecurityManager.generateRecoveryCode()) }
     val context = LocalContext.current
     Column(
         modifier = Modifier.padding(paddingValues).fillMaxSize(),
@@ -48,7 +48,7 @@ fun SetupRecovery(paddingValues: PaddingValues) {
                     TextButton(
                         enabled = confirmKeySaved,
                         onClick = {
-                            SecurityManager.saveRecoveryHash(context, generatedKey)
+                            SecurityManager.saveRecoveryCode(context, generatedKey)
                         }
                     ) {
                         Text(stringResource(R.string.proceed))

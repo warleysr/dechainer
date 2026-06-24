@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
 
-                    if (!(SecurityManager.isRecoveryPhraseSet(this)))
+                    if (!(SecurityManager.isRecoveryCodeSet(this)))
                         SetupRecovery(innerPadding)
                     else {
                         Box(modifier = Modifier.padding(innerPadding)) {

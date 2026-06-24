@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import java.security.MessageDigest
 import java.security.SecureRandom
 import androidx.core.content.edit
 
@@ -17,7 +16,7 @@ class SecurityManager {
         
         var sessionEndTime by mutableLongStateOf(0L)
             private set
-            
+
         fun isSessionActive(): Boolean = System.currentTimeMillis() < sessionEndTime
 
         private fun startSession() {
@@ -28,39 +27,32 @@ class SecurityManager {
             sessionEndTime = 0L
         }
 
-        fun generatePassphrase(length: Int = 16): String {
+        fun generateRecoveryCode(length: Int = 16): String {
             val random = SecureRandom()
             return (1..length)
                 .map { CHAR_POOL[random.nextInt(CHAR_POOL.length)] }
                 .joinToString("")
         }
 
-        fun hashPhrase(phrase: String): String {
-            val bytes = MessageDigest.getInstance("SHA-256").digest(phrase.toByteArray())
-            return bytes.joinToString("") { "%02x".format(it) }
+        fun getRecoveryCode(context: Context) : String? {
+            return context.getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE).getString("recovery_code", null)
         }
 
-        fun getRecoveryHash(context: Context) : String? {
-            return context.getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE).getString("recovery_hash", null)
-        }
-
-        fun isRecoveryPhraseSet(context: Context) : Boolean  {
-            isRecoveryKeySet.value = getRecoveryHash(context) != null
+        fun isRecoveryCodeSet(context: Context) : Boolean  {
+            isRecoveryKeySet.value = getRecoveryCode(context) != null
             return isRecoveryKeySet.value
         }
 
-        fun saveRecoveryHash(context: Context, phrase: String) {
-            val hash = hashPhrase(phrase)
+        fun saveRecoveryCode(context: Context, code: String) {
             val prefs = context.getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE)
-            prefs.edit { putString("recovery_hash", hash) }
+            prefs.edit { putString("recovery_code", code) }
             isRecoveryKeySet.value = true
         }
 
-        fun validatePassphrase(userInput: String, storedHash: String): Boolean {
+        fun validateRecoveryCode(userInput: String, storedKey: String): Boolean {
             if (isSessionActive()) return true
 
-            val inputHash = hashPhrase(userInput)
-            val success =  inputHash == storedHash
+            val success =  userInput == storedKey
 
             if (success)
                 startSession()

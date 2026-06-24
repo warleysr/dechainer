@@ -190,14 +190,14 @@ fun BrowserRestrictionsScreen(
     }
 
     if (pendingAction != null) {
-        val storedHash = SecurityManager.getRecoveryHash(context)
-        if (storedHash == null) {
+        val storedCode = SecurityManager.getRecoveryCode(context)
+        if (storedCode == null) {
             pendingAction?.invoke()
             pendingAction = null
         } else {
             RecoveryConfirmDialog(
                 onConfirm = { code ->
-                    if (SecurityManager.validatePassphrase(code, storedHash)) {
+                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
                         pendingAction?.invoke()
                         pendingAction = null
                         true
