@@ -1,6 +1,7 @@
 package io.github.warleysr.dechainer
 
 import android.app.Application
+import io.github.warleysr.dechainer.security.SecurityManager
 
 class DechainerApplication : Application() {
 

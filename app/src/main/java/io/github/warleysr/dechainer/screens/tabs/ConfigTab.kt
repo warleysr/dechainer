@@ -8,9 +8,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.NoAdultContent
-import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +34,7 @@ import rikka.shizuku.Shizuku
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var showDnsDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showKeyboardDialog by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     
     val context = LocalContext.current
@@ -42,6 +43,9 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
         viewModel.isAccessibilityGranted()
     else
         blockerPrefs.getBoolean("switch_blocker", false)
+
+    val securityPrefs = remember { context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE) }
+    var shuffleKeyboard by remember { mutableStateOf(securityPrefs.getBoolean("shuffle_keyboard", false)) }
 
     var blockSpecificActivity by remember { mutableStateOf(switchInitialState) }
 
@@ -120,6 +124,19 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
+        item {
+            val keyboardLabel = if (shuffleKeyboard)
+                stringResource(R.string.keyboard_shuffle)
+            else
+                stringResource(R.string.keyboard_normal)
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.keyboard_type)) },
+                supportingContent = { Text(keyboardLabel) },
+                leadingContent = { Icon(Icons.Outlined.Keyboard, "") },
+                modifier = Modifier.clickable { showKeyboardDialog = true }
+            )
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        }
     }
 
     if (showDnsDialog) {
@@ -146,15 +163,30 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
         )
     }
 
+    if (showKeyboardDialog) {
+        KeyboardTypeDialog(
+            currentShuffle = shuffleKeyboard,
+            onDismiss = { showKeyboardDialog = false },
+            onApply = { isShuffle ->
+                val action = {
+                    shuffleKeyboard = isShuffle
+                    securityPrefs.edit { putBoolean("shuffle_keyboard", isShuffle) }
+                    showKeyboardDialog = false
+                }
+                pendingAction = action
+            }
+        )
+    }
+
     if (pendingAction != null) {
-        val storedHash = SecurityManager.getRecoveryHash(context)
-        if (storedHash == null || SecurityManager.isSessionActive()) {
+        val storedCode = SecurityManager.getRecoveryCode(context)
+        if (storedCode == null || SecurityManager.isSessionActive()) {
             pendingAction?.invoke()
             pendingAction = null
         } else {
             RecoveryConfirmDialog(
                 onConfirm = { code ->
-                    if (SecurityManager.validatePassphrase(code, storedHash)) {
+                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
                         pendingAction?.invoke()
                         pendingAction = null
                         true
@@ -324,6 +356,67 @@ fun LanguageSelectionDialog(
             TextButton(
                 onClick = { onApply(selectedOption) }
             ) {
+                Text(stringResource(R.string.apply))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun KeyboardTypeDialog(
+    currentShuffle: Boolean,
+    onDismiss: () -> Unit,
+    onApply: (Boolean) -> Unit
+) {
+    var selectedShuffle by remember { mutableStateOf(currentShuffle) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.keyboard_type)) },
+        text = {
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedShuffle = false }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = !selectedShuffle, onClick = { selectedShuffle = false })
+                    Column(Modifier.padding(start = 8.dp)) {
+                        Text(stringResource(R.string.keyboard_normal), fontWeight = FontWeight.Bold)
+                        Text(
+                            stringResource(R.string.keyboard_normal_desc),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedShuffle = true }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(selected = selectedShuffle, onClick = { selectedShuffle = true })
+                    Column(Modifier.padding(start = 8.dp)) {
+                        Text(stringResource(R.string.keyboard_shuffle), fontWeight = FontWeight.Bold)
+                        Text(
+                            stringResource(R.string.keyboard_shuffle_desc),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onApply(selectedShuffle) }) {
                 Text(stringResource(R.string.apply))
             }
         },

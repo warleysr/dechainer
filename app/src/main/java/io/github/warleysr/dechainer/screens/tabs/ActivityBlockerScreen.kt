@@ -17,7 +17,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -25,7 +24,6 @@ import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.viewmodels.ActivityBlockerViewModel
-import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import io.github.warleysr.dechainer.viewmodels.GroupedActivityLog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -121,14 +119,14 @@ fun ActivityBlockerScreen(
     }
 
     if (pendingAction != null) {
-        val storedHash = SecurityManager.getRecoveryHash(context)
-        if (storedHash == null) {
+        val storedCode = SecurityManager.getRecoveryCode(context)
+        if (storedCode == null) {
             pendingAction?.invoke()
             pendingAction = null
         } else {
             RecoveryConfirmDialog(
                 onConfirm = { code ->
-                    if (SecurityManager.validatePassphrase(code, storedHash)) {
+                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
                         pendingAction?.invoke()
                         pendingAction = null
                         true

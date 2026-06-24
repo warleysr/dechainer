@@ -119,4 +119,11 @@
     <string name="no_restrictions_available">No managed configurations available for %1$s.</string>
     <string name="show_system_apps">Show system apps</string>
     <string name="restrictions_available">Restrictions available for %1$s</string>
+
+    <string name="keyboard_type">Keyboard type</string>
+    <string name="keyboard_normal">Normal Keyboard</string>
+    <string name="keyboard_normal_desc">Standard text field for entering the recovery code</string>
+    <string name="keyboard_shuffle">Shuffle Keyboard</string>
+    <string name="keyboard_shuffle_desc">4×4 grid that reshuffles after every tap to prevent position memorisation</string>
+    <string name="shuffle_keyboard_backspace">⌫ Delete last</string>
 </resources>

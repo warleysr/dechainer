@@ -2,14 +2,9 @@ package io.github.warleysr.dechainer.screens.tabs
 
 import android.os.UserManager
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
@@ -81,14 +76,14 @@ fun RestrictionsTab(
     }
 
     if (showConfirmDialog) {
-        val storedHash = SecurityManager.getRecoveryHash(context)
-        if (storedHash == null) {
+        val storedCode = SecurityManager.getRecoveryCode(context)
+        if (storedCode == null) {
             restrictionsViewModel.applyChanges()
             showConfirmDialog = false
         } else {
             RecoveryConfirmDialog(
                 onConfirm = { code ->
-                    if (SecurityManager.validatePassphrase(code, storedHash)) {
+                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
                         restrictionsViewModel.applyChanges()
                         showConfirmDialog = false
                         true
