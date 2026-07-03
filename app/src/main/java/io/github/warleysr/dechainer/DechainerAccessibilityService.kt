@@ -73,7 +73,6 @@ class DechainerAccessibilityService : AccessibilityService() {
                 applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
             if (!dpm.isAdminActive(admin)) return
-
             dpm.setPackagesSuspended(admin, arrayOf(packageName), true)
         }
     }
@@ -193,7 +192,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (event.packageName == packageName) return
 
         if (event.className == "com.android.settings.SubSettings") {
-            val rootNode = rootInActiveWindow
+            val rootNode = event.source
             if (rootNode != null) {
                 preventDisableService(rootNode)
                 rootNode.recycle()
@@ -354,7 +353,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private fun preventDisableService(node: AccessibilityNodeInfo?) {
         if (node == null) return
-        if (node.text != null && node.text.toString() == getString(R.string.accessibility_description)) {
+        if (node.text != null && node.text.toString() == getString(R.string.app_name)) {
             performGlobalAction(GLOBAL_ACTION_BACK)
         }
         for (i in 0 until node.childCount) {
