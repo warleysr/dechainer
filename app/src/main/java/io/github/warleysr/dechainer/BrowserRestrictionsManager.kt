@@ -73,6 +73,7 @@ class BrowserRestrictionsManager(private val context: Context) {
 
         val restrictions = Bundle().apply {
             putStringArray("URLBlocklist", allSites.toTypedArray())
+            putBoolean("ForceGoogleSafeSearch", true)
         }
 
         getPossibleBrowsers().forEach { info ->
