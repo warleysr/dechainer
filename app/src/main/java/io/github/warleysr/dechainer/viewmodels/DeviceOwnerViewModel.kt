@@ -379,7 +379,9 @@ class DeviceOwnerViewModel() : ViewModel() {
     }
 
     fun setApplicationRestrictions(packageName: String, restrictions: Bundle) {
-        dpm.setApplicationRestrictions(adminName, packageName, restrictions)
+        val current = dpm.getApplicationRestrictions(adminName, packageName)
+        current.putAll(restrictions)
+        dpm.setApplicationRestrictions(adminName, packageName, current)
     }
 
     fun getAvailableRestrictions(packageName: String): List<RestrictionEntry> {

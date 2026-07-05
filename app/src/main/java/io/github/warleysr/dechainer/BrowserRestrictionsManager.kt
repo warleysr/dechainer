@@ -1,19 +1,16 @@
 package io.github.warleysr.dechainer
 
 import android.content.RestrictionsManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ResolveInfo
 import android.os.Bundle
 import org.json.JSONArray
-import android.app.admin.DevicePolicyManager
 import android.content.pm.PackageManager
 import androidx.core.net.toUri
+import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 
 class BrowserRestrictionsManager(private val context: Context) {
-    private val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    private val adminName = ComponentName(context, DechainerDeviceAdminReceiver::class.java)
 
     fun getPossibleBrowsers(): List<ResolveInfo> {
         val pm = context.packageManager
@@ -71,14 +68,13 @@ class BrowserRestrictionsManager(private val context: Context) {
             }
         } catch (e: Exception) { e.printStackTrace() }
 
-        val restrictions = Bundle().apply {
+        val urlRestrictions = Bundle().apply {
             putStringArray("URLBlocklist", allSites.toTypedArray())
         }
 
+        val viewModel = DeviceOwnerViewModel()
         getPossibleBrowsers().forEach { info ->
-            try {
-                dpm.setApplicationRestrictions(adminName, info.activityInfo.packageName, restrictions)
-            } catch (e: Exception) { e.printStackTrace() }
+            viewModel.setApplicationRestrictions(info.activityInfo.packageName, urlRestrictions)
         }
     }
 }
