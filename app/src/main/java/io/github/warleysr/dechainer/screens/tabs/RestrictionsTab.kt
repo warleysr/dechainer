@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
@@ -60,7 +62,8 @@ fun RestrictionsTab(
                     keys = restrictionsViewModel.otherKeys,
                     viewModel = restrictionsViewModel,
                     labelMap = getLabelMap(),
-                    defaultExpanded = false
+                    defaultExpanded = false,
+                    showSearch = true
                 )
             }
             
@@ -104,10 +107,25 @@ private fun RestrictionAccordion(
     keys: List<String>,
     viewModel: RestrictionsViewModel,
     labelMap: Map<String, Int>,
-    defaultExpanded: Boolean
+    defaultExpanded: Boolean,
+    showSearch: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
-    val isAllEnabled = viewModel.isAllDraftsEnabled(keys)
+    var searchQuery by remember { mutableStateOf("") }
+    val resources = DechainerApplication.getInstance().resources
+
+    val filteredKeys = remember(keys, searchQuery, labelMap) {
+        if (searchQuery.isEmpty()) {
+            keys
+        } else {
+            keys.filter { key ->
+                val label = labelMap[key]?.let { resources.getString(it) } ?: key
+                label.contains(searchQuery, ignoreCase = true) || key.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+
+    val isAllEnabled = viewModel.isAllDraftsEnabled(filteredKeys)
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth()
@@ -122,7 +140,7 @@ private fun RestrictionAccordion(
             ) {
                 Checkbox(
                     checked = isAllEnabled,
-                    onCheckedChange = { viewModel.toggleAllDrafts(keys, it) }
+                    onCheckedChange = { viewModel.toggleAllDrafts(filteredKeys, it) }
                 )
                 Text(
                     text = title,
@@ -144,7 +162,20 @@ private fun RestrictionAccordion(
                 ) {
                     HorizontalDivider(modifier = Modifier.padding(bottom = 8.dp))
                     
-                    keys.forEach { key ->
+                    if (showSearch) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            placeholder = { Text(stringResource(R.string.search_restrictions)) },
+                            leadingIcon = { Icon(Icons.Default.Search, null) },
+                            singleLine = true
+                        )
+                    }
+
+                    filteredKeys.forEach { key ->
                         RestrictionItem(
                             label = if (labelMap.containsKey(key)) stringResource(labelMap[key]!!) else key,
                             checked = viewModel.draftRestrictions[key] == true,
