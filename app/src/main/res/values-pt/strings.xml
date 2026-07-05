@@ -118,7 +118,6 @@
     <string name="manage_app_restrictions">Configurações gerenciadas</string>
     <string name="no_restrictions_available">Nenhuma configuração gerenciada disponível para %1$s.</string>
     <string name="show_system_apps">Mostrar apps do sistema</string>
-    <string name="restrictions_available">Restrições disponíveis para %1$s</string>
 
     <string name="keyboard_type">Tipo de teclado</string>
     <string name="keyboard_normal">Teclado Normal</string>
@@ -126,4 +125,7 @@
     <string name="keyboard_shuffle">Teclado Shuffle</string>
     <string name="keyboard_shuffle_desc">Grade 4×4 que embaralha após cada toque para evitar memorização de posições</string>
     <string name="shuffle_keyboard_backspace">⌫ Apagar último</string>
+    <string name="search_restrictions">Buscar restrições...</string>
+    <string name="list_title">Título da lista</string>
+    <string name="sites_lines">Sites (um por linha)</string>
 </resources>
