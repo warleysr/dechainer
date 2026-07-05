@@ -1,5 +1,6 @@
 package io.github.warleysr.dechainer.screens.tabs
 
+import android.app.admin.DevicePolicyManager
 import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,16 +29,21 @@ import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.LocaleUtils
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 
 @Composable
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var showDnsDialog by remember { mutableStateOf(false) }
+    var dnsErrorRes by remember { mutableStateOf<Int?>(null) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showKeyboardDialog by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val blockerPrefs = remember { context.getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE) }
     val switchInitialState = if (Shizuku.pingBinder())
         viewModel.isAccessibilityGranted()
@@ -74,7 +80,10 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     Text( stringResource(R.string.dns_description))
                 },
                 leadingContent = { Icon(Icons.Outlined.Dns, "") },
-                modifier = Modifier.clickable { showDnsDialog = true }
+                modifier = Modifier.clickable { 
+                    dnsErrorRes = null
+                    showDnsDialog = true 
+                }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
@@ -140,15 +149,30 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     }
 
     if (showDnsDialog) {
-        val currentDns = context.getSharedPreferences("dns_prefs", Context.MODE_PRIVATE)
-            .getString("private_dns_host", null)
+        val currentDns = viewModel.getPrivateDNS()
         DnsSelectionDialog(
             currentDns = currentDns,
+            errorRes = dnsErrorRes,
             onDismiss = { showDnsDialog = false },
             onApply = { host ->
-                val action = { applyDns(context, viewModel, host) }
+                val action = {
+                    dnsErrorRes = null
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) {
+                            viewModel.setPrivateDNS(host)
+                        }
+                        if (result == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR) {
+                            showDnsDialog = false
+                        } else {
+                            dnsErrorRes = when (result) {
+                                DevicePolicyManager.PRIVATE_DNS_SET_ERROR_HOST_NOT_SERVING -> R.string.dns_error_not_serving
+                                else -> R.string.dns_error_failure
+                            }
+                        }
+                    }
+                    Unit
+                }
                 pendingAction = action
-                showDnsDialog = false
             }
         )
     }
@@ -198,21 +222,12 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     }
 }
 
-private fun applyDns(context: Context, viewModel: DeviceOwnerViewModel, host: String?) {
-    viewModel.setPrivateDNS(host)
-    val prefs = context.getSharedPreferences("dns_prefs", Context.MODE_PRIVATE)
-    if (host == null) {
-        prefs.edit { remove("private_dns_host") }
-    } else {
-        prefs.edit { putString("private_dns_host", host) }
-    }
-}
-
 @Composable
 fun DnsSelectionDialog(
     currentDns: String?,
+    errorRes: Int? = null,
     onDismiss: () -> Unit,
-    onApply: (String?) -> Unit
+    onApply: (String) -> Unit
 ) {
     val options = listOf(
         "Cloudflare" to "family.cloudflare-dns.com",
@@ -223,9 +238,9 @@ fun DnsSelectionDialog(
     var selectedOption by remember { 
         mutableStateOf(
             when {
-                currentDns == null -> "none"
                 options.any { it.second == currentDns } -> currentDns
-                else -> "custom"
+                currentDns != null -> "custom"
+                else -> null
             }
         )
     }
@@ -240,17 +255,6 @@ fun DnsSelectionDialog(
         title = { Text(stringResource(R.string.dns_settings)) },
         text = {
             Column {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedOption = "none" }
-                        .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(selected = selectedOption == "none", onClick = { selectedOption = "none" })
-                    Text(stringResource(R.string.none), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
-                }
-
                 options.forEach { (name, host) ->
                     Row(
                         modifier = Modifier
@@ -280,7 +284,9 @@ fun DnsSelectionDialog(
                     OutlinedTextField(
                         value = customHost,
                         onValueChange = { customHost = it },
-                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
                         placeholder = { Text(stringResource(R.string.dns_host_hint)) },
                         singleLine = true,
                         isError = !isCustomValid && customHost.isNotEmpty(),
@@ -291,19 +297,26 @@ fun DnsSelectionDialog(
                         }
                     )
                 }
+                if (errorRes != null) {
+                    Text(
+                        text = stringResource(errorRes),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         },
         confirmButton = {
-            val canApply = selectedOption != "custom" || isCustomValid
+            val canApply = selectedOption != null && (selectedOption != "custom" || isCustomValid)
             TextButton(
                 enabled = canApply,
                 onClick = { 
                     val finalHost = when(selectedOption) {
-                        "none" -> null
                         "custom" -> customHost
                         else -> selectedOption
                     }
-                    onApply(finalHost) 
+                    onApply(finalHost!!)
                 }
             ) {
                 Text(stringResource(R.string.apply))
