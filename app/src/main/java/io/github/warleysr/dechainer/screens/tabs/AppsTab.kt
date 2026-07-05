@@ -27,10 +27,13 @@ import io.github.warleysr.dechainer.viewmodels.AppItem
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -40,6 +43,7 @@ import android.content.RestrictionEntry
 import android.os.Bundle
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.Block
 
 @Composable
 fun AppsTab(
@@ -208,6 +212,15 @@ fun AppRestrictionsDialog(
     val availableRestrictions = remember { viewModel.getAvailableRestrictions(app.packageName) }
     val currentRestrictions = remember { viewModel.getApplicationRestrictions(app.packageName) }
     
+    var searchQuery by remember { mutableStateOf("") }
+    
+    val filteredRestrictions = remember(availableRestrictions, searchQuery) {
+        availableRestrictions.filter { entry ->
+            entry.title?.contains(searchQuery, ignoreCase = true) == true ||
+            entry.key.contains(searchQuery, ignoreCase = true)
+        }
+    }
+    
     val selectedRestrictions = remember { 
         val map = mutableStateMapOf<String, Boolean>()
         availableRestrictions.forEach { entry ->
@@ -220,46 +233,80 @@ fun AppRestrictionsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.manage_app_restrictions)) },
+        title = { Text(stringResource(R.string.manage_restrictions, app.name)) },
         text = {
             if (availableRestrictions.isEmpty()) {
                 Text(stringResource(R.string.no_restrictions_available, app.name))
             } else {
                 Column {
-                    Text(
-                        stringResource(R.string.restrictions_available, app.name),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        placeholder = { Text(stringResource(R.string.search_restrictions)) },
+                        leadingIcon = { Icon(Icons.Default.Search, null) },
+                        singleLine = true
                     )
                     LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                        items(availableRestrictions) { entry ->
+                        items(filteredRestrictions, key = { it.key }) { entry ->
                             if (entry.type == RestrictionEntry.TYPE_BOOLEAN) {
-                                Row(
+                                var expanded by remember { mutableStateOf(false) }
+                                Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            selectedRestrictions[entry.key] =
-                                                !(selectedRestrictions[entry.key] ?: false)
-                                        }
-                                        .padding(vertical = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
+                                        .padding(vertical = 4.dp)
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            entry.title ?: entry.key,
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        if (entry.description != null) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clickable { expanded = !expanded }
+                                                .padding(vertical = 4.dp)
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Text(
+                                                    entry.title ?: entry.key,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    modifier = Modifier.weight(1f, fill = false)
+                                                )
+                                                Icon(
+                                                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(20.dp).padding(start = 4.dp),
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
                                             Text(
-                                                entry.description,
-                                                style = MaterialTheme.typography.bodySmall
+                                                entry.key,
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontFamily = FontFamily.Monospace,
+                                                    color = MaterialTheme.colorScheme.secondary
+                                                )
                                             )
                                         }
+                                        Checkbox(
+                                            checked = selectedRestrictions[entry.key] ?: false,
+                                            onCheckedChange = { selectedRestrictions[entry.key] = it }
+                                        )
                                     }
-                                    Checkbox(
-                                        checked = selectedRestrictions[entry.key] ?: false,
-                                        onCheckedChange = { selectedRestrictions[entry.key] = it }
-                                    )
+                                    if (expanded && entry.description != null) {
+                                        Text(
+                                            entry.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            modifier = Modifier.padding(
+                                                start = 8.dp,
+                                                end = 32.dp,
+                                                bottom = 8.dp
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -385,7 +432,7 @@ fun AppActionDialog(
                 }
                 Spacer(Modifier.height(16.dp))
                 TextButton(onClick = onManageRestrictions, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Settings, null)
+                    Icon(Icons.Default.Block, null)
                     Text(stringResource(R.string.manage_app_restrictions))
                 }
             }

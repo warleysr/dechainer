@@ -26,18 +26,23 @@ import io.github.warleysr.dechainer.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.viewmodels.AppItem
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.BlockedList
 import io.github.warleysr.dechainer.viewmodels.BrowserRestrictionsViewModel
+import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import io.github.warleysr.dechainer.viewmodels.BrowserApp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BrowserRestrictionsScreen(
     viewModel: BrowserRestrictionsViewModel = viewModel(),
-    appsViewModel: AppsViewModel = viewModel()
+    appsViewModel: AppsViewModel = viewModel(),
+    deviceOwnerViewModel: DeviceOwnerViewModel = viewModel()
 ) {
     var showEditDialog by remember { mutableStateOf<BlockedList?>(null) }
     var isCreatingNew by remember { mutableStateOf(false) }
+    var showRestrictionsDialog by remember { mutableStateOf<BrowserApp?>(null) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val context = LocalContext.current
 
@@ -60,6 +65,9 @@ fun BrowserRestrictionsScreen(
                             val manager = BrowserRestrictionsManager(context)
                             val notSupported = !manager.supportsRestrictions(browser.packageName)
                             ListItem(
+                                modifier = Modifier.clickable(enabled = !notSupported) {
+                                    showRestrictionsDialog = browser
+                                },
                                 headlineContent = { Text(browser.name) },
                                 supportingContent = {
                                     Column {
@@ -135,6 +143,27 @@ fun BrowserRestrictionsScreen(
         }
     }
 
+    showRestrictionsDialog?.let { browser ->
+        AppRestrictionsDialog(
+            app = AppItem(
+                name = browser.name,
+                packageName = browser.packageName,
+                icon = browser.icon,
+                isSystem = false,
+                isHidden = false,
+                isUninstallBlocked = false
+            ),
+            viewModel = deviceOwnerViewModel,
+            onDismiss = { showRestrictionsDialog = null },
+            onSave = { restrictions ->
+                pendingAction = {
+                    deviceOwnerViewModel.setApplicationRestrictions(browser.packageName, restrictions)
+                }
+                showRestrictionsDialog = null
+            }
+        )
+    }
+
     if (showEditDialog != null) {
         val currentList = showEditDialog!!
         var title by remember { mutableStateOf(currentList.title) }
@@ -154,14 +183,14 @@ fun BrowserRestrictionsScreen(
                     OutlinedTextField(
                         value = title,
                         onValueChange = { title = it },
-                        label = { Text("Título da Lista") },
+                        label = { Text(stringResource(R.string.list_title)) },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = sites,
                         onValueChange = { sites = it },
-                        label = { Text("Sites (um por linha)") },
+                        label = { Text(stringResource(R.string.sites_lines)) },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 5
                     )

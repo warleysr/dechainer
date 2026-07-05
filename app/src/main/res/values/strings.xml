@@ -115,10 +115,9 @@
     <string name="no_apps">No apps selected</string>
     <string name="blocked_words_list">Blocked words list</string>
     <string name="one_word_per_line">One word per line</string>
-    <string name="manage_app_restrictions">Managed configurations</string>
-    <string name="no_restrictions_available">No managed configurations available for %1$s.</string>
+    <string name="manage_app_restrictions">App restrictions</string>
+    <string name="no_restrictions_available">No restrictions available for %1$s.</string>
     <string name="show_system_apps">Show system apps</string>
-    <string name="restrictions_available">Restrictions available for %1$s</string>
 
     <string name="keyboard_type">Keyboard type</string>
     <string name="keyboard_normal">Normal Keyboard</string>
@@ -126,4 +125,7 @@
     <string name="keyboard_shuffle">Shuffle Keyboard</string>
     <string name="keyboard_shuffle_desc">4×4 grid that reshuffles after every tap to prevent position memorisation</string>
     <string name="shuffle_keyboard_backspace">⌫ Delete last</string>
+    <string name="search_restrictions">Search restrictions...</string>
+    <string name="list_title">List title</string>
+    <string name="sites_lines">Sites (one per line)</string>
 </resources>
