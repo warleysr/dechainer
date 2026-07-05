@@ -140,65 +140,15 @@ class DeviceOwnerViewModel() : ViewModel() {
             })
     }
 
-    fun setPrivateDNS(host: String?) {
-        dpm.clearUserRestriction(adminName, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
-
-        val dnsMode = if (host != null) "hostname" else "opportunistic"
-        ShizukuRunner.command(
-            command = "settings put global private_dns_mode $dnsMode",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                }
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                }
-            }
-        )
-        if (host != null)
-            ShizukuRunner.command(
-                command = "settings put global private_dns_specifier $host",
-                listener = object : ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        println("Output: $output Done: $done")
-                    }
-                    override fun onCommandError(error: String) {
-                        Log.e("Shizuku", error)
-                    }
-                }
-            )
-
-        dpm.addUserRestriction(adminName, UserManager.DISALLOW_CONFIG_PRIVATE_DNS)
-
-        ShizukuRunner.command(
-            command = "cmd connectivity airplane-mode enable",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                }
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                }
-            }
-        )
-
-        viewModelScope.launch {
-            delay(2000)
-            ShizukuRunner.command(
-                command = "cmd connectivity airplane-mode disable",
-                listener = object : ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        println("Output: $output Done: $done")
-                    }
-                    override fun onCommandError(error: String) {
-                        Log.e("Shizuku", error)
-                    }
-                }
-            )
-        }
-
+    fun setPrivateDNS(host: String): Int {
+        return dpm.setGlobalPrivateDnsModeSpecifiedHost(adminName, host)
     }
 
+    fun getPrivateDNS(): String? {
+        if (dpm.getGlobalPrivateDnsMode(adminName) != DevicePolicyManager.PRIVATE_DNS_MODE_PROVIDER_HOSTNAME)
+            return null
+        return dpm.getGlobalPrivateDnsHost(adminName)
+    }
 
     fun getAllAccountsViaShizuku(): List<Pair<String, String>> {
         val accounts = mutableListOf<Pair<String, String>>()

@@ -71,6 +71,8 @@
     <string name="dns_host_hint">Ex: dns.example.com</string>
     <string name="none">None</string>
     <string name="invalid_dns_host">Invalid DNS host</string>
+    <string name="dns_error_not_serving">The specified host does not provide DNS service</string>
+    <string name="dns_error_failure">Failed to apply private DNS</string>
 
     <string name="browser_restrictions">Browser restrictions</string>
     <string name="browser_restrictions_desc">Manage browser permissions and blocked sites</string>
