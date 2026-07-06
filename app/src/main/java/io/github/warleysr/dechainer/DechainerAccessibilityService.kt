@@ -10,10 +10,10 @@ import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.runtime.mutableStateListOf
@@ -226,11 +226,16 @@ class DechainerAccessibilityService : AccessibilityService() {
             val pkg = currentPackage ?: return
             if (!targetPackages.contains(pkg)) return
 
-            val forbiddenWord = checkForbiddenWord(event.text[0].toString()) ?: return
+            val text = event.text.joinToString(" ")
+            val forbiddenWord = checkForbiddenWord(text) ?: return
 
-            Log.d("Dechainer", "FORBIDDEN WORD: $forbiddenWord")
+            val arguments = Bundle()
+            arguments.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                text.replace(forbiddenWord, "")
+            )
 
-            suspendPackage(pkg, true)
+            event.source?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
             serviceScope.launch {
                 withContext(Dispatchers.Main) {
@@ -243,8 +248,6 @@ class DechainerAccessibilityService : AccessibilityService() {
                     startActivity(intent)
                 }
             }
-
-            suspendPackage(pkg, false)
         }
     }
 
