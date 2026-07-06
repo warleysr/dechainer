@@ -25,9 +25,7 @@ import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
 import io.github.warleysr.dechainer.activities.TimeUpActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -51,8 +49,6 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    @Volatile private var isBlocking = false
-
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != Intent.ACTION_PACKAGE_ADDED) return
@@ -69,11 +65,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 return
             }
 
-            val dpm =
-                applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
-            val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
-            if (!dpm.isAdminActive(admin)) return
-            dpm.setPackagesSuspended(admin, arrayOf(packageName), true)
+            suspendPackage(packageName)
         }
     }
 
@@ -227,21 +219,20 @@ class DechainerAccessibilityService : AccessibilityService() {
                     performGlobalAction(GLOBAL_ACTION_BACK)
             }
         }
-        else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+
+        else if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
+            if (event.source?.isEditable == false) return
+
             val pkg = currentPackage ?: return
             if (!targetPackages.contains(pkg)) return
 
-            val text = buildScreenText(event) ?: return
-            val forbiddenWord = checkForbiddenWord(text) ?: return
-
-            if (isBlocking) return
-            isBlocking = true
+            val forbiddenWord = checkForbiddenWord(event.text[0].toString()) ?: return
 
             Log.d("Dechainer", "FORBIDDEN WORD: $forbiddenWord")
-            performGlobalAction(GLOBAL_ACTION_BACK)
+
+            suspendPackage(pkg, true)
 
             serviceScope.launch {
-                delay(DEBOUNCE_MS)
                 withContext(Dispatchers.Main) {
                     val intent = Intent(
                         this@DechainerAccessibilityService, BlockedWordActivity::class.java
@@ -251,31 +242,19 @@ class DechainerAccessibilityService : AccessibilityService() {
                     }
                     startActivity(intent)
                 }
-                delay(DEBOUNCE_MS)
-                isBlocking = false
             }
+
+            suspendPackage(pkg, false)
         }
     }
 
-    private fun buildScreenText(event: AccessibilityEvent): String? {
-        val sb = StringBuilder()
-
-        event.text.forEach { sb.append(it).append(' ') }
-
-        event.source?.also { root ->
-            fun traverse(node: AccessibilityNodeInfo?) {
-                node ?: return
-                node.text?.let { sb.append(it).append(' ') }
-                node.contentDescription?.let { sb.append(it).append(' ') }
-                for (i in 0 until node.childCount) traverse(node.getChild(i))
-            }
-            traverse(root)
-            root.recycle()
-        }
-
-        return sb.toString().trim().takeIf { it.isNotBlank() }
+    private fun suspendPackage(packageName: String, suspend: Boolean = true) {
+        val dpm =
+            applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
+        if (!dpm.isAdminActive(admin)) return
+        dpm.setPackagesSuspended(admin, arrayOf(packageName), suspend)
     }
-
     private fun checkForbiddenWord(text: String): String? {
         forbiddenPatterns.forEach { (word: String, regex: Regex) ->
             if (regex.containsMatchIn(text))
