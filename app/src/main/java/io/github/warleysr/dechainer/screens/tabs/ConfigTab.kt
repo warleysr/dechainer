@@ -23,16 +23,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.LocaleUtils
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.core.content.edit
+import rikka.shizuku.Shizuku
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import rikka.shizuku.Shizuku
 
 @Composable
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
@@ -44,108 +45,115 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val blockerPrefs = remember { context.getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE) }
-    val switchInitialState = if (Shizuku.pingBinder())
-        viewModel.isAccessibilityGranted()
-    else
-        blockerPrefs.getBoolean("switch_blocker", false)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val shizukuNotRunningMsg = stringResource(R.string.shizuku_not_running)
 
     val securityPrefs = remember { context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE) }
     var shuffleKeyboard by remember { mutableStateOf(securityPrefs.getBoolean("shuffle_keyboard", false)) }
 
-    var blockSpecificActivity by remember { mutableStateOf(switchInitialState) }
+    val advancedBlocking = DechainerAccessibilityService.isRunning
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-        item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.device_owner_state)) },
-                supportingContent = { Text(stringResource(R.string.device_owner_description)) },
-                leadingContent = { Icon(Icons.Outlined.Adb, "") },
-                trailingContent = {
-                    val owner = viewModel.isDeviceOwner()
-                    val badgeColor = if (owner) Color(26, 163, 63) else Color.Red
-                    val badgeText = if (owner) stringResource(R.string.granted) else stringResource(R.string.not_granted)
-                    Badge(containerColor = badgeColor, contentColor = Color.White) {
-                        Text(badgeText, style = MaterialTheme.typography.bodyMedium)
-                    }
-                },
-                modifier = Modifier.clickable(onClick = { viewModel.navigateTo("setup_device_owner") })
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.dns_settings)) },
-                supportingContent = { 
-                    Text( stringResource(R.string.dns_description))
-                },
-                leadingContent = { Icon(Icons.Outlined.Dns, "") },
-                modifier = Modifier.clickable { 
-                    dnsErrorRes = null
-                    showDnsDialog = true 
-                }
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.browser_restrictions)) },
-                supportingContent = { Text(stringResource(R.string.browser_restrictions_desc)) },
-                leadingContent = { Icon(Icons.Outlined.Web, "") },
-                modifier = Modifier.clickable { viewModel.navigateTo("browser_restrictions") }
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.activity_blocker)) },
-                supportingContent = { Text(stringResource(R.string.activity_blocker_description)) },
-                leadingContent = { Icon(Icons.Outlined.Accessibility, "") },
-                trailingContent = {
-                    Switch(blockSpecificActivity, onCheckedChange = { checked ->
-                        val action = {
-                            blockSpecificActivity = checked
-                            blockerPrefs.edit { putBoolean("switch_blocker", checked) }
-                            viewModel.changeAccessibilityPermission(checked)
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.device_owner_state)) },
+                    supportingContent = { Text(stringResource(R.string.device_owner_description)) },
+                    leadingContent = { Icon(Icons.Outlined.Adb, "") },
+                    trailingContent = {
+                        val owner = viewModel.isDeviceOwner()
+                        val badgeColor = if (owner) Color(26, 163, 63) else Color.Red
+                        val badgeText = if (owner) stringResource(R.string.granted) else stringResource(R.string.not_granted)
+                        Badge(containerColor = badgeColor, contentColor = Color.White) {
+                            Text(badgeText, style = MaterialTheme.typography.bodyMedium)
                         }
-                        pendingAction = action
-                    })
-                },
-                modifier = Modifier.clickable { viewModel.navigateTo("activity_blocker") }
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    },
+                    modifier = Modifier.clickable(onClick = { viewModel.navigateTo("setup_device_owner") })
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.dns_settings)) },
+                    supportingContent = { 
+                        Text( stringResource(R.string.dns_description))
+                    },
+                    leadingContent = { Icon(Icons.Outlined.Dns, "") },
+                    modifier = Modifier.clickable { 
+                        dnsErrorRes = null
+                        showDnsDialog = true 
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.browser_restrictions)) },
+                    supportingContent = { Text(stringResource(R.string.browser_restrictions_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.Web, "") },
+                    modifier = Modifier.clickable { viewModel.navigateTo("browser_restrictions") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.activity_blocker)) },
+                    supportingContent = { Text(stringResource(R.string.activity_blocker_description)) },
+                    leadingContent = { Icon(Icons.Outlined.Accessibility, "") },
+                    trailingContent = {
+                        Switch(advancedBlocking, onCheckedChange = { checked ->
+                            if (!Shizuku.pingBinder()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(shizukuNotRunningMsg)
+                                }
+                                return@Switch
+                            }
+                            val action = {
+                                viewModel.changeAccessibilityPermission(checked)
+                            }
+                            pendingAction = action
+                        })
+                    },
+                    modifier = Modifier.clickable { viewModel.navigateTo("activity_blocker") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.blocked_words_feat)) },
+                    supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
+                    leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
+                    modifier = Modifier.clickable { viewModel.navigateTo("blocked_words") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.language_settings)) },
+                    supportingContent = { Text(stringResource(R.string.language_description)) },
+                    leadingContent = { Icon(Icons.Outlined.Language, "") },
+                    modifier = Modifier.clickable { showLanguageDialog = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                val keyboardLabel = if (shuffleKeyboard)
+                    stringResource(R.string.keyboard_shuffle)
+                else
+                    stringResource(R.string.keyboard_normal)
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.keyboard_type)) },
+                    supportingContent = { Text(keyboardLabel) },
+                    leadingContent = { Icon(Icons.Outlined.Keyboard, "") },
+                    modifier = Modifier.clickable { showKeyboardDialog = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
         }
-        item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.blocked_words_feat)) },
-                supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
-                leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
-                modifier = Modifier.clickable { viewModel.navigateTo("blocked_words") }
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        item {
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.language_settings)) },
-                supportingContent = { Text(stringResource(R.string.language_description)) },
-                leadingContent = { Icon(Icons.Outlined.Language, "") },
-                modifier = Modifier.clickable { showLanguageDialog = true }
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-        }
-        item {
-            val keyboardLabel = if (shuffleKeyboard)
-                stringResource(R.string.keyboard_shuffle)
-            else
-                stringResource(R.string.keyboard_normal)
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.keyboard_type)) },
-                supportingContent = { Text(keyboardLabel) },
-                leadingContent = { Icon(Icons.Outlined.Keyboard, "") },
-                modifier = Modifier.clickable { showKeyboardDialog = true }
-            )
-            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-        }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
     }
 
     if (showDnsDialog) {

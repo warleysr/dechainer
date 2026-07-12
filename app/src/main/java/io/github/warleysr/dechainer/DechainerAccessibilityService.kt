@@ -16,7 +16,10 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
@@ -123,6 +126,9 @@ class DechainerAccessibilityService : AccessibilityService() {
     }
 
     companion object {
+        var isRunning by mutableStateOf(false)
+            private set
+
         val accessedActivities = mutableStateListOf<ActivityLog>()
 
         data class ActivityLog(
@@ -138,12 +144,12 @@ class DechainerAccessibilityService : AccessibilityService() {
             accessedActivities.add(0, ActivityLog(packageName, className))
             if (accessedActivities.size > 100) accessedActivities.removeAt(accessedActivities.lastIndex)
         }
-
-        private const val DEBOUNCE_MS = 1000L
     }
 
-    override fun onCreate() {
-        super.onCreate()
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        isRunning = true
+
         limitPrefs = getSharedPreferences("app_limits", MODE_PRIVATE)
         usagePrefs = getSharedPreferences("internal_usage_stats", MODE_PRIVATE)
         reopenPrefs = getSharedPreferences("reopen_times", MODE_PRIVATE)
@@ -173,6 +179,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         limitPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         stopTrackingAndSave()
+        isRunning = false
         super.onDestroy()
     }
 
