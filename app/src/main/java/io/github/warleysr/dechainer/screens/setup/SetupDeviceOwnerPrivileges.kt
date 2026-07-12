@@ -42,15 +42,15 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
         modifier = Modifier.fillMaxSize()
     ) {
         when {
+            viewModel.isDeviceOwner() -> DeviceOwnerRemoveContent(
+                onRemoveAction = {
+                    pendingAction = { viewModel.processDeviceOwnerPrivileges(remove = true) }
+                }
+            )
             !shizukuInstalled -> ShizukuNotInstalledCard(viewModel)
             !shizukuRunning -> ShizukuNotRunningCard(viewModel)
             !viewModel.isShizukuPermissionGranted() -> ShizukuNoPermissionCard()
-            else -> DeviceOwnerSetupContent(
-                viewModel, 
-                onRemoveAction = {
-                    pendingAction = { viewModel.processDeviceOwnerPrivileges(true) }
-                }
-            )
+            else -> DeviceOwnerGrantContent(viewModel)
         }
     }
 
@@ -107,10 +107,7 @@ private fun ShizukuNoPermissionCard() {
 }
 
 @Composable
-private fun DeviceOwnerSetupContent(
-    viewModel: DeviceOwnerViewModel,
-    onRemoveAction: () -> Unit
-) {
+private fun DeviceOwnerGrantContent(viewModel: DeviceOwnerViewModel) {
     val accounts = remember { mutableStateListOf<Pair<String, String>>() }
     LaunchedEffect(Unit) {
         accounts.addAll(viewModel.getAllAccountsViaShizuku())
@@ -118,48 +115,48 @@ private fun DeviceOwnerSetupContent(
 
     val extraUsers = remember { viewModel.getExtraUsersInfo() }
 
-    if (!viewModel.isDeviceOwner()) {
-        when {
-            accounts.isNotEmpty() -> {
-                AccountWarningDialog(
-                    accounts = accounts,
-                    onDismiss = { accounts.clear() },
-                    getAppName = { type ->
-                        viewModel.getAppNameFromAccountType(
-                            DechainerApplication.getInstance(),
-                            type
-                        )
-                    }
-                )
-            }
-
-            extraUsers.isNotEmpty() -> {
-                UserWarningDialog(extraUsers = extraUsers)
-            }
-
-            else -> {
-                val currentDeviceOwner = viewModel.getCurrentDeviceOwner()
-                if (currentDeviceOwner != null) {
-                    ExistingOwnerDialog(
-                        ownerPackage = currentDeviceOwner.first
-                    )
-                } else {
-                    SetupStepCard(
-                        text = stringResource(R.string.privileges_description),
-                        buttonText = stringResource(R.string.get_owner_privileges),
-                        buttonIcon = Icons.Outlined.Adb,
-                        onClick = { viewModel.processDeviceOwnerPrivileges() }
+    when {
+        accounts.isNotEmpty() -> {
+            AccountWarningDialog(
+                accounts = accounts,
+                onDismiss = { accounts.clear() },
+                getAppName = { type ->
+                    viewModel.getAppNameFromAccountType(
+                        DechainerApplication.getInstance(),
+                        type
                     )
                 }
+            )
+        }
+
+        extraUsers.isNotEmpty() -> {
+            UserWarningDialog(extraUsers = extraUsers)
+        }
+
+        else -> {
+            val currentDeviceOwner = viewModel.getCurrentDeviceOwner()
+            if (currentDeviceOwner != null) {
+                ExistingOwnerDialog(
+                    ownerPackage = currentDeviceOwner.first
+                )
+            } else {
+                SetupStepCard(
+                    text = stringResource(R.string.privileges_description),
+                    buttonText = stringResource(R.string.get_owner_privileges),
+                    buttonIcon = Icons.Outlined.Adb,
+                    onClick = { viewModel.processDeviceOwnerPrivileges() }
+                )
             }
         }
     }
-    else {
-        SetupStepCard(
-            text = stringResource(R.string.remove_privileges_description),
-            buttonText = stringResource(R.string.remove_privileges),
-            buttonIcon = Icons.Outlined.DeleteForever,
-            onClick = onRemoveAction
-        )
-    }
+}
+
+@Composable
+private fun DeviceOwnerRemoveContent(onRemoveAction: () -> Unit) {
+    SetupStepCard(
+        text = stringResource(R.string.remove_privileges_description),
+        buttonText = stringResource(R.string.remove_privileges),
+        buttonIcon = Icons.Outlined.DeleteForever,
+        onClick = onRemoveAction
+    )
 }
