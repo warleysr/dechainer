@@ -61,7 +61,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
             val supportsRestrictions = manager.supportsRestrictions(packageName)
             if (supportsRestrictions) {
-                manager.applyRestrictions()
+                manager.applyRestrictions(installed = true)
                 return
             }
 

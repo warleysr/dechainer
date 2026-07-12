@@ -48,12 +48,13 @@ class BrowserRestrictionsManager(private val context: Context) {
         return try {
             val rm = context.getSystemService(Context.RESTRICTIONS_SERVICE) as RestrictionsManager
             rm.getManifestRestrictions(packageName).any { it.key == "URLBlocklist" }
+                    && rm.getManifestRestrictions(packageName).any { it.key == "ForceGoogleSafeSearch" }
         } catch (_: Exception) {
             false
         }
     }
 
-    fun applyRestrictions() {
+    fun applyRestrictions(installed: Boolean = false) {
         val prefs = context.getSharedPreferences("browser_prefs", Context.MODE_PRIVATE)
         val json = prefs.getString("blocked_lists_json", null) ?: return
 
@@ -70,6 +71,9 @@ class BrowserRestrictionsManager(private val context: Context) {
 
         val urlRestrictions = Bundle().apply {
             putStringArray("URLBlocklist", allSites.toTypedArray())
+
+            if (installed)
+                putBoolean("ForceGoogleSafeSearch", true)
         }
 
         val viewModel = DeviceOwnerViewModel()
