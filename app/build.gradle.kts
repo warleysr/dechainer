@@ -39,6 +39,19 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all {
+                // Force a neutral locale for the test JVM. On a Turkish (tr_TR)
+                // default locale, "Linux".lowercase() yields "lınux" (dotless i),
+                // which breaks native library name resolution in Conscrypt/Robolectric.
+                it.systemProperty("user.language", "en")
+                it.systemProperty("user.country", "US")
+            }
+        }
     }
 }
 
@@ -56,7 +69,14 @@ dependencies {
     implementation(libs.shizuku.provider)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.timber)
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.junit)
+    testImplementation(libs.androidx.test.core.ktx)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

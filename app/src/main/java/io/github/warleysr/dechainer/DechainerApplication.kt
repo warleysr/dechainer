@@ -2,6 +2,7 @@ package io.github.warleysr.dechainer
 
 import android.app.Application
 import io.github.warleysr.dechainer.security.SecurityManager
+import timber.log.Timber
 
 class DechainerApplication : Application() {
 
@@ -17,5 +18,9 @@ class DechainerApplication : Application() {
         super.onCreate()
 
         instance = this
+
+        if (BuildConfig.DEBUG) {
+            Timber.plant(Timber.DebugTree())
+        }
     }
 }
