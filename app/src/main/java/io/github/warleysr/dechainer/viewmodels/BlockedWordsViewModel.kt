@@ -35,11 +35,26 @@ class BlockedWordsViewModel : ViewModel() {
     var apps by mutableStateOf<List<AppSelectionItem>>(emptyList())
         private set
 
+    var passiveWordsMap by mutableStateOf<Map<String, String>>(emptyMap())
+        private set
+
     var isLoadingApps by mutableStateOf(false)
         private set
 
     init {
         loadApps()
+        loadPassiveWords()
+    }
+
+    private fun loadPassiveWords() {
+        val all = prefs.all
+        val map = all.filterKeys { it.startsWith("passive_words_") }
+            .map { (key, value) ->
+                val pkg = key.substringAfter("passive_words_")
+                val wordsSet = (value as? Set<*>)?.filterIsInstance<String>()?.toSet() ?: emptySet()
+                pkg to wordsSet.joinToString("\n")
+            }.toMap()
+        passiveWordsMap = map
     }
 
     fun updateWords(text: String) {
@@ -48,10 +63,29 @@ class BlockedWordsViewModel : ViewModel() {
             .map { it.trim() }
             .filter { it.isNotBlank() }
             .toSet()
-        
+
         prefs.edit {
             putStringSet("blocked_words", wordsSet)
         }
+    }
+
+    fun updatePassiveWords(packageName: String, text: String) {
+        val wordsSet = text.split("\n")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .toSet()
+
+        prefs.edit {
+            if (wordsSet.isEmpty()) {
+                remove("passive_words_$packageName")
+            } else {
+                putStringSet("passive_words_$packageName", wordsSet)
+            }
+        }
+
+        val newMap = passiveWordsMap.toMutableMap()
+        if (wordsSet.isEmpty()) newMap.remove(packageName) else newMap[packageName] = text
+        passiveWordsMap = newMap
     }
 
     fun toggleAppSelection(packageName: String) {

@@ -48,6 +48,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var blockedWordsPrefs: SharedPreferences
 
     private var forbiddenPatterns: Map<String, Regex> = emptyMap()
+    private var passiveForbiddenPatterns: Map<String, Map<String, Regex>> = emptyMap()
     private var targetPackages: Set<String> = emptySet()
 
     private val serviceScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -119,6 +120,24 @@ class DechainerAccessibilityService : AccessibilityService() {
             )
         }
         targetPackages = blockedWordsPrefs.getStringSet("target_packages", emptySet()) ?: emptySet()
+
+        val all = blockedWordsPrefs.all
+        val passiveMap = mutableMapOf<String, Map<String, Regex>>()
+        all.forEach { (key, value) ->
+            if (key.startsWith("passive_words_")) {
+                val pkg = key.substringAfter("passive_words_")
+                val wordsSet = (value as? Set<*>)?.filterIsInstance<String>()?.toSet() ?: emptySet()
+                if (wordsSet.isNotEmpty()) {
+                    passiveMap[pkg] = wordsSet.associateWith { word ->
+                        Regex(
+                            "(?<![\\p{L}\\p{N}_])${Regex.escape(word)}(?![\\p{L}\\p{N}_])",
+                            RegexOption.IGNORE_CASE
+                        )
+                    }
+                }
+            }
+        }
+        passiveForbiddenPatterns = passiveMap
     }
 
     private val blockRunnable = Runnable {
@@ -199,6 +218,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             return
         }
 
+        // App tracking to control time limits and time between re-openings
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val newPackage = event.packageName?.toString() ?: return
             val className = event.className?.toString() ?: return
@@ -227,6 +247,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             }
         }
 
+        // Active blocking: when the user types the forbidden word
         else if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED) {
             if (event.source?.isEditable == false) return
 
@@ -241,19 +262,57 @@ class DechainerAccessibilityService : AccessibilityService() {
                 AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
                 text.replace(forbiddenWord, "")
             )
-
             event.source?.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
-            serviceScope.launch {
-                withContext(Dispatchers.Main) {
-                    val intent = Intent(
-                        this@DechainerAccessibilityService, BlockedWordActivity::class.java
-                    ).apply {
-                        flags = FLAG_ACTIVITY_NEW_TASK
-                        putExtra("word", forbiddenWord)
-                    }
-                    startActivity(intent)
+            showBlockedActivity(forbiddenWord)
+        }
+
+        // Passive blocking: when the forbidden word appears on the screen
+        else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            val pkg = currentPackage ?: return
+            val passivePatterns = passiveForbiddenPatterns[pkg] ?: return
+
+            val screenText = buildScreenText(event) ?: return
+
+            passivePatterns.forEach { (word, regex) ->
+                if (regex.containsMatchIn(screenText)) {
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    showBlockedActivity(word)
+                    return@forEach
                 }
+            }
+        }
+    }
+
+    private fun buildScreenText(event: AccessibilityEvent): String? {
+        val sb = StringBuilder()
+
+        event.text.forEach { sb.append(it).append(' ') }
+
+        event.source?.also { root ->
+            fun traverse(node: AccessibilityNodeInfo?) {
+                node ?: return
+                node.text?.let { sb.append(it).append(' ') }
+                node.contentDescription?.let { sb.append(it).append(' ') }
+                for (i in 0 until node.childCount) traverse(node.getChild(i))
+            }
+            traverse(root)
+            root.recycle()
+        }
+
+        return sb.toString().trim().takeIf { it.isNotBlank() }
+    }
+
+    private fun showBlockedActivity(forbiddenWord: String) {
+        serviceScope.launch {
+            withContext(Dispatchers.Main) {
+                val intent = Intent(
+                    this@DechainerAccessibilityService, BlockedWordActivity::class.java
+                ).apply {
+                    flags = FLAG_ACTIVITY_NEW_TASK
+                    putExtra("word", forbiddenWord)
+                }
+                startActivity(intent)
             }
         }
     }

@@ -130,4 +130,9 @@
     <string name="search_restrictions">Buscar restrições...</string>
     <string name="list_title">Título da lista</string>
     <string name="sites_lines">Sites (um por linha)</string>
+    <string name="active_blocking">Bloqueio ativo</string>
+    <string name="passive_blocking">Bloqueio passivo</string>
+    <string name="active_blocking_tooltip">Bloqueia palavras enquanto você as digita nos apps selecionados.</string>
+    <string name="passive_blocking_tooltip">Bloqueia o app assim que uma palavra proibida aparecer na tela.</string>
+    <string name="add_app">Adicionar app</string>
 </resources>
