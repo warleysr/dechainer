@@ -390,7 +390,8 @@ class DechainerAccessibilityService : AccessibilityService() {
             putExtra("limit", limit)
         })
     }
-
+    
+    
     private fun checkDateReset() {
         val today = LocalDate.now().toString()
         if (today != lastCheckDate) {
@@ -411,6 +412,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
+    
     private fun getRemainingSecondsToReopen(pkg: String): Int {
         val reopenSeconds = reopenPrefs.getInt(pkg, 0)
         val lastClosedTime = lastClosedTimes.getOrDefault(pkg, 0L)
