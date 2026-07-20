@@ -391,7 +391,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         })
     }
     
-    // Dates should came from an external api
+    
     private fun checkDateReset() {
         val today = LocalDate.now().toString()
         if (today != lastCheckDate) {
@@ -412,7 +412,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
-    // Time should came from external api
+    
     private fun getRemainingSecondsToReopen(pkg: String): Int {
         val reopenSeconds = reopenPrefs.getInt(pkg, 0)
         val lastClosedTime = lastClosedTimes.getOrDefault(pkg, 0L)
