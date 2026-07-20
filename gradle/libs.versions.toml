@@ -11,6 +11,12 @@ appcompat = "1.7.0"
 composeBom = "2025.12.01"
 materialIconsExtended = "1.7.8"
 shizuku = "13.1.5"
+timber = "5.0.1"
+robolectric = "4.16.1"
+kotest = "5.9.1"
+mockk = "1.14.2"
+coroutinesTest = "1.9.0"
+androidxTestCore = "1.7.0"
 
 [libraries]
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
@@ -32,6 +38,12 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
+timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core", version.ref = "kotest" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutinesTest" }
+androidx-test-core-ktx = { module = "androidx.test:core-ktx", version.ref = "androidxTestCore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
