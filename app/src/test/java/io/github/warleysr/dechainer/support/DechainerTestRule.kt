@@ -1,7 +1,5 @@
 package io.github.warleysr.dechainer.support
 
-import android.content.Context
-import androidx.test.core.app.ApplicationProvider
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.security.SecurityManager
 import org.junit.rules.TestRule
@@ -18,8 +16,9 @@ import timber.log.Timber
  * - [DechainerAccessibilityService.accessedActivities] is a static list that accumulates entries.
  * - [Timber] holds a static forest; [io.github.warleysr.dechainer.DechainerApplication] plants a
  *   `DebugTree` on every `onCreate`, so trees pile up across tests.
- * - The `recovery_prefs` [android.content.SharedPreferences] file persists across test methods, so
- *   a code saved by one test would still be visible to the next.
+ * - The app's `SharedPreferences` files persist across test methods, so words, limits or a saved
+ *   recovery code written by one test would still be visible to the next; [clearAllPrefs] wipes all
+ *   of them.
  *
  * The rule runs the reset both before and after each test so a test starts clean and never leaves
  * residue for the next one. It replaces the hand-written `@Before`/`@After` blocks in the test
@@ -44,10 +43,6 @@ class DechainerTestRule : TestRule {
         SecurityManager.endSession()
         DechainerAccessibilityService.accessedActivities.clear()
         Timber.uprootAll()
-        ApplicationProvider.getApplicationContext<Context>()
-            .getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .commit()
+        clearAllPrefs()
     }
 }
