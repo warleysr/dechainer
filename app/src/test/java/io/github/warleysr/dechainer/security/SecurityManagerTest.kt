@@ -3,14 +3,14 @@ package io.github.warleysr.dechainer.security
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.warleysr.dechainer.support.DechainerTestRule
 import io.kotest.matchers.booleans.shouldBeFalse
 import io.kotest.matchers.booleans.shouldBeTrue
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldMatch
-import org.junit.After
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -18,32 +18,18 @@ import org.junit.runner.RunWith
  * Unit tests for [SecurityManager].
  *
  * [SecurityManager] keeps its state (session end time and recovery-key flag) in a
- * `companion object`, so that state is shared across every test in the JVM. Each test
- * therefore resets the session in [reset] to stay isolated — a leftover active session
- * from a previous test would otherwise make [SecurityManager.validateRecoveryCode]
- * short-circuit to `true`.
+ * `companion object`, so that state is shared across every test in the JVM. A leftover
+ * active session from a previous test would otherwise make
+ * [SecurityManager.validateRecoveryCode] short-circuit to `true`. Cross-test isolation
+ * (session reset + `recovery_prefs` clearing) is handled by [DechainerTestRule].
  */
 @RunWith(AndroidJUnit4::class)
 class SecurityManagerTest {
 
-    private lateinit var context: Context
+    @get:Rule
+    val rule = DechainerTestRule()
 
-    @Before
-    fun reset() {
-        context = ApplicationProvider.getApplicationContext()
-        // Clear any session left active by a previous test.
-        SecurityManager.endSession()
-        // Clear persisted recovery code so SharedPreferences-backed tests start clean.
-        context.getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .commit()
-    }
-
-    @After
-    fun tearDown() {
-        SecurityManager.endSession()
-    }
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     // region generateRecoveryCode
 
@@ -65,7 +51,6 @@ class SecurityManagerTest {
 
     @Test
     fun `generateRecoveryCode uses only uppercase A-Z characters`() {
-        // Sample several codes to make the character-pool assertion meaningful.
         repeat(50) {
             SecurityManager.generateRecoveryCode() shouldMatch Regex("[A-Z]{16}")
         }
@@ -73,8 +58,6 @@ class SecurityManagerTest {
 
     @Test
     fun `generateRecoveryCode produces distinct codes across calls`() {
-        // With a 26^16 space, 100 draws colliding would be astronomically unlikely,
-        // so any duplicate signals broken randomness rather than flakiness.
         val codes = (1..100).map { SecurityManager.generateRecoveryCode() }.toSet()
         codes shouldHaveSize 100
     }
@@ -109,6 +92,49 @@ class SecurityManagerTest {
         SecurityManager.isSessionActive().shouldBeFalse()
     }
 
+    @Test
+    fun `a correct code opens a session lasting ten minutes`() {
+        val tenMinutes = 10L * 60 * 1000
+        val before = System.currentTimeMillis()
+
+        SecurityManager.validateRecoveryCode("SECRET", "SECRET").shouldBeTrue()
+
+        val after = System.currentTimeMillis()
+        val end = SecurityManager.sessionEndTime
+        (end >= before + tenMinutes).shouldBeTrue()
+        (end <= after + tenMinutes).shouldBeTrue()
+        SecurityManager.isSessionActive().shouldBeTrue()
+    }
+
+    @Test
+    fun `a closed session does not short-circuit a wrong code to true`() {
+        SecurityManager.validateRecoveryCode("SECRET", "SECRET").shouldBeTrue()
+        SecurityManager.endSession()
+
+        SecurityManager.validateRecoveryCode("TOTALLY-WRONG", "SECRET").shouldBeFalse()
+        SecurityManager.isSessionActive().shouldBeFalse()
+    }
+
+    @Test
+    fun `a closed session re-opens only with the correct code`() {
+        SecurityManager.validateRecoveryCode("SECRET", "SECRET").shouldBeTrue()
+        SecurityManager.endSession()
+        SecurityManager.isSessionActive().shouldBeFalse()
+
+        SecurityManager.validateRecoveryCode("SECRET", "SECRET").shouldBeTrue()
+        SecurityManager.isSessionActive().shouldBeTrue()
+    }
+
+    @Test
+    fun `re-entering the correct code while active does not extend the session window`() {
+        SecurityManager.validateRecoveryCode("SECRET", "SECRET").shouldBeTrue()
+        val originalEnd = SecurityManager.sessionEndTime
+
+        SecurityManager.validateRecoveryCode("SECRET", "SECRET").shouldBeTrue()
+
+        SecurityManager.sessionEndTime shouldBe originalEnd
+    }
+
     // endregion
 
     // region validateRecoveryCode
@@ -136,11 +162,9 @@ class SecurityManagerTest {
 
     @Test
     fun `while a session is active any input validates as true`() {
-        // First, a correct code opens the session.
         SecurityManager.validateRecoveryCode("SECRET", "SECRET").shouldBeTrue()
         SecurityManager.isSessionActive().shouldBeTrue()
 
-        // Now even a wrong code short-circuits to true because the session is live.
         SecurityManager.validateRecoveryCode("TOTALLY-WRONG", "SECRET").shouldBeTrue()
     }
 
