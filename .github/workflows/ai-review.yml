@@ -1,23 +1,29 @@
-name: Gemini AI Code Reviewer
+name: "Gemini Code Review"
 
 on:
   pull_request:
     types: [opened, synchronize]
 
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
   review:
+    if: |
+      github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Gemini Code Review
-        uses: truongnh1992/gemini-ai-code-reviewer@v9.2.1
+        uses: actions/checkout@v6
         with:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_MODEL: "gemini-3.6-flash"
+          ref: ${{ github.event.pull_request.head.sha  }}
+
+      - name: Run Gemini Review Action
+        uses: derailed-dash/gemini-review-action@v1
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          gemini_model: 'gemini-3.6-flash'
+          language: 'English (US)'
