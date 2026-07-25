@@ -1,4 +1,4 @@
-This change is just for testing PR code reviewer action.
+This change is just for testing PR code reviewer action. (2)
 
 # Déchaîner
 <img src="https://i.imgur.com/oEDcaTf.png" width="200px" alt="Déchaîner" align="right">
