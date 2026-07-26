@@ -64,6 +64,13 @@
             android:noHistory="true"
             android:launchMode="singleInstance"
             android:taskAffinity="" />
+        <activity
+            android:name=".activities.AccessibilityRequestActivity"
+            android:theme="@style/Theme.Dechainer"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="" />
 
         <receiver
             android:name=".DechainerDeviceAdminReceiver"

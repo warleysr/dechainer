@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
+import io.github.warleysr.dechainer.activities.AccessibilityRequestActivity
 import io.github.warleysr.dechainer.activities.BlockedWordActivity
 import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
 import io.github.warleysr.dechainer.activities.TimeUpActivity
@@ -148,6 +149,11 @@ class DechainerAccessibilityService : AccessibilityService() {
         var isRunning by mutableStateOf(false)
             private set
 
+        var disablingService = false
+            private set
+
+        fun prepareServiceDisable() { disablingService = true }
+
         val accessedActivities = mutableStateListOf<ActivityLog>()
 
         data class ActivityLog(
@@ -168,6 +174,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         isRunning = true
+        disablingService = false
 
         limitPrefs = getSharedPreferences("app_limits", MODE_PRIVATE)
         usagePrefs = getSharedPreferences("internal_usage_stats", MODE_PRIVATE)
@@ -178,6 +185,11 @@ class DechainerAccessibilityService : AccessibilityService() {
         blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
 
         updateForbiddenPatterns()
+
+        val blockedPackages = targetPackages.union(passiveForbiddenPatterns.keys)
+        blockedPackages.forEach {
+            suspendPackage(it, false)
+        }
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -199,6 +211,18 @@ class DechainerAccessibilityService : AccessibilityService() {
         blockedWordsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         stopTrackingAndSave()
         isRunning = false
+
+        if (!disablingService) {
+            val blockedPackages = targetPackages.union(passiveForbiddenPatterns.keys)
+            blockedPackages.forEach {
+                suspendPackage(it, true)
+            }
+            val intent = Intent(
+                this@DechainerAccessibilityService, AccessibilityRequestActivity::class.java
+            ).apply { flags = FLAG_ACTIVITY_NEW_TASK }
+            startActivity(intent)
+        }
+
         super.onDestroy()
     }
 
@@ -208,15 +232,6 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.packageName == packageName) return
-
-        if (event.className == "com.android.settings.SubSettings") {
-            val rootNode = event.source
-            if (rootNode != null) {
-                preventDisableService(rootNode)
-                rootNode.recycle()
-            }
-            return
-        }
 
         // App tracking to control time limits and time between re-openings
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
@@ -400,19 +415,6 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun preventDisableService(node: AccessibilityNodeInfo?) {
-        if (node == null) return
-        if (node.text != null && node.text.toString() == getString(R.string.app_name)) {
-            performGlobalAction(GLOBAL_ACTION_BACK)
-        }
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            preventDisableService(child)
-            child?.recycle()
-        }
-    }
-
-    
     private fun getRemainingSecondsToReopen(pkg: String): Int {
         val reopenSeconds = reopenPrefs.getInt(pkg, 0)
         val lastClosedTime = lastClosedTimes.getOrDefault(pkg, 0L)

@@ -109,6 +109,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                                 return@Switch
                             }
                             val action = {
+                                DechainerAccessibilityService.prepareServiceDisable()
                                 viewModel.changeAccessibilityPermission(checked)
                             }
                             pendingAction = action

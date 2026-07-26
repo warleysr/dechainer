@@ -20,10 +20,7 @@ import io.github.warleysr.dechainer.utils.ShizukuRunner
 import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
 import androidx.core.net.toUri
-import androidx.lifecycle.viewModelScope
 import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class DeviceOwnerViewModel() : ViewModel() {
 
@@ -291,9 +288,9 @@ class DeviceOwnerViewModel() : ViewModel() {
                 services += ":"
             services += serviceComponent
         }
-        else if (!grant && isGranted)
-            services = services.split(":")
-                .filter { it != serviceComponent }.joinToString(":")
+        else if (!grant && isGranted) {
+            services = "'null'"
+        }
 
         ShizukuRunner.command(
             "settings put secure enabled_accessibility_services $services",

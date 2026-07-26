@@ -135,4 +135,7 @@
     <string name="active_blocking_tooltip">Bloqueia palavras enquanto você as digita nos apps selecionados.</string>
     <string name="passive_blocking_tooltip">Bloqueia o app assim que uma palavra proibida aparecer na tela.</string>
     <string name="add_app">Adicionar app</string>
+
+    <string name="accessibility_request_message">O serviço de acessibilidade foi desativado. Os aplicativos com restrições permanecerão bloqueados até ser ativado novamente.</string>
+    <string name="go_to_settings">Ir para Configurações</string>
 </resources>
