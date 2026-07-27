@@ -17,9 +17,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Vertical-slice tests for active (typed) word blocking — invariants R2 (blocking always happens)
- * and R1 (the persistence contract).
- *
  * Each test writes through the real [io.github.warleysr.dechainer.viewmodels.BlockedWordsViewModel]
  * and reads through the real [io.github.warleysr.dechainer.DechainerAccessibilityService], so the
  * only thing under test is the end-to-end behaviour.
