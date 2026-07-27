@@ -4,6 +4,8 @@ import io.github.warleysr.dechainer.viewmodels.ActivityBlockerViewModel
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.BlockedWordsViewModel
 import io.github.warleysr.dechainer.viewmodels.BrowserRestrictionsViewModel
+import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import io.github.warleysr.dechainer.viewmodels.RestrictionsViewModel
 
 /**
  * Single construction point for the app's ViewModels in tests.
@@ -20,4 +22,8 @@ object Fixtures {
     fun appsViewModel() = AppsViewModel()
 
     fun browserRestrictionsViewModel() = BrowserRestrictionsViewModel()
+
+    fun restrictionsViewModel() = RestrictionsViewModel()
+
+    fun deviceOwnerViewModel() = DeviceOwnerViewModel()
 }
