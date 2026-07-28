@@ -186,10 +186,8 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         updateForbiddenPatterns()
 
-        val blockedPackages = targetPackages.union(passiveForbiddenPatterns.keys)
-        blockedPackages.forEach {
-            suspendPackage(it, false)
-        }
+        val blockedPackages = getControlledPackages()
+        suspendPackages(blockedPackages, false)
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
@@ -213,10 +211,9 @@ class DechainerAccessibilityService : AccessibilityService() {
         isRunning = false
 
         if (!disablingService) {
-            val blockedPackages = targetPackages.union(passiveForbiddenPatterns.keys)
-            blockedPackages.forEach {
-                suspendPackage(it, true)
-            }
+            val blockedPackages = getControlledPackages()
+            suspendPackages(blockedPackages)
+
             val intent = Intent(
                 this@DechainerAccessibilityService, AccessibilityRequestActivity::class.java
             ).apply { flags = FLAG_ACTIVITY_NEW_TASK }
@@ -332,13 +329,26 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun suspendPackage(packageName: String, suspend: Boolean = true) {
+    private fun suspendPackages(packages: Array<String>, suspend: Boolean = true) {
         val dpm =
             applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
         if (!dpm.isAdminActive(admin)) return
-        dpm.setPackagesSuspended(admin, arrayOf(packageName), suspend)
+        dpm.setPackagesSuspended(admin, packages, suspend)
     }
+
+    private fun suspendPackage(packageName: String, suspend: Boolean = true) = suspendPackages(
+        arrayOf(packageName), suspend
+    )
+
+    private fun getControlledPackages(): Array<String> {
+        return targetPackages
+            .union(passiveForbiddenPatterns.keys)
+            .union(limitPrefs.all.keys)
+            .union(reopenPrefs.all.keys)
+            .toTypedArray()
+    }
+
     private fun checkForbiddenWord(text: String): String? {
         forbiddenPatterns.forEach { (word: String, regex: Regex) ->
             if (regex.containsMatchIn(text))
