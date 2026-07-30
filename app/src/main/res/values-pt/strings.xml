@@ -136,6 +136,6 @@
     <string name="passive_blocking_tooltip">Bloqueia o app assim que uma palavra proibida aparecer na tela.</string>
     <string name="add_app">Adicionar app</string>
 
-    <string name="accessibility_request_message">O serviço de acessibilidade foi desativado. Os aplicativos com restrições permanecerão bloqueados até ser ativado novamente.</string>
+    <string name="accessibility_request_message">O serviço de acessibilidade foi desativado. Os aplicativos com restrições permanecerão bloqueados e novos aplicativos não podem ser instalados até ser ativado novamente.</string>
     <string name="go_to_settings">Ir para Configurações</string>
 </resources>

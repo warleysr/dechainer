@@ -14,6 +14,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.os.UserManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.compose.runtime.getValue
@@ -189,6 +190,12 @@ class DechainerAccessibilityService : AccessibilityService() {
         val blockedPackages = getControlledPackages()
         suspendPackages(blockedPackages, false)
 
+        val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
+        if (dpm.isAdminActive(admin)) {
+            dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
+        }
+
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addDataScheme("package")
@@ -202,7 +209,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         registerReceiver(screenReceiver, screenFilter)
     }
 
-    override fun onDestroy() {
+    override fun onUnbind(intent: Intent?): Boolean {
         unregisterReceiver(packageReceiver)
         unregisterReceiver(screenReceiver)
         limitPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
@@ -214,13 +221,19 @@ class DechainerAccessibilityService : AccessibilityService() {
             val blockedPackages = getControlledPackages()
             suspendPackages(blockedPackages)
 
+            val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
+            val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
+            if (dpm.isAdminActive(admin)) {
+                dpm.addUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
+            }
+
             val intent = Intent(
                 this@DechainerAccessibilityService, AccessibilityRequestActivity::class.java
             ).apply { flags = FLAG_ACTIVITY_NEW_TASK }
             startActivity(intent)
         }
 
-        super.onDestroy()
+        return super.onUnbind(intent)
     }
 
     override fun onInterrupt() {

@@ -136,6 +136,6 @@
     <string name="passive_blocking_tooltip">Blocks the app as soon as a forbidden word appears on the screen.</string>
     <string name="add_app">Add app</string>
 
-    <string name="accessibility_request_message">The accessibility service was disabled. The apps with restrictions will remain blocked until it\'s enabled again.</string>
+    <string name="accessibility_request_message">The accessibility service was disabled. The apps with restrictions will remain blocked and new apps can\'t be installed until it\'s enabled again.</string>
     <string name="go_to_settings">Go to Settings</string>
 </resources>
