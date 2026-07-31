@@ -10,17 +10,12 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.warleysr.dechainer.DechainerApplication
+import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.models.AppItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.core.content.edit
-
-data class AppSelectionItem(
-    val name: String,
-    val packageName: String,
-    val icon: Drawable,
-    val isSelected: Boolean
-)
 
 class BlockedWordsViewModel : ViewModel() {
     private val context = DechainerApplication.getInstance()
@@ -32,7 +27,7 @@ class BlockedWordsViewModel : ViewModel() {
     var targetPackages by mutableStateOf(prefs.getStringSet("target_packages", emptySet()) ?: emptySet())
         private set
 
-    var apps by mutableStateOf<List<AppSelectionItem>>(emptyList())
+    var apps by mutableStateOf<List<AppItem>>(emptyList())
         private set
 
     var passiveWordsMap by mutableStateOf<Map<String, String>>(emptyMap())
@@ -99,32 +94,13 @@ class BlockedWordsViewModel : ViewModel() {
         prefs.edit {
             putStringSet("target_packages", targetPackages)
         }
-        updateAppsSelection()
-    }
-
-    private fun updateAppsSelection() {
-        apps = apps.map { it.copy(isSelected = targetPackages.contains(it.packageName)) }
     }
 
     fun loadApps() {
         viewModelScope.launch {
             isLoadingApps = true
             apps = withContext(Dispatchers.IO) {
-                val packageManager = context.packageManager
-                val installedApps = packageManager.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
-                installedApps.asSequence()
-                    .filter { it.packageName != context.packageName }
-                    .filter { (it.flags and ApplicationInfo.FLAG_SYSTEM) == 0 }
-                    .map { appInfo ->
-                        AppSelectionItem(
-                            name = appInfo.loadLabel(packageManager).toString(),
-                            packageName = appInfo.packageName,
-                            icon = appInfo.loadIcon(packageManager),
-                            isSelected = targetPackages.contains(appInfo.packageName)
-                        )
-                    }
-                    .sortedBy { it.name.lowercase() }
-                    .toList()
+                AppRepository.getApps()
             }
             isLoadingApps = false
         }

@@ -26,12 +26,11 @@ import io.github.warleysr.dechainer.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
 import io.github.warleysr.dechainer.security.SecurityManager
-import io.github.warleysr.dechainer.viewmodels.AppItem
+import io.github.warleysr.dechainer.models.AppItem
+import io.github.warleysr.dechainer.models.BlockedList
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
-import io.github.warleysr.dechainer.viewmodels.BlockedList
 import io.github.warleysr.dechainer.viewmodels.BrowserRestrictionsViewModel
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
-import io.github.warleysr.dechainer.viewmodels.BrowserApp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,7 +41,7 @@ fun BrowserRestrictionsScreen(
 ) {
     var showEditDialog by remember { mutableStateOf<BlockedList?>(null) }
     var isCreatingNew by remember { mutableStateOf(false) }
-    var showRestrictionsDialog by remember { mutableStateOf<BrowserApp?>(null) }
+    var showRestrictionsDialog by remember { mutableStateOf<AppItem?>(null) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val context = LocalContext.current
 
@@ -90,11 +89,10 @@ fun BrowserRestrictionsScreen(
                                 },
                                 trailingContent = {
                                     Switch(
-                                        checked = browser.isEnabled,
+                                        checked = !browser.isSuspended,
                                         onCheckedChange = { checked ->
                                             pendingAction = {
                                                 appsViewModel.suspendApp(browser.packageName, !checked)
-                                                browser.isEnabled = checked
                                             }
                                         }
                                     )

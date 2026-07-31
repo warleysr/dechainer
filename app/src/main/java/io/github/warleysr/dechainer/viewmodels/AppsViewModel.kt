@@ -13,22 +13,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
+import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.models.AppItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.core.content.edit
 import java.util.concurrent.TimeUnit
-
-data class AppItem(
-    val name: String,
-    val packageName: String,
-    val icon: Drawable,
-    val isSystem: Boolean,
-    val isHidden: Boolean,
-    val isUninstallBlocked: Boolean,
-    val timeLimitMinutes: Int = 0,
-    val reopeningSeconds: Int = 0
-)
 
 class AppsViewModel : ViewModel() {
     private val context = DechainerApplication.getInstance()
@@ -51,40 +42,7 @@ class AppsViewModel : ViewModel() {
             isLoading = true
             apps = withContext(Dispatchers.IO) {
                 try {
-                    val prefs = context.getSharedPreferences("app_limits", Context.MODE_PRIVATE)
-                    val installedApps = packageManager.getInstalledApplications(
-                        PackageManager.MATCH_UNINSTALLED_PACKAGES
-                    )
-                    
-                    installedApps.asSequence()
-                        .filter { it.packageName != DechainerApplication.getInstance().packageName }
-                        .mapNotNull { appInfo ->
-                            val packageName = appInfo.packageName
-                            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
-                            
-                            val isHidden = try { 
-                                dpm.isApplicationHidden(adminName, packageName) 
-                            } catch (_: Exception) { false }
-                            
-                            val isUninstallBlocked = try {
-                                dpm.isUninstallBlocked(adminName, packageName)
-                            } catch (_: Exception) { false }
-                            
-                            val timeLimit = prefs.getInt(packageName, 0)
-                            
-                            AppItem(
-                                name = appInfo.loadLabel(packageManager).toString(),
-                                packageName = packageName,
-                                icon = appInfo.loadIcon(packageManager),
-                                isSystem = isSystem,
-                                isHidden = isHidden,
-                                isUninstallBlocked = isUninstallBlocked,
-                                timeLimitMinutes = timeLimit,
-                                reopeningSeconds = getAppReopenTime(packageName)
-                            )
-                        }
-                        .sortedBy { it.name.lowercase() }
-                        .toList()
+                    AppRepository.getApps()
                 } catch (e: Exception) {
                     emptyList()
                 }

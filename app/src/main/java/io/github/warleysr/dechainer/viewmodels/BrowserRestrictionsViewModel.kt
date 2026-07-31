@@ -1,39 +1,22 @@
 package io.github.warleysr.dechainer.viewmodels
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
-import android.graphics.drawable.Drawable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import io.github.warleysr.dechainer.DechainerApplication
 import androidx.core.content.edit
 import io.github.warleysr.dechainer.BrowserRestrictionsManager
+import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.models.AppItem
+import io.github.warleysr.dechainer.models.BlockedList
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class BrowserApp(
-    val name: String,
-    val packageName: String,
-    val icon: Drawable,
-    var isEnabled: Boolean
-)
-
-data class BlockedList(
-    val id: String,
-    val title: String,
-    val sites: List<String>
-)
-
 class BrowserRestrictionsViewModel : ViewModel() {
     private val context = DechainerApplication.getInstance()
-    private val packageManager = context.packageManager
-    private val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    private val adminName = ComponentName(context, io.github.warleysr.dechainer.DechainerDeviceAdminReceiver::class.java)
-
     private val manager = BrowserRestrictionsManager(context)
 
-    var browsers = mutableStateListOf<BrowserApp>()
+    var browsers = mutableStateListOf<AppItem>()
         private set
 
     var blockedLists = mutableStateListOf<BlockedList>()
@@ -46,22 +29,10 @@ class BrowserRestrictionsViewModel : ViewModel() {
 
     private fun loadBrowsers() {
         val possibleBrowsers = manager.getPossibleBrowsers()
+        val browserPackages = possibleBrowsers.map { it.activityInfo.packageName }.toSet()
+        
         browsers.clear()
-        possibleBrowsers.forEach { info ->
-            val packageName = info.activityInfo.packageName
-            val isSuspended = try {
-                dpm.isPackageSuspended(adminName, packageName)
-            } catch (_: Exception) { false }
-
-            browsers.add(
-                BrowserApp(
-                    name = info.loadLabel(packageManager).toString(),
-                    packageName = packageName,
-                    icon = info.loadIcon(packageManager),
-                    isEnabled = !isSuspended
-                )
-            )
-        }
+        browsers.addAll(AppRepository.getApps().filter { it.packageName in browserPackages })
     }
 
     private fun loadBlockedLists() {

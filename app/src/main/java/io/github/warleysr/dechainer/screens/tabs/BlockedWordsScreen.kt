@@ -306,11 +306,15 @@ fun AppSelectionDialog(
     multiSelect: Boolean
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val filteredApps = remember(searchQuery, viewModel.apps) {
+    var showSystemApps by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+
+    val filteredApps = remember(searchQuery, viewModel.apps, showSystemApps) {
         viewModel.apps
             .filter {
-                it.name.contains(searchQuery, ignoreCase = true) ||
-                        it.packageName.contains(searchQuery, ignoreCase = true)
+                (showSystemApps || !it.isSystem) &&
+                (it.name.contains(searchQuery, ignoreCase = true) ||
+                        it.packageName.contains(searchQuery, ignoreCase = true))
             }
             .sortedBy { it.name.lowercase() }
     }
@@ -320,14 +324,41 @@ fun AppSelectionDialog(
         title = { Text(stringResource(R.string.select_apps)) },
         text = {
             Column {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    placeholder = { Text(stringResource(R.string.search_apps)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    singleLine = true
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 8.dp),
+                        placeholder = { Text(stringResource(R.string.search_apps)) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        singleLine = true
+                    )
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, null)
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.show_system_apps)) },
+                                onClick = {
+                                    showSystemApps = !showSystemApps
+                                    showMenu = false
+                                },
+                                trailingIcon = {
+                                    Checkbox(checked = showSystemApps, onCheckedChange = null)
+                                }
+                            )
+                        }
+                    }
+                }
 
                 if (viewModel.isLoadingApps) {
                     Box(
