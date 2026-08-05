@@ -27,7 +27,7 @@ class BrowserRestrictionsViewModel : ViewModel() {
         loadBlockedLists()
     }
 
-    private fun loadBrowsers() {
+    fun loadBrowsers() {
         val possibleBrowsers = manager.getPossibleBrowsers()
         val browserPackages = possibleBrowsers.map { it.activityInfo.packageName }.toSet()
         

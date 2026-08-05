@@ -31,15 +31,20 @@ import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.LocaleUtils
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import androidx.core.content.edit
+import kotlinx.coroutines.CoroutineScope
 import rikka.shizuku.Shizuku
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var showDnsDialog by remember { mutableStateOf(false) }
     var dnsErrorRes by remember { mutableStateOf<Int?>(null) }
+    var isApplyingDns by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showKeyboardDialog by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -178,17 +183,25 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
 
     if (showDnsDialog) {
         val currentDns = viewModel.getPrivateDNS()
+        val externalScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
         DnsSelectionDialog(
             currentDns = currentDns,
             errorRes = dnsErrorRes,
-            onDismiss = { showDnsDialog = false },
+            isLoading = isApplyingDns,
+            onDismiss = { if (!isApplyingDns) showDnsDialog = false },
             onApply = { host ->
                 val action = {
                     dnsErrorRes = null
+                    isApplyingDns = true
                     scope.launch {
-                        val result = withContext(Dispatchers.IO) {
-                            viewModel.setPrivateDNS(host)
+                        val result = withTimeoutOrNull(15000.milliseconds) {
+                            val deferred = externalScope.async {
+                                viewModel.setPrivateDNS(host)
+                            }
+                            deferred.await()
                         }
+                        isApplyingDns = false
                         if (result == DevicePolicyManager.PRIVATE_DNS_SET_NO_ERROR) {
                             showDnsDialog = false
                         } else {
@@ -254,6 +267,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
 fun DnsSelectionDialog(
     currentDns: String?,
     errorRes: Int? = null,
+    isLoading: Boolean = false,
     onDismiss: () -> Unit,
     onApply: (String) -> Unit
 ) {
@@ -279,7 +293,7 @@ fun DnsSelectionDialog(
     }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text(stringResource(R.string.dns_settings)) },
         text = {
             Column {
@@ -287,11 +301,15 @@ fun DnsSelectionDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { selectedOption = host }
+                            .clickable(enabled = !isLoading) { selectedOption = host }
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(selected = selectedOption == host, onClick = { selectedOption = host })
+                        RadioButton(
+                            selected = selectedOption == host,
+                            onClick = { selectedOption = host },
+                            enabled = !isLoading
+                        )
                         Column(Modifier.padding(start = 8.dp)) {
                             Text(name, fontWeight = FontWeight.Bold)
                             Text(host, style = MaterialTheme.typography.bodySmall)
@@ -301,11 +319,15 @@ fun DnsSelectionDialog(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { selectedOption = "custom" }
+                        .clickable(enabled = !isLoading) { selectedOption = "custom" }
                         .padding(vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    RadioButton(selected = selectedOption == "custom", onClick = { selectedOption = "custom" })
+                    RadioButton(
+                        selected = selectedOption == "custom",
+                        onClick = { selectedOption = "custom" },
+                        enabled = !isLoading
+                    )
                     Text(stringResource(R.string.custom), fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
                 }
                 if (selectedOption == "custom") {
@@ -317,6 +339,7 @@ fun DnsSelectionDialog(
                             .padding(top = 8.dp),
                         placeholder = { Text(stringResource(R.string.dns_host_hint)) },
                         singleLine = true,
+                        enabled = !isLoading,
                         isError = !isCustomValid && customHost.isNotEmpty(),
                         supportingText = {
                             if (!isCustomValid && customHost.isNotEmpty()) {
@@ -336,7 +359,7 @@ fun DnsSelectionDialog(
             }
         },
         confirmButton = {
-            val canApply = selectedOption != null && (selectedOption != "custom" || isCustomValid)
+            val canApply = selectedOption != null && (selectedOption != "custom" || isCustomValid) && !isLoading
             TextButton(
                 enabled = canApply,
                 onClick = { 
@@ -347,11 +370,15 @@ fun DnsSelectionDialog(
                     onApply(finalHost!!)
                 }
             ) {
-                Text(stringResource(R.string.apply))
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.apply))
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
                 Text(stringResource(R.string.cancel))
             }
         }
