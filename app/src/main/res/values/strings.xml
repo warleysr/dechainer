@@ -76,6 +76,8 @@
 
     <string name="browser_restrictions">Browser restrictions</string>
     <string name="browser_restrictions_desc">Manage browser permissions and blocked sites</string>
+    <string name="block_torrents">Block Torrent apps</string>
+    <string name="block_torrents_desc">Automatically blocks newly installed Torrent apps</string>
     <string name="allowed_browsers">Allowed browsers</string>
     <string name="blocked_sites">Blocked sites</string>
     <string name="add_site">Add site</string>
