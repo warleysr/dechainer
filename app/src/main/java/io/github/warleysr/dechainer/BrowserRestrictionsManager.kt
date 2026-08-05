@@ -7,6 +7,7 @@ import android.content.pm.ResolveInfo
 import android.os.Bundle
 import org.json.JSONArray
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.core.net.toUri
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 
@@ -42,6 +43,26 @@ class BrowserRestrictionsManager(private val context: Context) {
 
     fun isBrowser(packageName: String): Boolean {
         return getPossibleBrowsers().any { it.activityInfo.packageName == packageName }
+    }
+
+    fun getPossibleTorrentApps(): Set<String> {
+        val pm = context.packageManager
+
+        val magnetIntent = Intent(Intent.ACTION_VIEW, "magnet:?xt=urn:btih:1234567890ABCDEF".toUri())
+        val magnetHandlers = pm.queryIntentActivities(magnetIntent, PackageManager.MATCH_DEFAULT_ONLY)
+
+        val torrentIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.EMPTY, "application/x-bittorrent")
+        }
+        val torrentHandlers = pm.queryIntentActivities(torrentIntent, PackageManager.MATCH_DEFAULT_ONLY)
+
+        val suspiciousPackages = (magnetHandlers + torrentHandlers).map { it.activityInfo.packageName }.toSet()
+
+        return suspiciousPackages
+    }
+
+    fun isTorrentApp(packageName: String): Boolean {
+        return getPossibleTorrentApps().any { it == packageName }
     }
 
     fun supportsRestrictions(packageName: String): Boolean {

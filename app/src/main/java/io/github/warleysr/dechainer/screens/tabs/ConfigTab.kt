@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.NoAdultContent
@@ -50,6 +51,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
 
     val securityPrefs = remember { context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE) }
     var shuffleKeyboard by remember { mutableStateOf(securityPrefs.getBoolean("shuffle_keyboard", false)) }
+    var blockTorrents by remember { mutableStateOf(securityPrefs.getBoolean("block_torrents", false)) }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
 
@@ -92,6 +94,23 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     supportingContent = { Text(stringResource(R.string.browser_restrictions_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Web, "") },
                     modifier = Modifier.clickable { viewModel.navigateTo("browser_restrictions") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.block_torrents)) },
+                    supportingContent = { Text(stringResource(R.string.block_torrents_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.FileDownload, "") },
+                    trailingContent = {
+                        Switch(blockTorrents, onCheckedChange = { checked ->
+                            val action = {
+                                blockTorrents = checked
+                                securityPrefs.edit { putBoolean("block_torrents", checked) }
+                            }
+                            pendingAction = action
+                        })
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }

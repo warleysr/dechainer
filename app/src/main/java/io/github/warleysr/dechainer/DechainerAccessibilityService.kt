@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -48,6 +49,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var usagePrefs: SharedPreferences
     private lateinit var reopenPrefs: SharedPreferences
     private lateinit var blockedWordsPrefs: SharedPreferences
+    private lateinit var securityPrefs: SharedPreferences
 
     private var forbiddenPatterns: Map<String, Regex> = emptyMap()
     private var passiveForbiddenPatterns: Map<String, Map<String, Regex>> = emptyMap()
@@ -63,15 +65,20 @@ class DechainerAccessibilityService : AccessibilityService() {
             val manager = BrowserRestrictionsManager(applicationContext)
             val isBrowser = manager.isBrowser(packageName)
 
-            if (!isBrowser) return
+            if (isBrowser) {
+                val supportsRestrictions = manager.supportsRestrictions(packageName)
+                if (supportsRestrictions) {
+                    manager.applyRestrictions(installed = true)
+                    return
+                }
 
-            val supportsRestrictions = manager.supportsRestrictions(packageName)
-            if (supportsRestrictions) {
-                manager.applyRestrictions(installed = true)
-                return
+                suspendPackage(packageName)
             }
-
-            suspendPackage(packageName)
+            else {
+                val isTorrentApp = manager.isTorrentApp(packageName)
+                if (isTorrentApp && securityPrefs.getBoolean("block_torrents", false))
+                    suspendPackage(packageName)
+            }
         }
     }
 
@@ -181,6 +188,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         usagePrefs = getSharedPreferences("internal_usage_stats", MODE_PRIVATE)
         reopenPrefs = getSharedPreferences("reopen_times", MODE_PRIVATE)
         blockedWordsPrefs = getSharedPreferences("blocked_words_prefs", MODE_PRIVATE)
+        securityPrefs = getSharedPreferences("security_prefs", MODE_PRIVATE)
 
         limitPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -207,6 +215,23 @@ class DechainerAccessibilityService : AccessibilityService() {
             addAction(Intent.ACTION_SCREEN_ON)
         }
         registerReceiver(screenReceiver, screenFilter)
+
+        if (BuildConfig.DEBUG) {
+            val filter = IntentFilter("io.github.warleysr.dechainer.DEBUG_INSTALL")
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    disablingService = true
+                    disableSelf()
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(receiver, filter, RECEIVER_EXPORTED)
+            } else {
+                @Suppress("UnspecifiedRegisterReceiverFlag")
+                registerReceiver(receiver, filter)
+            }
+        }
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
