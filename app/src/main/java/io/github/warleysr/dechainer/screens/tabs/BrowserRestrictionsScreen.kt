@@ -43,6 +43,7 @@ fun BrowserRestrictionsScreen(
     var isCreatingNew by remember { mutableStateOf(false) }
     var showRestrictionsDialog by remember { mutableStateOf<AppItem?>(null) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var onCancelAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     val context = LocalContext.current
 
     Scaffold { padding ->
@@ -60,7 +61,7 @@ fun BrowserRestrictionsScreen(
                 
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column {
-                        viewModel.browsers.forEach { browser ->
+                        viewModel.browsers.forEachIndexed { index, browser ->
                             val manager = BrowserRestrictionsManager(context)
                             val notSupported = !manager.supportsRestrictions(browser.packageName)
                             ListItem(
@@ -91,6 +92,11 @@ fun BrowserRestrictionsScreen(
                                     Switch(
                                         checked = !browser.isSuspended,
                                         onCheckedChange = { checked ->
+                                            val wasSuspended = browser.isSuspended
+                                            viewModel.browsers[index] = browser.copy(isSuspended = !checked)
+                                            onCancelAction = {
+                                                viewModel.browsers[index] = browser.copy(isSuspended = wasSuspended)
+                                            }
                                             pendingAction = {
                                                 appsViewModel.suspendApp(browser.packageName, !checked)
                                             }
@@ -221,16 +227,22 @@ fun BrowserRestrictionsScreen(
         if (storedCode == null) {
             pendingAction?.invoke()
             pendingAction = null
+            onCancelAction = null
         } else {
             RecoveryConfirmDialog(
                 onConfirm = { code ->
                     if (SecurityManager.validateRecoveryCode(code, storedCode)) {
                         pendingAction?.invoke()
                         pendingAction = null
+                        onCancelAction = null
                         true
                     } else false
                 },
-                onDismiss = { pendingAction = null }
+                onDismiss = { 
+                    onCancelAction?.invoke()
+                    onCancelAction = null
+                    pendingAction = null 
+                }
             )
         }
     }
