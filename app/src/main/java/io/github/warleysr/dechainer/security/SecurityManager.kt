@@ -1,6 +1,7 @@
 package io.github.warleysr.dechainer.security
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -59,5 +60,42 @@ class SecurityManager {
 
             return success
         }
+
+        fun startForcedRemoval(context: Context) {
+            val prefs = context.getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE)
+            prefs.edit {
+                putBoolean("forced_removal_active", true)
+                putLong("forced_removal_accumulated", 0L)
+                putLong("forced_removal_last_elapsed", SystemClock.elapsedRealtime())
+            }
+        }
+
+        fun cancelForcedRemoval(context: Context) {
+            val prefs = context.getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE)
+            prefs.edit {
+                putBoolean("forced_removal_active", false)
+            }
+        }
+
+        fun getForcedRemovalRemainingTime(context: Context): Long {
+            val prefs = context.getSharedPreferences("recovery_prefs", Context.MODE_PRIVATE)
+            if (!prefs.getBoolean("forced_removal_active", false)) return -1L
+
+            var accumulated = prefs.getLong("forced_removal_accumulated", 0L)
+            val lastElapsed = prefs.getLong("forced_removal_last_elapsed", 0L)
+            val now = SystemClock.elapsedRealtime()
+
+            val diff = if (now >= lastElapsed) now - lastElapsed else now
+            accumulated += diff
+
+            prefs.edit {
+                putLong("forced_removal_accumulated", accumulated)
+                putLong("forced_removal_last_elapsed", now)
+            }
+
+            val target = 48L * 60 * 60 * 1000
+            return (target - accumulated).coerceAtLeast(0L)
+        }
+
     }
 }

@@ -12,6 +12,7 @@ import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.LockClock
 import androidx.compose.material.icons.outlined.NoAdultContent
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
@@ -51,6 +52,10 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var showKeyboardDialog by remember { mutableStateOf(false) }
     var showRecoveryDialog by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showStartForcedRemovalDialog by remember { mutableStateOf(false) }
+    var showCancelForcedRemovalDialog by remember { mutableStateOf(false) }
+    var showFinishForcedRemovalDialog by remember { mutableStateOf(false) }
+    var confirmForcedRemoval by remember { mutableStateOf(false) }
     
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -62,6 +67,14 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var blockTorrents by remember { mutableStateOf(securityPrefs.getBoolean("block_torrents", false)) }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
+
+    var forcedRemovalRemaining by remember { mutableLongStateOf(SecurityManager.getForcedRemovalRemainingTime(context)) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            forcedRemovalRemaining = SecurityManager.getForcedRemovalRemainingTime(context)
+            kotlinx.coroutines.delay(60000.milliseconds)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -188,10 +201,117 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
+            item {
+                val forcedRemovalText = if (forcedRemovalRemaining > 0) {
+                    val hours = (forcedRemovalRemaining / (1000 * 60 * 60)).toInt()
+                    val minutes = ((forcedRemovalRemaining / (1000 * 60)) % 60).toInt()
+                    if (hours > 0) stringResource(R.string.time_hours_minutes, hours, minutes)
+                    else stringResource(R.string.time_minutes, minutes)
+                } else if (forcedRemovalRemaining == 0L) {
+                    stringResource(R.string.active)
+                } else null
+
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.forced_removal)) },
+                    supportingContent = { Text(stringResource(R.string.forced_removal_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.LockClock, "") },
+                    trailingContent = forcedRemovalText?.let { { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary) } },
+                    modifier = Modifier.clickable {
+                        if (forcedRemovalRemaining < 0) showStartForcedRemovalDialog = true
+                        else if (forcedRemovalRemaining == 0L) showFinishForcedRemovalDialog = true
+                        else showCancelForcedRemovalDialog = true
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
         }
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
+        )
+    }
+
+    if (showStartForcedRemovalDialog) {
+        AlertDialog(
+            onDismissRequest = { showStartForcedRemovalDialog = false },
+            title = { Text(stringResource(R.string.forced_removal_dialog_title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.forced_removal_dialog_text))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { confirmForcedRemoval = !confirmForcedRemoval }
+                            .padding(top = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = confirmForcedRemoval, onCheckedChange = { confirmForcedRemoval = it })
+                        Text(stringResource(R.string.forced_removal_confirm_checkbox), modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = confirmForcedRemoval,
+                    onClick = {
+                        SecurityManager.startForcedRemoval(context)
+                        forcedRemovalRemaining = SecurityManager.getForcedRemovalRemainingTime(context)
+                        showStartForcedRemovalDialog = false
+                        confirmForcedRemoval = false
+                    }
+                ) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartForcedRemovalDialog = false; confirmForcedRemoval = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showCancelForcedRemovalDialog) {
+        AlertDialog(
+            onDismissRequest = { showCancelForcedRemovalDialog = false },
+            title = { Text(stringResource(R.string.forced_removal_cancel_dialog_title)) },
+            text = { Text(stringResource(R.string.forced_removal_cancel_dialog_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    SecurityManager.cancelForcedRemoval(context)
+                    forcedRemovalRemaining = -1L
+                    showCancelForcedRemovalDialog = false
+                }) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCancelForcedRemovalDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    if (showFinishForcedRemovalDialog) {
+        AlertDialog(
+            onDismissRequest = { showFinishForcedRemovalDialog = false },
+            title = { Text(stringResource(R.string.forced_removal_finish_dialog_title)) },
+            text = { Text(stringResource(R.string.forced_removal_finish_dialog_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.removeDeviceOwner()
+                    showFinishForcedRemovalDialog = false
+                    (context as? android.app.Activity)?.recreate()
+                }) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFinishForcedRemovalDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         )
     }
 
