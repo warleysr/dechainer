@@ -129,6 +129,10 @@ class DeviceOwnerViewModel() : ViewModel() {
         }
     }
 
+    fun removeDeviceOwner() {
+        processDeviceOwnerPrivileges(remove = true)
+    }
+
     fun processDeviceOwnerPrivileges(remove: Boolean = false) {
         if (remove && dpm.isAdminActive(adminName)) {
             dpm.clearDeviceOwnerApp(packageName)

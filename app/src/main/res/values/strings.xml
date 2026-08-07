@@ -142,4 +142,17 @@
 
     <string name="accessibility_request_message">The accessibility service was disabled. The apps with restrictions will remain blocked and new apps can\'t be installed until it\'s enabled again.</string>
     <string name="go_to_settings">Go to Settings</string>
+
+    <string name="forced_removal">Forced removal</string>
+    <string name="forced_removal_desc">Wait 48 hours to remove restrictions without the code</string>
+    <string name="forced_removal_dialog_title">Start forced removal?</string>
+    <string name="forced_removal_dialog_text">If you have lost your recovery code, you can start a 48-hour timer. After this period, you will be able to remove all restrictions. This process cannot be fast-forwarded.</string>
+    <string name="forced_removal_confirm_checkbox">I understand that I must wait 48 hours</string>
+    <string name="forced_removal_cancel_dialog_title">Cancel forced removal?</string>
+    <string name="forced_removal_cancel_dialog_text">Are you sure you want to cancel the forced removal process? The timer will be reset.</string>
+    <string name="forced_removal_finish_dialog_title">Finish forced removal?</string>
+    <string name="forced_removal_finish_dialog_text">The 48-hour period has passed. Do you want to remove all restrictions now?</string>
+    <string name="time_hours">%1$dh</string>
+    <string name="time_minutes">%1$dmin</string>
+    <string name="time_hours_minutes">%1$dh %2$dmin</string>
 </resources>

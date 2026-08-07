@@ -142,4 +142,17 @@
 
     <string name="accessibility_request_message">O serviço de acessibilidade foi desativado. Os aplicativos com restrições permanecerão bloqueados e novos aplicativos não podem ser instalados até ser ativado novamente.</string>
     <string name="go_to_settings">Ir para Configurações</string>
+
+    <string name="forced_removal">Remoção forçada</string>
+    <string name="forced_removal_desc">Aguarde 48h para remover as restrições sem o código</string>
+    <string name="forced_removal_dialog_title">Iniciar remoção forçada?</string>
+    <string name="forced_removal_dialog_text">Se você perdeu seu código de recuperação, pode iniciar um timer de 48h. Após esse período, você poderá remover todas as restrições. Este processo não pode ser acelerado.</string>
+    <string name="forced_removal_confirm_checkbox">Eu entendo que devo aguardar 48 horas</string>
+    <string name="forced_removal_cancel_dialog_title">Cancelar remoção forçada?</string>
+    <string name="forced_removal_cancel_dialog_text">Tem certeza que deseja cancelar o processo de remoção forçada? O timer será resetado.</string>
+    <string name="forced_removal_finish_dialog_title">Finalizar remoção forçada?</string>
+    <string name="forced_removal_finish_dialog_text">O período de 48h passou. Deseja remover todas as restrições agora?</string>
+    <string name="time_hours">%1$dh</string>
+    <string name="time_minutes">%1$dmin</string>
+    <string name="time_hours_minutes">%1$dh %2$dmin</string>
 </resources>
