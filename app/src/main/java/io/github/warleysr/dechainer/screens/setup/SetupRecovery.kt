@@ -8,12 +8,9 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,50 +26,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.screens.common.RecoveryGenerateDialog
 import io.github.warleysr.dechainer.security.SecurityManager
 
 @Composable
 fun SetupRecovery(paddingValues: PaddingValues) {
     var showGenerateDialog by remember { mutableStateOf(false) }
-    var confirmKeySaved by remember { mutableStateOf(false) }
-    val generatedKey by remember { mutableStateOf(SecurityManager.generateRecoveryCode()) }
     val context = LocalContext.current
     Column(
         modifier = Modifier.padding(paddingValues).fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (showGenerateDialog) {
-            AlertDialog(
-                onDismissRequest = { showGenerateDialog = false },
-                confirmButton = {
-                    TextButton(
-                        enabled = confirmKeySaved,
-                        onClick = {
-                            SecurityManager.saveRecoveryCode(context, generatedKey)
-                        }
-                    ) {
-                        Text(stringResource(R.string.proceed))
-                    }
-                },
-                text = {
-                    Column( horizontalAlignment = Alignment.CenterHorizontally ) {
-                        Text(stringResource(R.string.your_key), fontWeight = FontWeight.Bold)
-                        Text(
-                            text = generatedKey,
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable(onClick = { confirmKeySaved = !confirmKeySaved })
-                        ) {
-                            Checkbox(
-                                checked = confirmKeySaved,
-                                onCheckedChange = { confirmKeySaved = it }
-                            )
-                            Text(stringResource(R.string.confirm_key_saved))
-                        }
-                    }
+            RecoveryGenerateDialog(
+                onDismiss = { showGenerateDialog = false },
+                onConfirm = { key ->
+                    SecurityManager.saveRecoveryCode(context, key)
+                    showGenerateDialog = false
                 }
             )
         }

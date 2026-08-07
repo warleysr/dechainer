@@ -1,11 +1,11 @@
 <resources>
     <string name="app_name" translatable="false">Déchaîner</string>
     <string name="attention">Atenção!</string>
-    <string name="self_lock_risk">Este app utiliza privilégios de Dono do Dispositivo para bloquear componentes de sistema e controlar o acesso a outros aplicativos. Há o risco de se \"auto trancar\" e não conseguir ter acesso as funcionalidades bloqueadas novamente. Para evitar isso você deve ter uma chave de recuperação. Essa chave pode ser gerada abaixo e deve ser salva em um local seguro ou anotada em um papel de forma física. Somente através dela você conseguirá remover este app. Gere a chave abaixo.</string>
-    <string name="confirm_key_saved">Confirmo que salvei a chave</string>
+    <string name="self_lock_risk">Este app utiliza privilégios de Dono do Dispositivo para bloquear componentes de sistema e controlar o acesso a outros aplicativos. Há o risco de se \"auto trancar\" e não conseguir ter acesso as funcionalidades bloqueadas novamente. Para evitar isso você deve ter um código de recuperação. Esse código pode ser gerado abaixo e deve ser salvo em um local seguro, de preferência em forma física em um papel.</string>
+    <string name="confirm_key_saved">Confirmo que salvei o código</string>
     <string name="proceed">Prosseguir</string>
-    <string name="generate_key">Gerar chave</string>
-    <string name="your_key">Sua chave é:</string>
+    <string name="generate_key">Gerar código</string>
+    <string name="your_key">Seu código é:</string>
     <string name="restrictions">Restrições</string>
     <string name="apps" translatable="false">Apps</string>
     <string name="config" translatable="false">Config</string>
@@ -128,8 +128,10 @@
     <string name="keyboard_normal_desc">Campo de texto padrão para inserir o código de recuperação</string>
     <string name="keyboard_shuffle">Teclado Shuffle</string>
     <string name="keyboard_shuffle_desc">Grade 4×4 que embaralha após cada toque para evitar memorização de posições</string>
+    <string name="change_recovery_code">Alterar código de recuperação</string>
+    <string name="change_recovery_code_desc">Gera um novo código de recuperação para substituir o atual</string>
     <string name="shuffle_keyboard_backspace">⌫ Apagar último</string>
-    <string name="search_restrictions">Buscar restrições...</string>
+    <string name="search_restrictions">Buscar restrições…</string>
     <string name="list_title">Título da lista</string>
     <string name="sites_lines">Sites (um por linha)</string>
     <string name="active_blocking">Bloqueio ativo</string>

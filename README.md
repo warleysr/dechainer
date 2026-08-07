@@ -31,7 +31,7 @@ The elevation to Device Owner status requires a bridge between user-space and sy
 
 
 ## Recovery and Safety Protocol
-Upon configuration, Déchaîner generates a unique **16-character alphanumeric recovery key**. This key is the only method to disable restrictions or uninstall the application without a complete device wipe (if a wipe is even permitted by your active settings).
+Upon configuration, Déchaîner generates a unique **16-character alphanumeric recovery code**. This key is the only method to disable restrictions or uninstall the application without a complete device wipe (if a wipe is even permitted by your active settings).
 
 ### Mandatory Safety Steps:
 *   **Physical Record**: You must manually write this key on a physical piece of paper.
@@ -42,7 +42,7 @@ Upon configuration, Déchaîner generates a unique **16-character alphanumeric r
 ## Critical Security Advisory
 **Déchaîner is designed to be uncompromising.**
 
-The activation of full system restrictions combined with the loss of your Recovery Key may result in a **permanent inability** to modify system parameters or restore the device to its original state. 
+The activation of full system restrictions combined with the loss of your Recovery Code may result in a **permanent inability** to modify system parameters or restore the device to its original state. 
 
 *   **Self-Lockout Risk**: This is an intentional feature designed to stop "your future self" from relapsing.
 *   **No Backdoors**: There are no alternative recovery methods. If the key is lost, the lockdown is absolute.
