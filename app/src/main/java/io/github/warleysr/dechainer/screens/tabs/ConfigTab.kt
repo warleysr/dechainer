@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.NoAdultContent
+import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -27,6 +28,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
+import io.github.warleysr.dechainer.screens.common.RecoveryGenerateDialog
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.LocaleUtils
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
@@ -47,6 +49,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var isApplyingDns by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showKeyboardDialog by remember { mutableStateOf(false) }
+    var showRecoveryDialog by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     
     val context = LocalContext.current
@@ -174,6 +177,17 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.change_recovery_code)) },
+                    leadingContent = { Icon(Icons.Outlined.VpnKey, "") },
+                    supportingContent = { Text(stringResource(R.string.change_recovery_code_desc)) },
+                    modifier = Modifier.clickable {
+                        pendingAction = { showRecoveryDialog = true }
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
         }
         SnackbarHost(
             hostState = snackbarHostState,
@@ -239,6 +253,16 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     showKeyboardDialog = false
                 }
                 pendingAction = action
+            }
+        )
+    }
+
+    if (showRecoveryDialog) {
+        RecoveryGenerateDialog(
+            onDismiss = { showRecoveryDialog = false },
+            onConfirm = { code ->
+                SecurityManager.saveRecoveryCode(context, code)
+                showRecoveryDialog = false
             }
         )
     }

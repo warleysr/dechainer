@@ -1,11 +1,11 @@
 <resources>
     <string name="app_name" translatable="false">Déchaîner</string>
     <string name="attention">Attention!</string>
-    <string name="self_lock_risk">This app uses Device Owner privileges to block system components and control access to other applications. There is a risk of \"locking yourself out\" and being unable to access blocked features again. To prevent this, you must have a recovery key. This key can be generated below and should be saved in a safe place or written down physically. Only through it will you be able to remove this app. Generate the key below.</string>
-    <string name="confirm_key_saved">I confirm that I have saved the key</string>
+    <string name="self_lock_risk">This app uses Device Owner privileges to block system components and control access to other apps. There is a risk of "locking yourself out" and being unable to regain access to the blocked features. To prevent this, you must have a recovery code. This code can be generated below and should be saved in a secure location—preferably in physical form, on paper.</string>
+    <string name="confirm_key_saved">I confirm that I have saved the code</string>
     <string name="proceed">Proceed</string>
-    <string name="generate_key">Generate key</string>
-    <string name="your_key">Your key is:</string>
+    <string name="generate_key">Generate code</string>
+    <string name="your_key">Your code is:</string>
     <string name="restrictions">Restrictions</string>
     <string name="apps" translatable="false">Apps</string>
     <string name="config" translatable="false">Config</string>
@@ -128,8 +128,10 @@
     <string name="keyboard_normal_desc">Standard text field for entering the recovery code</string>
     <string name="keyboard_shuffle">Shuffle Keyboard</string>
     <string name="keyboard_shuffle_desc">4×4 grid that reshuffles after every tap to prevent position memorisation</string>
+    <string name="change_recovery_code">Change recovery code</string>
+    <string name="change_recovery_code_desc">Generate a new recovery code to replace the current one</string>
     <string name="shuffle_keyboard_backspace">⌫ Delete last</string>
-    <string name="search_restrictions">Search restrictions...</string>
+    <string name="search_restrictions">Search restrictions…</string>
     <string name="list_title">List title</string>
     <string name="sites_lines">Sites (one per line)</string>
     <string name="active_blocking">Active blocking</string>
