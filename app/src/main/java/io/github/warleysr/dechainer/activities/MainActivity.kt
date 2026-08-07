@@ -2,6 +2,7 @@ package io.github.warleysr.dechainer.activities
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.AppBlocking
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.LockClock
@@ -40,6 +42,13 @@ class MainActivity : ComponentActivity() {
                 val viewModel: DeviceOwnerViewModel = viewModel()
                 viewModel.addShizukuListener()
 
+                val currentScreen = viewModel.selectedTab()
+                val isRoot = currentScreen in listOf("restrictions", "apps", "config")
+
+                BackHandler(enabled = !isRoot) {
+                    viewModel.goBack()
+                }
+
                 var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
                 LaunchedEffect(Unit) {
                     while (true) {
@@ -53,6 +62,13 @@ class MainActivity : ComponentActivity() {
                     topBar = {
                         TopAppBar(
                             title = { Text(stringResource(R.string.app_name)) },
+                            navigationIcon = {
+                                if (!isRoot) {
+                                    IconButton(onClick = { viewModel.goBack() }) {
+                                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
+                                    }
+                                }
+                            },
                             actions = {
                                 if (SecurityManager.isSessionActive()) {
                                     val remaining = SecurityManager.sessionEndTime - currentTime
@@ -80,10 +96,17 @@ class MainActivity : ComponentActivity() {
                             Pair("config", stringResource(R.string.config))
                         )
 
+                        val selectedBaseTab = when (currentScreen) {
+                            "restrictions" -> "restrictions"
+                            "apps" -> "apps"
+                            "config", "setup_device_owner", "activity_blocker", "browser_restrictions", "blocked_words" -> "config"
+                            else -> "restrictions"
+                        }
+
                         NavigationBar {
                             tabs.forEach { pair ->
                                 NavigationBarItem(
-                                    selected = viewModel.selectedTab() == pair.first,
+                                    selected = selectedBaseTab == pair.first,
                                     onClick = { viewModel.navigateTo(pair.first) },
                                     label = { Text(pair.second) },
                                     icon = {
@@ -105,7 +128,7 @@ class MainActivity : ComponentActivity() {
                         SetupRecovery(innerPadding)
                     else {
                         Box(modifier = Modifier.padding(innerPadding)) {
-                            when (viewModel.selectedTab()) {
+                            when (currentScreen) {
                                 "restrictions" -> RestrictionsTab()
                                 "apps" -> AppsTab()
                                 "config" -> ConfigTab()

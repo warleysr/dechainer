@@ -11,8 +11,8 @@ import android.content.RestrictionEntry
 import android.content.RestrictionsManager
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.UserManager
 import android.util.Log
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import io.github.warleysr.dechainer.DechainerApplication
@@ -28,7 +28,7 @@ class DeviceOwnerViewModel() : ViewModel() {
     private val adminName = ComponentName(DechainerApplication.getInstance(), DechainerDeviceAdminReceiver::class.java)
     private val packageName = DechainerApplication.getInstance().packageName
 
-    private var selectedTabState = mutableStateOf("restrictions")
+    private var navigationStack = mutableStateListOf("restrictions")
     private var shizukuPermission = mutableStateOf(Shizuku.pingBinder() && checkShizukuPermission())
     private var isDeviceOwner = mutableStateOf(dpm.isDeviceOwnerApp(packageName))
     private val serviceComponent = "$packageName/.DechainerAccessibilityService"
@@ -61,9 +61,22 @@ class DeviceOwnerViewModel() : ViewModel() {
         Shizuku.removeRequestPermissionResultListener(requestResultPermissionListener)
     }
 
-    fun selectedTab() = selectedTabState.value
+    fun selectedTab() = navigationStack.lastOrNull() ?: "restrictions"
 
-    fun navigateTo(screen: String) { selectedTabState.value = screen }
+    fun navigateTo(screen: String) {
+        if (screen in listOf("restrictions", "apps", "config")) {
+            navigationStack.clear()
+        }
+        navigationStack.add(screen)
+    }
+
+    fun goBack(): Boolean {
+        if (navigationStack.size > 1) {
+            navigationStack.removeAt(navigationStack.size - 1)
+            return true
+        }
+        return false
+    }
 
     fun isDeviceOwner() : Boolean {
         return isDeviceOwner.value
