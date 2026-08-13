@@ -238,21 +238,10 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             text = {
                 Column {
                     Text(stringResource(R.string.forced_removal_dialog_text))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { confirmForcedRemoval = !confirmForcedRemoval }
-                            .padding(top = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(checked = confirmForcedRemoval, onCheckedChange = { confirmForcedRemoval = it })
-                        Text(stringResource(R.string.forced_removal_confirm_checkbox), modifier = Modifier.padding(start = 8.dp))
-                    }
                 }
             },
             confirmButton = {
                 TextButton(
-                    enabled = confirmForcedRemoval,
                     onClick = {
                         SecurityManager.startForcedRemoval(context)
                         forcedRemovalRemaining = SecurityManager.getForcedRemovalRemainingTime(context)
@@ -287,7 +276,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             },
             dismissButton = {
                 TextButton(onClick = { showCancelForcedRemovalDialog = false }) {
-                    Text(stringResource(R.string.cancel))
+                    Text(stringResource(R.string.close))
                 }
             }
         )
@@ -295,20 +284,46 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
 
     if (showFinishForcedRemovalDialog) {
         AlertDialog(
-            onDismissRequest = { showFinishForcedRemovalDialog = false },
+            onDismissRequest = { 
+                showFinishForcedRemovalDialog = false
+                confirmForcedRemoval = false
+            },
             title = { Text(stringResource(R.string.forced_removal_finish_dialog_title)) },
-            text = { Text(stringResource(R.string.forced_removal_finish_dialog_text)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.forced_removal_finish_dialog_text))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { confirmForcedRemoval = !confirmForcedRemoval }
+                            .padding(top = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = confirmForcedRemoval, onCheckedChange = { confirmForcedRemoval = it })
+                        Text(stringResource(R.string.forced_removal_confirm_checkbox), modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            },
             confirmButton = {
-                TextButton(onClick = {
-                    viewModel.removeDeviceOwner()
-                    showFinishForcedRemovalDialog = false
-                    (context as? android.app.Activity)?.recreate()
-                }) {
+                TextButton(
+                    enabled = confirmForcedRemoval,
+                    onClick = {
+                        viewModel.removeDeviceOwner()
+                        showFinishForcedRemovalDialog = false
+                        confirmForcedRemoval = false
+                        (context as? android.app.Activity)?.recreate()
+                    }
+                ) {
                     Text(stringResource(R.string.confirm))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showFinishForcedRemovalDialog = false }) {
+                TextButton(onClick = {
+                    SecurityManager.cancelForcedRemoval(context)
+                    forcedRemovalRemaining = -1L
+                    showFinishForcedRemovalDialog = false
+                    confirmForcedRemoval = false
+                }) {
                     Text(stringResource(R.string.cancel))
                 }
             }

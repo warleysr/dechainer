@@ -147,7 +147,7 @@
     <string name="forced_removal_desc">Aguarde 48h para remover as restrições sem o código</string>
     <string name="forced_removal_dialog_title">Iniciar remoção forçada?</string>
     <string name="forced_removal_dialog_text">Se você perdeu seu código de recuperação, pode iniciar um timer de 48h. Após esse período, você poderá remover todas as restrições. Este processo não pode ser acelerado.</string>
-    <string name="forced_removal_confirm_checkbox">Eu entendo que devo aguardar 48 horas</string>
+    <string name="forced_removal_confirm_checkbox">Eu confirmo que quero remover as restrições</string>
     <string name="forced_removal_cancel_dialog_title">Cancelar remoção forçada?</string>
     <string name="forced_removal_cancel_dialog_text">Tem certeza que deseja cancelar o processo de remoção forçada? O timer será resetado.</string>
     <string name="forced_removal_finish_dialog_title">Finalizar remoção forçada?</string>
