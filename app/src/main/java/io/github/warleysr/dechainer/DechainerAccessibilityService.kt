@@ -29,6 +29,7 @@ import io.github.warleysr.dechainer.activities.AccessibilityRequestActivity
 import io.github.warleysr.dechainer.activities.BlockedWordActivity
 import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
 import io.github.warleysr.dechainer.activities.TimeUpActivity
+import io.github.warleysr.dechainer.utils.PlayStoreRatingFetcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,6 +51,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var reopenPrefs: SharedPreferences
     private lateinit var blockedWordsPrefs: SharedPreferences
     private lateinit var securityPrefs: SharedPreferences
+    private lateinit var ratingPrefs: SharedPreferences
 
     private var forbiddenPatterns: Map<String, Regex> = emptyMap()
     private var passiveForbiddenPatterns: Map<String, Map<String, Regex>> = emptyMap()
@@ -78,6 +80,21 @@ class DechainerAccessibilityService : AccessibilityService() {
                 val isTorrentApp = manager.isTorrentApp(packageName)
                 if (isTorrentApp && securityPrefs.getBoolean("block_torrents", false))
                     suspendPackage(packageName)
+            }
+
+            serviceScope.launch(Dispatchers.IO) {
+                try {
+                    val info = PlayStoreRatingFetcher.fetch(packageName)
+                    ratingPrefs.edit { putBoolean(packageName, info.hasExplicitContent) }
+                    if (info.hasExplicitContent) {
+                        withContext(Dispatchers.Main) {
+                            suspendPackage(packageName)
+                        }
+                    }
+                } catch (e: Exception) {
+                    ratingPrefs.edit { putBoolean(packageName, false) }
+                    e.printStackTrace()
+                }
             }
         }
     }
@@ -189,6 +206,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         reopenPrefs = getSharedPreferences("reopen_times", MODE_PRIVATE)
         blockedWordsPrefs = getSharedPreferences("blocked_words_prefs", MODE_PRIVATE)
         securityPrefs = getSharedPreferences("security_prefs", MODE_PRIVATE)
+        ratingPrefs = getSharedPreferences("app_ratings", MODE_PRIVATE)
 
         limitPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -283,6 +301,18 @@ class DechainerAccessibilityService : AccessibilityService() {
                 sessionStartTime = SystemClock.elapsedRealtime()
                 checkDateReset()
                 startTracking(newPackage)
+
+                if (!ratingPrefs.contains(newPackage)) {
+                    serviceScope.launch(Dispatchers.IO) {
+                        try {
+                            val info = PlayStoreRatingFetcher.fetch(newPackage)
+                            ratingPrefs.edit { putBoolean(newPackage, info.hasExplicitContent) }
+                        } catch (e: Exception) {
+                            ratingPrefs.edit { putBoolean(newPackage, false) }
+                            e.printStackTrace()
+                        }
+                    }
+                }
             }
 
             if (className.contains("Activity", ignoreCase = true)) {

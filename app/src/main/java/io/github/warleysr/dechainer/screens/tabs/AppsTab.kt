@@ -368,6 +368,14 @@ fun AppRow(app: AppItem, onClick: () -> Unit) {
                         }
                     }
                 }
+
+                if (app.hasExplicitContent) {
+                    Text(
+                        stringResource(R.string.explicit_content),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         },
         leadingContent = {
@@ -391,6 +399,13 @@ fun AppRow(app: AppItem, onClick: () -> Unit) {
                         text = stringResource(R.string.protected_label),
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                if (app.isSuspended) {
+                    StatusBadge(
+                        text = stringResource(R.string.suspended),
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }

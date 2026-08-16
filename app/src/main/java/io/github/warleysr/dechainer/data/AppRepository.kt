@@ -18,6 +18,7 @@ object AppRepository {
     fun getApps(): List<AppItem> {
         val limitsPrefs = context.getSharedPreferences("app_limits", Context.MODE_PRIVATE)
         val reopenPrefs = context.getSharedPreferences("reopen_times", Context.MODE_PRIVATE)
+        val ratingsPrefs = context.getSharedPreferences("app_ratings", Context.MODE_PRIVATE)
         
         val installedApps = packageManager.getInstalledApplications(PackageManager.MATCH_UNINSTALLED_PACKAGES)
 
@@ -40,7 +41,8 @@ object AppRepository {
                     isUninstallBlocked = isUninstallBlocked,
                     timeLimitMinutes = limitsPrefs.getInt(packageName, 0),
                     reopeningSeconds = reopenPrefs.getInt(packageName, 0),
-                    isSuspended = isSuspended
+                    isSuspended = isSuspended,
+                    hasExplicitContent = ratingsPrefs.getBoolean(packageName, false)
                 )
             }
             .sortedBy { it.name.lowercase() }

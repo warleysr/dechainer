@@ -155,4 +155,6 @@
     <string name="time_hours">%1$dh</string>
     <string name="time_minutes">%1$dmin</string>
     <string name="time_hours_minutes">%1$dh %2$dmin</string>
+    <string name="explicit_content">Conteúdo explícito</string>
+    <string name="suspended">Suspenso</string>
 </resources>
