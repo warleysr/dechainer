@@ -157,4 +157,6 @@
     <string name="time_hours_minutes">%1$dh %2$dmin</string>
     <string name="explicit_content">Conteúdo explícito</string>
     <string name="suspended">Suspenso</string>
+    <string name="suspend">Suspender</string>
+    <string name="unsuspend">Retirar suspensão</string>
 </resources>

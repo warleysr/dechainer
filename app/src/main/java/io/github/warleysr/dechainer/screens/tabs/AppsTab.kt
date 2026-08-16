@@ -30,8 +30,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -139,6 +139,10 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             },
             onToggleUninstall = {
                 pendingAction = { viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked) }
+                selectedApp = null
+            },
+            onSuspend = {
+                pendingAction = { viewModel.suspendApp(app.packageName, !app.isSuspended) }
                 selectedApp = null
             },
             onSetTimeLimit = {
@@ -431,6 +435,7 @@ fun AppActionDialog(
     onDismiss: () -> Unit,
     onBlock: () -> Unit,
     onToggleUninstall: () -> Unit,
+    onSuspend: () -> Unit,
     onSetTimeLimit: () -> Unit,
     onManageRestrictions: () -> Unit
 ) {
@@ -443,11 +448,19 @@ fun AppActionDialog(
                 Spacer(Modifier.height(16.dp))
                 TextButton(onClick = onSetTimeLimit, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Timer, null)
+                    Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.set_time_limit))
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = onSuspend, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Pause, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (app.isSuspended) stringResource(R.string.unsuspend) else stringResource(R.string.suspend))
+                }
+                Spacer(Modifier.height(4.dp))
                 TextButton(onClick = onManageRestrictions, modifier = Modifier.fillMaxWidth()) {
                     Icon(Icons.Default.Block, null)
+                    Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.manage_app_restrictions))
                 }
             }
