@@ -85,12 +85,14 @@ class DechainerAccessibilityService : AccessibilityService() {
             serviceScope.launch(Dispatchers.IO) {
                 try {
                     val info = PlayStoreRatingFetcher.fetch(packageName)
-                    ratingPrefs.edit { putBoolean(packageName, info.hasExplicitContent) }
-                    if (info.hasExplicitContent) {
+                    val isUpdate = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
+
+                    if (info.hasExplicitContent && info.contentRating == "Rated 18+" && !isUpdate)
                         withContext(Dispatchers.Main) {
                             suspendPackage(packageName)
                         }
-                    }
+
+                    ratingPrefs.edit { putBoolean(packageName, info.hasExplicitContent) }
                 } catch (e: Exception) {
                     ratingPrefs.edit { putBoolean(packageName, false) }
                     e.printStackTrace()
