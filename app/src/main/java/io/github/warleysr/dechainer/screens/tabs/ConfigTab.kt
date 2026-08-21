@@ -50,13 +50,14 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var isApplyingDns by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showKeyboardDialog by remember { mutableStateOf(false) }
+    var showImpulseDialog by remember { mutableStateOf(false) }
     var showRecoveryDialog by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showStartForcedRemovalDialog by remember { mutableStateOf(false) }
     var showCancelForcedRemovalDialog by remember { mutableStateOf(false) }
     var showFinishForcedRemovalDialog by remember { mutableStateOf(false) }
     var confirmForcedRemoval by remember { mutableStateOf(false) }
-    
+
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -67,6 +68,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     var blockTorrents by remember { mutableStateOf(securityPrefs.getBoolean("block_torrents", false)) }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
+    var impulseMode by remember { mutableStateOf(SecurityManager.getImpulseLockMode(context)) }
 
     var forcedRemovalRemaining by remember { mutableLongStateOf(SecurityManager.getForcedRemovalRemainingTime(context)) }
     LaunchedEffect(Unit) {
@@ -174,6 +176,20 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     supportingContent = { Text(stringResource(R.string.language_description)) },
                     leadingContent = { Icon(Icons.Outlined.Language, "") },
                     modifier = Modifier.clickable { showLanguageDialog = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                val impulseLabel = when (impulseMode) {
+                    SecurityManager.ImpulseLockMode.OFF -> stringResource(R.string.impulse_lock_off)
+                    SecurityManager.ImpulseLockMode.NORMAL -> stringResource(R.string.impulse_lock_normal)
+                    SecurityManager.ImpulseLockMode.HARD -> stringResource(R.string.impulse_lock_hard)
+                }
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.impulse_lock)) },
+                    supportingContent = { Text(impulseLabel) },
+                    leadingContent = { Icon(Icons.Outlined.LockClock, "") },
+                    modifier = Modifier.clickable { showImpulseDialog = true }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -386,6 +402,21 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     shuffleKeyboard = isShuffle
                     securityPrefs.edit { putBoolean("shuffle_keyboard", isShuffle) }
                     showKeyboardDialog = false
+                }
+                pendingAction = action
+            }
+        )
+    }
+
+    if (showImpulseDialog) {
+        ImpulseLockDialog(
+            currentMode = SecurityManager.getImpulseLockMode(context),
+            onDismiss = { showImpulseDialog = false },
+            onApply = { mode ->
+                val action = {
+                    impulseMode = mode
+                    SecurityManager.setImpulseLockMode(context, mode)
+                    showImpulseDialog = false
                 }
                 pendingAction = action
             }
@@ -644,6 +675,54 @@ fun KeyboardTypeDialog(
         confirmButton = {
             TextButton(onClick = {
                 onApply(selectedShuffle) }) {
+                Text(stringResource(R.string.apply))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+fun ImpulseLockDialog(
+    currentMode: SecurityManager.ImpulseLockMode,
+    onDismiss: () -> Unit,
+    onApply: (SecurityManager.ImpulseLockMode) -> Unit
+) {
+    var selectedMode by remember { mutableStateOf(currentMode) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.impulse_lock)) },
+        text = {
+            Column {
+                SecurityManager.ImpulseLockMode.values().forEach { mode ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedMode = mode }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selectedMode == mode, onClick = { selectedMode = mode })
+                        Text(
+                            text = when (mode) {
+                                SecurityManager.ImpulseLockMode.OFF -> stringResource(R.string.impulse_lock_off)
+                                SecurityManager.ImpulseLockMode.NORMAL -> stringResource(R.string.impulse_lock_normal)
+                                SecurityManager.ImpulseLockMode.HARD -> stringResource(R.string.impulse_lock_hard)
+                            },
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onApply(selectedMode) }) {
                 Text(stringResource(R.string.apply))
             }
         },

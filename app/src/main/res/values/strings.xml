@@ -159,4 +159,19 @@
     <string name="suspended">Suspended</string>
     <string name="suspend">Suspend</string>
     <string name="unsuspend">Unsuspend</string>
+
+    <string name="impulse_lock">Impulse lock</string>
+    <string name="impulse_lock_desc">Select a challenge to solve before accessing the app</string>
+    <string name="impulse_lock_off">Off</string>
+    <string name="impulse_lock_normal">Normal (Math)</string>
+    <string name="impulse_lock_hard">Hard (Words)</string>
+    <string name="having_impulses">I\'m having impulses</string>
+    <string name="access_app">Access app</string>
+    <string name="impulse_timer_active">Impulse block active</string>
+    <string name="math_challenge_title">Solve the problems</string>
+    <string name="word_challenge_title">Type the words</string>
+    <string name="challenge_error">Incorrect, starting over…</string>
+    <string name="biometric_title">Authentication required</string>
+    <string name="biometric_subtitle">Use your biometric credential to access Dechainer</string>
+    <string name="biometric_error">Authentication failed</string>
 </resources>

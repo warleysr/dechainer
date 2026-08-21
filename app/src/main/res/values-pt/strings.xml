@@ -159,4 +159,19 @@
     <string name="suspended">Suspenso</string>
     <string name="suspend">Suspender</string>
     <string name="unsuspend">Retirar suspensão</string>
+
+    <string name="impulse_lock">Bloqueio de impulsos</string>
+    <string name="impulse_lock_desc">Selecione um desafio para resolver antes de acessar o app</string>
+    <string name="impulse_lock_off">Desativado</string>
+    <string name="impulse_lock_normal">Normal (Matemática)</string>
+    <string name="impulse_lock_hard">Difícil (Palavras)</string>
+    <string name="having_impulses">Estou tendo impulsos</string>
+    <string name="access_app">Acessar app</string>
+    <string name="impulse_timer_active">Bloqueio de impulsos ativo</string>
+    <string name="math_challenge_title">Resolva os problemas</string>
+    <string name="word_challenge_title">Digite as palavras</string>
+    <string name="challenge_error">Incorreto, reiniciando…</string>
+    <string name="biometric_title">Autenticação necessária</string>
+    <string name="biometric_subtitle">Use sua digital para acessar o Dechainer</string>
+    <string name="biometric_error">Falha na autenticação</string>
 </resources>
