@@ -10,6 +10,7 @@ import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LockClock
@@ -167,6 +168,15 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
                     leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
                     modifier = Modifier.clickable { viewModel.navigateTo("blocked_words") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.visual_blocking)) },
+                    supportingContent = { Text(stringResource(R.string.visual_blocking_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.ImageSearch, "") },
+                    modifier = Modifier.clickable { viewModel.navigateTo("visual_blocking") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }

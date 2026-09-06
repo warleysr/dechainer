@@ -174,4 +174,24 @@
     <string name="biometric_title">Autenticação necessária</string>
     <string name="biometric_subtitle">Use sua digital para acessar o Dechainer</string>
     <string name="biometric_error">Falha na autenticação</string>
+
+    <string name="nsfw_content_blocked">Conteúdo bloqueado!</string>
+    <string name="nsfw_content_blocked_description">Conteúdo explícito foi detectado na tela e bloqueado. Feche o app e vá fazer outra coisa!</string>
+
+    <string name="visual_blocking">Bloqueio visual</string>
+    <string name="visual_blocking_desc">Detecta imagens, gifs e vídeos impróprios com um modelo de ML no dispositivo</string>
+    <string name="visual_blocking_explanation">Esse recurso analisa imagens, gifs e vídeos exibidos na tela dos apps selecionados usando um modelo de machine learning que roda inteiramente no seu dispositivo — nada é enviado para fora dele. Quando um conteúdo das categorias selecionadas é detectado acima da sensibilidade escolhida, o app é fechado automaticamente.</string>
+    <string name="visual_blocking_enable">Ativar bloqueio visual</string>
+    <string name="visual_blocking_requires_accessibility">Requer que o bloqueio avançado (serviço de acessibilidade) esteja ativado</string>
+    <string name="visual_blocking_apps_section">Apps monitorados</string>
+    <string name="visual_blocking_apps_selected">%1$d apps selecionados</string>
+    <string name="visual_blocking_categories_section">Categorias a bloquear</string>
+    <string name="visual_blocking_categories_desc">Selecione quais categorias detectadas pelo modelo devem acionar o bloqueio</string>
+    <string name="visual_blocking_threshold_section">Sensibilidade</string>
+    <string name="visual_blocking_threshold_desc">Score combinado mínimo das categorias selecionadas para acionar o bloqueio</string>
+    <string name="visual_blocking_locked">Toque para desbloquear e editar</string>
+    <string name="nsfw_category_drawings">Desenhos</string>
+    <string name="nsfw_category_hentai">Hentai</string>
+    <string name="nsfw_category_porn">Pornografia</string>
+    <string name="nsfw_category_sexy">Sensual</string>
 </resources>

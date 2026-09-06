@@ -174,4 +174,24 @@
     <string name="biometric_title">Authentication required</string>
     <string name="biometric_subtitle">Use your biometric credential to access Dechainer</string>
     <string name="biometric_error">Authentication failed</string>
+
+    <string name="nsfw_content_blocked">Content blocked!</string>
+    <string name="nsfw_content_blocked_description">Explicit content was detected on screen and blocked. Close the app and go do something else!</string>
+
+    <string name="visual_blocking">Visual blocking</string>
+    <string name="visual_blocking_desc">Detects inappropriate images, gifs and videos with an on-device ML model</string>
+    <string name="visual_blocking_explanation">This feature scans images, gifs and videos shown on screen in the selected apps using a machine learning model that runs entirely on your device — nothing is uploaded or sent anywhere. When content matching the selected categories is detected above the chosen sensitivity, the app is closed automatically.</string>
+    <string name="visual_blocking_enable">Enable visual blocking</string>
+    <string name="visual_blocking_requires_accessibility">Requires advanced blocking (accessibility service) to be enabled</string>
+    <string name="visual_blocking_apps_section">Monitored apps</string>
+    <string name="visual_blocking_apps_selected">%1$d apps selected</string>
+    <string name="visual_blocking_categories_section">Categories to block</string>
+    <string name="visual_blocking_categories_desc">Select which categories detected by the model should trigger blocking</string>
+    <string name="visual_blocking_threshold_section">Sensitivity</string>
+    <string name="visual_blocking_threshold_desc">Minimum combined score of the selected categories needed to trigger blocking</string>
+    <string name="visual_blocking_locked">Unlock to edit</string>
+    <string name="nsfw_category_drawings">Drawings</string>
+    <string name="nsfw_category_hentai">Hentai</string>
+    <string name="nsfw_category_porn">Porn</string>
+    <string name="nsfw_category_sexy">Sexy / suggestive</string>
 </resources>
