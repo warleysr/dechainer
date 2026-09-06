@@ -1,13 +1,9 @@
 package io.github.warleysr.dechainer.activities
 
-import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.biometric.AuthenticationRequest
 import androidx.biometric.AuthenticationResult
 import androidx.biometric.AuthenticationResultCallback
+import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.compose.rememberAuthenticationLauncher
@@ -23,26 +19,8 @@ import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.challenges.MathChallenge
 import io.github.warleysr.dechainer.screens.challenges.WordChallenge
 import io.github.warleysr.dechainer.security.SecurityManager
-import io.github.warleysr.dechainer.ui.theme.DechainerTheme
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
-
-class LockActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            DechainerTheme {
-                LockScreen(
-                    onAuthenticated = {
-                        startActivity(Intent(this, MainActivity::class.java))
-                        finish()
-                    }
-                )
-            }
-        }
-    }
-}
 
 @Composable
 fun LockScreen(onAuthenticated: () -> Unit) {
@@ -72,14 +50,38 @@ fun LockScreen(onAuthenticated: () -> Unit) {
         }
     )
 
-    LaunchedEffect(Unit) {
-        val request = AuthenticationRequest.biometricRequest(
-            title = context.getString(R.string.biometric_title),
-            AuthenticationRequest.Biometric.Fallback.DeviceCredential
-        ) {
-            setSubtitle(context.getString(R.string.biometric_subtitle))
+    fun launchAuthentication() {
+        val biometricManager = BiometricManager.from(context)
+        val canUseBiometric = biometricManager.canAuthenticate(BIOMETRIC_STRONG) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+        val canUseDeviceCredential = biometricManager.canAuthenticate(DEVICE_CREDENTIAL) ==
+            BiometricManager.BIOMETRIC_SUCCESS
+
+        when {
+            canUseBiometric -> {
+                val request = AuthenticationRequest.biometricRequest(
+                    title = context.getString(R.string.biometric_title)
+                ) {
+                    setSubtitle(context.getString(R.string.biometric_subtitle))
+                }
+                launcher.launch(request)
+            }
+            canUseDeviceCredential -> {
+                val request = AuthenticationRequest.credentialRequest(
+                    title = context.getString(R.string.biometric_title)
+                ) {
+                    setSubtitle(context.getString(R.string.biometric_subtitle))
+                }
+                launcher.launch(request)
+            }
+            else -> {
+                isAuthenticated = true
+            }
         }
-        launcher.launch(request)
+    }
+
+    LaunchedEffect(Unit) {
+        launchAuthentication()
     }
 
     LaunchedEffect(Unit) {
@@ -110,15 +112,7 @@ fun LockScreen(onAuthenticated: () -> Unit) {
                 if (authError != null) {
                     Text(authError!!, color = MaterialTheme.colorScheme.error)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Button(onClick = {
-                        val request = AuthenticationRequest.biometricRequest(
-                            title = context.getString(R.string.biometric_title),
-                            AuthenticationRequest.Biometric.Fallback.DeviceCredential
-                        ) {
-                            setSubtitle(context.getString(R.string.biometric_subtitle))
-                        }
-                        launcher.launch(request)
-                    }) {
+                    Button(onClick = { launchAuthentication() }) {
                         Text(stringResource(R.string.confirm))
                     }
                 }
