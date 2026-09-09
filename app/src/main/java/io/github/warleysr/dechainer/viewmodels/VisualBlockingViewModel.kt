@@ -3,6 +3,7 @@ package io.github.warleysr.dechainer.viewmodels
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
@@ -40,6 +41,35 @@ class VisualBlockingViewModel : ViewModel() {
     )
         private set
 
+    var suspendEnabled by mutableStateOf(
+        prefs.getBoolean(VisualBlockingSettings.KEY_SUSPEND_ENABLED, false)
+    )
+        private set
+
+    var suspendBlockCount by mutableIntStateOf(
+        prefs.getInt(
+            VisualBlockingSettings.KEY_SUSPEND_BLOCK_COUNT,
+            VisualBlockingSettings.DEFAULT_SUSPEND_BLOCK_COUNT
+        )
+    )
+        private set
+
+    var suspendWindowMinutes by mutableIntStateOf(
+        prefs.getInt(
+            VisualBlockingSettings.KEY_SUSPEND_WINDOW_MINUTES,
+            VisualBlockingSettings.DEFAULT_SUSPEND_WINDOW_MINUTES
+        )
+    )
+        private set
+
+    var suspendDurationMinutes by mutableIntStateOf(
+        prefs.getInt(
+            VisualBlockingSettings.KEY_SUSPEND_DURATION_MINUTES,
+            VisualBlockingSettings.DEFAULT_SUSPEND_DURATION_MINUTES
+        )
+    )
+        private set
+
     var apps by mutableStateOf<List<AppItem>>(emptyList())
         private set
 
@@ -72,6 +102,31 @@ class VisualBlockingViewModel : ViewModel() {
     fun updateThreshold(value: Float) {
         threshold = value
         prefs.edit { putFloat(VisualBlockingSettings.KEY_THRESHOLD, value) }
+    }
+
+    fun updateSuspendEnabled(value: Boolean) {
+        suspendEnabled = value
+        prefs.edit { putBoolean(VisualBlockingSettings.KEY_SUSPEND_ENABLED, value) }
+    }
+
+    /**
+     * The three settings below accept 0 while the user is clearing the field to type a new
+     * number, so they're only persisted once they hold a usable value — the service falls back to
+     * the stored one until then.
+     */
+    fun updateSuspendBlockCount(value: Int) {
+        suspendBlockCount = value
+        if (value >= 1) prefs.edit { putInt(VisualBlockingSettings.KEY_SUSPEND_BLOCK_COUNT, value) }
+    }
+
+    fun updateSuspendWindowMinutes(value: Int) {
+        suspendWindowMinutes = value
+        if (value >= 1) prefs.edit { putInt(VisualBlockingSettings.KEY_SUSPEND_WINDOW_MINUTES, value) }
+    }
+
+    fun updateSuspendDurationMinutes(value: Int) {
+        suspendDurationMinutes = value
+        if (value >= 1) prefs.edit { putInt(VisualBlockingSettings.KEY_SUSPEND_DURATION_MINUTES, value) }
     }
 
     fun loadApps() {
