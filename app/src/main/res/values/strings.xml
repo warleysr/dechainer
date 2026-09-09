@@ -177,6 +177,7 @@
 
     <string name="nsfw_content_blocked">Content blocked!</string>
     <string name="nsfw_content_blocked_description">Explicit content was detected on screen and blocked. Close the app and go do something else!</string>
+    <string name="nsfw_content_blocked_suspended">Explicit content was detected on screen once too often, so this app has been suspended for %1$d minutes. Go do something else!</string>
 
     <string name="visual_blocking">Visual blocking</string>
     <string name="visual_blocking_desc">Detects inappropriate images, gifs and videos with an on-device ML model</string>
@@ -190,6 +191,15 @@
     <string name="visual_blocking_threshold_section">Sensitivity</string>
     <string name="visual_blocking_threshold_desc">Minimum combined score of the selected categories needed to trigger blocking</string>
     <string name="visual_blocking_locked">Unlock to edit</string>
+    <string name="visual_blocking_suspend">Suspend app</string>
+    <string name="visual_blocking_suspend_desc">Instead of only closing the app on every detection, suspend it for a while once it is blocked repeatedly</string>
+    <string name="visual_blocking_suspend_count">Number of blocks</string>
+    <string name="visual_blocking_suspend_count_desc">Blocks needed to suspend the app</string>
+    <string name="visual_blocking_suspend_window">Time window (minutes)</string>
+    <string name="visual_blocking_suspend_window_desc">Period the blocks have to happen within</string>
+    <string name="visual_blocking_suspend_duration">Suspension time (minutes)</string>
+    <string name="visual_blocking_suspend_duration_desc">How long the app stays suspended</string>
+    <string name="visual_blocking_suspend_summary">If the app is blocked %1$d times within %2$d minutes, it will be suspended for %3$d minutes and released automatically afterwards.</string>
     <string name="nsfw_category_drawings">Drawings</string>
     <string name="nsfw_category_hentai">Hentai</string>
     <string name="nsfw_category_porn">Porn</string>

@@ -36,6 +36,7 @@ import io.github.warleysr.dechainer.activities.TimeUpActivity
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
 import io.github.warleysr.dechainer.utils.PlayStoreRatingFetcher
 import io.github.warleysr.dechainer.utils.VisualBlockingSettings
+import io.github.warleysr.dechainer.utils.VisualBlockingSuspensionTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -82,6 +83,17 @@ class DechainerAccessibilityService : AccessibilityService() {
     private var nsfwTargetPackages: Set<String> = VisualBlockingSettings.DEFAULT_TARGET_PACKAGES
     private var nsfwCategories: Set<String> = VisualBlockingSettings.DEFAULT_CATEGORIES
     private var nsfwThreshold: Float = VisualBlockingSettings.DEFAULT_THRESHOLD
+    private var nsfwSuspendEnabled: Boolean = false
+    private var nsfwSuspendBlockCount: Int = VisualBlockingSettings.DEFAULT_SUSPEND_BLOCK_COUNT
+    private var nsfwSuspendWindowMinutes: Int = VisualBlockingSettings.DEFAULT_SUSPEND_WINDOW_MINUTES
+    private var nsfwSuspendDurationMinutes: Int = VisualBlockingSettings.DEFAULT_SUSPEND_DURATION_MINUTES
+
+    // Sliding-window block counter + persisted deadlines of the timed suspensions above.
+    private lateinit var nsfwSuspensionTracker: VisualBlockingSuspensionTracker
+
+    // Pending "lift the suspension" callbacks, keyed by package so a new suspension of the same
+    // app replaces the previous timer instead of racing it.
+    private val nsfwSuspensionReleases = HashMap<String, Runnable>()
 
     // NsfwContentDetector may use a GPU delegate, which LiteRT requires to be created and
     // driven from the same thread — this dedicated single-thread dispatcher is what gives it
@@ -190,6 +202,21 @@ class DechainerAccessibilityService : AccessibilityService() {
         ) ?: VisualBlockingSettings.DEFAULT_CATEGORIES
         nsfwThreshold = visualBlockingPrefs.getFloat(
             VisualBlockingSettings.KEY_THRESHOLD, VisualBlockingSettings.DEFAULT_THRESHOLD
+        )
+        nsfwSuspendEnabled = visualBlockingPrefs.getBoolean(
+            VisualBlockingSettings.KEY_SUSPEND_ENABLED, false
+        )
+        nsfwSuspendBlockCount = visualBlockingPrefs.getInt(
+            VisualBlockingSettings.KEY_SUSPEND_BLOCK_COUNT,
+            VisualBlockingSettings.DEFAULT_SUSPEND_BLOCK_COUNT
+        )
+        nsfwSuspendWindowMinutes = visualBlockingPrefs.getInt(
+            VisualBlockingSettings.KEY_SUSPEND_WINDOW_MINUTES,
+            VisualBlockingSettings.DEFAULT_SUSPEND_WINDOW_MINUTES
+        )
+        nsfwSuspendDurationMinutes = visualBlockingPrefs.getInt(
+            VisualBlockingSettings.KEY_SUSPEND_DURATION_MINUTES,
+            VisualBlockingSettings.DEFAULT_SUSPEND_DURATION_MINUTES
         )
     }
 
@@ -315,6 +342,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         securityPrefs = getSharedPreferences("security_prefs", MODE_PRIVATE)
         ratingPrefs = getSharedPreferences("app_ratings", MODE_PRIVATE)
         visualBlockingPrefs = getSharedPreferences(VisualBlockingSettings.PREFS_NAME, MODE_PRIVATE)
+        nsfwSuspensionTracker = VisualBlockingSuspensionTracker(applicationContext)
 
         limitPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -325,6 +353,10 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         val blockedPackages = getControlledPackages()
         suspendPackages(blockedPackages, false)
+
+        // Must run after the un-suspend above, which would otherwise release a package that is
+        // still serving a visual-blocking suspension.
+        restoreNsfwSuspensions()
 
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
@@ -368,6 +400,11 @@ class DechainerAccessibilityService : AccessibilityService() {
         limitPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         visualBlockingPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        // Drop the pending release timers: with the service gone the block below re-suspends the
+        // controlled packages on purpose, and a stale timer firing afterwards would undo that.
+        // The deadlines stay persisted, so restoreNsfwSuspensions() picks them up on reconnect.
+        nsfwSuspensionReleases.values.forEach { handler.removeCallbacks(it) }
+        nsfwSuspensionReleases.clear()
         stopTrackingAndSave()
         // Close on the same thread that created/drove it (GPU delegate requirement), then let
         // that queued close finish before shutting the dispatcher's executor down.
@@ -621,9 +658,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                                 Timber.d("NSFW scan: blocking (max unsafe score=${"%.3f".format(maxUnsafeScore)})")
                                 withContext(Dispatchers.Main) {
                                     if (currentPackage in nsfwTargetPackages) {
-                                        suspendPackage(pkg)
-                                        suspendPackage(pkg, suspend = false)
-                                        showNsfwBlockedActivity()
+                                        executeNsfwBlocking(pkg)
                                     }
                                 }
                             }
@@ -745,9 +780,88 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun showNsfwBlockedActivity() {
+    /**
+     * Reaction to the classifier flagging the screen of [pkg].
+     *
+     * Default behaviour — and what still happens for every block that doesn't complete a window —
+     * is to suspend and immediately un-suspend the package: suspending is what force-closes the
+     * app, un-suspending right after leaves the user free to reopen it.
+     *
+     * With the "suspend app" option on, repeated blocks escalate: once [pkg] has been blocked
+     * [nsfwSuspendBlockCount] times within [nsfwSuspendWindowMinutes], the suspension is left in
+     * place for [nsfwSuspendDurationMinutes] instead of being lifted straight away.
+     */
+    private fun executeNsfwBlocking(pkg: String) {
+        // Suspending a package doesn't tear its window down instantly, and the blocked-content
+        // screen belongs to us (so it never updates currentPackage) — the app therefore keeps
+        // emitting content-changed events for a while after a suspension starts, and each one
+        // would otherwise be counted as a fresh block *and* run the un-suspend of the default
+        // path below, cutting the suspension short. Ignore everything until it's over.
+        if (nsfwSuspensionTracker.isSuspended(pkg)) {
+            Timber.d("NSFW scan: $pkg is already suspended, block ignored")
+            return
+        }
+
+        if (nsfwSuspendEnabled) {
+            val shouldSuspend = nsfwSuspensionTracker.registerBlock(
+                pkg, nsfwSuspendBlockCount, nsfwSuspendWindowMinutes
+            )
+            if (shouldSuspend) {
+                val until = nsfwSuspensionTracker.startSuspension(pkg, nsfwSuspendDurationMinutes)
+                suspendPackage(pkg)
+                scheduleNsfwSuspensionRelease(pkg, until)
+                Timber.d("NSFW scan: $pkg suspended for $nsfwSuspendDurationMinutes min (until $until)")
+                showNsfwBlockedActivity(nsfwSuspendDurationMinutes)
+                return
+            }
+        }
+
+        suspendPackage(pkg)
+        suspendPackage(pkg, suspend = false)
+        showNsfwBlockedActivity()
+    }
+
+    /**
+     * Queues the automatic release of [pkg]'s suspension for the wall-clock instant [until].
+     *
+     * The timer only lives as long as this service instance; [restoreNsfwSuspensions] is what
+     * covers the case where the service is recreated before it fires.
+     */
+    private fun scheduleNsfwSuspensionRelease(pkg: String, until: Long) {
+        nsfwSuspensionReleases.remove(pkg)?.let { handler.removeCallbacks(it) }
+
+        val release = Runnable {
+            nsfwSuspensionReleases.remove(pkg)
+            nsfwSuspensionTracker.endSuspension(pkg)
+            suspendPackage(pkg, suspend = false)
+            Timber.d("NSFW scan: suspension of $pkg lifted")
+        }
+        nsfwSuspensionReleases[pkg] = release
+        handler.postDelayed(release, (until - System.currentTimeMillis()).coerceAtLeast(0L))
+    }
+
+    /**
+     * Re-applies (or lifts) the suspensions recorded by [VisualBlockingSuspensionTracker] after
+     * the service is recreated — without this, a suspension whose release timer died with the
+     * previous process would never be lifted.
+     */
+    private fun restoreNsfwSuspensions() {
+        val now = System.currentTimeMillis()
+        nsfwSuspensionTracker.activeSuspensions().forEach { (pkg, until) ->
+            if (until <= now) {
+                nsfwSuspensionTracker.endSuspension(pkg)
+                suspendPackage(pkg, suspend = false)
+            } else {
+                suspendPackage(pkg)
+                scheduleNsfwSuspensionRelease(pkg, until)
+            }
+        }
+    }
+
+    private fun showNsfwBlockedActivity(suspendedMinutes: Int = 0) {
         startActivity(Intent(this, NsfwContentBlockedActivity::class.java).apply {
             flags = FLAG_ACTIVITY_NEW_TASK
+            putExtra(NsfwContentBlockedActivity.EXTRA_SUSPENDED_MINUTES, suspendedMinutes)
         })
     }
 

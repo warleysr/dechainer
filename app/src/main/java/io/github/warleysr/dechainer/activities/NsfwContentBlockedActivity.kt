@@ -28,19 +28,29 @@ import io.github.warleysr.dechainer.R
 
 class NsfwContentBlockedActivity : ComponentActivity() {
 
+    companion object {
+        /** How long the app was suspended for, in minutes; 0 when it wasn't suspended at all. */
+        const val EXTRA_SUSPENDED_MINUTES = "suspendedMinutes"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
+        val suspendedMinutes = intent.getIntExtra(EXTRA_SUSPENDED_MINUTES, 0)
+
         setContent {
-            NsfwContentBlockedScreen(onClose = { finishAfterTransition() })
+            NsfwContentBlockedScreen(
+                suspendedMinutes = suspendedMinutes,
+                onClose = { finishAfterTransition() }
+            )
         }
     }
 }
 
 @Composable
-fun NsfwContentBlockedScreen(onClose: () -> Unit) {
+fun NsfwContentBlockedScreen(suspendedMinutes: Int = 0, onClose: () -> Unit) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.errorContainer
@@ -54,7 +64,10 @@ fun NsfwContentBlockedScreen(onClose: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             Text(stringResource(R.string.nsfw_content_blocked), style = MaterialTheme.typography.headlineMedium)
             Text(
-                stringResource(R.string.nsfw_content_blocked_description),
+                if (suspendedMinutes > 0)
+                    stringResource(R.string.nsfw_content_blocked_suspended, suspendedMinutes)
+                else
+                    stringResource(R.string.nsfw_content_blocked_description),
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.bodyLarge
             )

@@ -177,6 +177,7 @@
 
     <string name="nsfw_content_blocked">Conteúdo bloqueado!</string>
     <string name="nsfw_content_blocked_description">Conteúdo explícito foi detectado na tela e bloqueado. Feche o app e vá fazer outra coisa!</string>
+    <string name="nsfw_content_blocked_suspended">Conteúdo explícito foi detectado na tela vezes demais, então este app foi suspenso por %1$d minutos. Vá fazer outra coisa!</string>
 
     <string name="visual_blocking">Bloqueio visual</string>
     <string name="visual_blocking_desc">Detecta imagens, gifs e vídeos impróprios com um modelo de ML no dispositivo</string>
@@ -190,6 +191,15 @@
     <string name="visual_blocking_threshold_section">Sensibilidade</string>
     <string name="visual_blocking_threshold_desc">Score combinado mínimo das categorias selecionadas para acionar o bloqueio</string>
     <string name="visual_blocking_locked">Toque para desbloquear e editar</string>
+    <string name="visual_blocking_suspend">Suspender app</string>
+    <string name="visual_blocking_suspend_desc">Em vez de apenas fechar o app a cada detecção, suspende o app por um tempo quando ele é bloqueado repetidamente</string>
+    <string name="visual_blocking_suspend_count">Quantidade de bloqueios</string>
+    <string name="visual_blocking_suspend_count_desc">Bloqueios necessários para suspender o app</string>
+    <string name="visual_blocking_suspend_window">Intervalo de tempo (minutos)</string>
+    <string name="visual_blocking_suspend_window_desc">Período em que os bloqueios precisam acontecer</string>
+    <string name="visual_blocking_suspend_duration">Tempo de bloqueio (minutos)</string>
+    <string name="visual_blocking_suspend_duration_desc">Quanto tempo o app fica suspenso</string>
+    <string name="visual_blocking_suspend_summary">Se o app for bloqueado %1$d vezes em %2$d minutos, ele será suspenso por %3$d minutos e liberado automaticamente depois.</string>
     <string name="nsfw_category_drawings">Desenhos</string>
     <string name="nsfw_category_hentai">Hentai</string>
     <string name="nsfw_category_porn">Pornografia</string>

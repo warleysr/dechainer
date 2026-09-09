@@ -10,14 +10,18 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -177,6 +181,61 @@ fun VisualBlockingScreen(viewModel: VisualBlockingViewModel = viewModel()) {
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
+        }
+
+        item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) }
+
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.visual_blocking_suspend)) },
+                supportingContent = { Text(stringResource(R.string.visual_blocking_suspend_desc)) },
+                leadingContent = { Icon(Icons.Outlined.Timer, null) },
+                trailingContent = {
+                    Checkbox(
+                        checked = viewModel.suspendEnabled,
+                        enabled = sessionActive,
+                        onCheckedChange = { viewModel.updateSuspendEnabled(it) }
+                    )
+                },
+                modifier = Modifier.clickable(enabled = sessionActive) {
+                    viewModel.updateSuspendEnabled(!viewModel.suspendEnabled)
+                }
+            )
+
+            if (viewModel.suspendEnabled) {
+                NumberSettingField(
+                    label = stringResource(R.string.visual_blocking_suspend_count),
+                    supportingText = stringResource(R.string.visual_blocking_suspend_count_desc),
+                    value = viewModel.suspendBlockCount,
+                    enabled = sessionActive,
+                    onValueChange = { viewModel.updateSuspendBlockCount(it) }
+                )
+                NumberSettingField(
+                    label = stringResource(R.string.visual_blocking_suspend_window),
+                    supportingText = stringResource(R.string.visual_blocking_suspend_window_desc),
+                    value = viewModel.suspendWindowMinutes,
+                    enabled = sessionActive,
+                    onValueChange = { viewModel.updateSuspendWindowMinutes(it) }
+                )
+                NumberSettingField(
+                    label = stringResource(R.string.visual_blocking_suspend_duration),
+                    supportingText = stringResource(R.string.visual_blocking_suspend_duration_desc),
+                    value = viewModel.suspendDurationMinutes,
+                    enabled = sessionActive,
+                    onValueChange = { viewModel.updateSuspendDurationMinutes(it) }
+                )
+                Text(
+                    stringResource(
+                        R.string.visual_blocking_suspend_summary,
+                        viewModel.suspendBlockCount,
+                        viewModel.suspendWindowMinutes,
+                        viewModel.suspendDurationMinutes
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -203,6 +262,50 @@ fun VisualBlockingScreen(viewModel: VisualBlockingViewModel = viewModel()) {
                 showRecoveryDialog = false
                 onRecoverySuccess = null
             }
+        )
+    }
+}
+
+/**
+ * Label + numeric text field row used by the "suspend app" settings. The field is allowed to go
+ * empty while the user retypes a number — [onValueChange] then reports 0, which the view model
+ * treats as "not a usable value yet" and doesn't persist.
+ */
+@Composable
+private fun NumberSettingField(
+    label: String,
+    supportingText: String,
+    value: Int,
+    enabled: Boolean,
+    onValueChange: (Int) -> Unit
+) {
+    var textFieldValue by remember { mutableStateOf(value.toString()) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(label, style = MaterialTheme.typography.bodyLarge)
+            Text(supportingText, style = MaterialTheme.typography.bodySmall)
+        }
+        OutlinedTextField(
+            value = textFieldValue,
+            enabled = enabled,
+            onValueChange = { newValue ->
+                if (newValue.all { it.isDigit() } && newValue.length <= 4) {
+                    textFieldValue = newValue
+                    onValueChange(newValue.toIntOrNull() ?: 0)
+                }
+            },
+            modifier = Modifier
+                .width(96.dp)
+                .padding(start = 8.dp),
+            textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true
         )
     }
 }
