@@ -15,8 +15,21 @@ class SecurityManager {
         OFF, NORMAL, HARD
     }
 
+    /** What the "I'm having impulses" panic button does on top of locking Dechainer itself. */
+    enum class ImpulseAction {
+        /** Only the timer that already blocks access to Dechainer. */
+        TIMER_ONLY,
+
+        /** The timer, plus suspending a user-picked list of apps until it runs out. */
+        TIMER_AND_SUSPEND
+    }
+
     companion object {
         private const val CHAR_POOL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+        const val IMPULSE_MIN_DURATION_MINUTES = 15
+        const val IMPULSE_MAX_DURATION_MINUTES = 360
+        const val IMPULSE_DEFAULT_DURATION_MINUTES = 60
         private val isRecoveryKeySet = mutableStateOf(false)
         
         var sessionEndTime by mutableLongStateOf(0L)
@@ -42,9 +55,68 @@ class SecurityManager {
             prefs.edit { putString("impulse_lock_mode", mode.name) }
         }
 
+        fun getImpulseAction(context: Context): ImpulseAction {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            val stored = prefs.getString("impulse_action", ImpulseAction.TIMER_ONLY.name)!!
+            return runCatching { ImpulseAction.valueOf(stored) }.getOrDefault(ImpulseAction.TIMER_ONLY)
+        }
+
+        fun setImpulseAction(context: Context, action: ImpulseAction) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putString("impulse_action", action.name) }
+        }
+
+        /** Always inside [IMPULSE_MIN_DURATION_MINUTES]..[IMPULSE_MAX_DURATION_MINUTES]. */
+        fun getImpulseDurationMinutes(context: Context): Int {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            return prefs.getInt("impulse_duration_minutes", IMPULSE_DEFAULT_DURATION_MINUTES)
+                .coerceIn(IMPULSE_MIN_DURATION_MINUTES, IMPULSE_MAX_DURATION_MINUTES)
+        }
+
+        fun setImpulseDurationMinutes(context: Context, minutes: Int) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit {
+                putInt(
+                    "impulse_duration_minutes",
+                    minutes.coerceIn(IMPULSE_MIN_DURATION_MINUTES, IMPULSE_MAX_DURATION_MINUTES)
+                )
+            }
+        }
+
+        /** Apps the user picked to be suspended while an impulse block is running. */
+        fun getImpulseSuspendedApps(context: Context): Set<String> {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            return prefs.getStringSet("impulse_suspended_apps", emptySet()) ?: emptySet()
+        }
+
+        fun setImpulseSuspendedApps(context: Context, packages: Set<String>) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putStringSet("impulse_suspended_apps", packages) }
+        }
+
+        /**
+         * Apps that are suspended *right now* because of an impulse block, as opposed to the list
+         * the user configured — the two can differ if the configuration changes mid-block, and
+         * releasing has to act on what was actually suspended.
+         */
+        fun getActiveImpulseSuspension(context: Context): Set<String> {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            return prefs.getStringSet("impulse_active_suspension", emptySet()) ?: emptySet()
+        }
+
+        fun setActiveImpulseSuspension(context: Context, packages: Set<String>) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putStringSet("impulse_active_suspension", packages) }
+        }
+
+        fun clearActiveImpulseSuspension(context: Context) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { remove("impulse_active_suspension") }
+        }
+
         fun startImpulseBlock(context: Context) {
             val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
-            val duration = 60 * 60 * 1000L
+            val duration = getImpulseDurationMinutes(context) * 60 * 1000L
             prefs.edit {
                 putLong("impulse_block_start_rtc", System.currentTimeMillis())
                 putLong("impulse_block_start_elapsed", SystemClock.elapsedRealtime())

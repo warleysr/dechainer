@@ -33,6 +33,7 @@ import io.github.warleysr.dechainer.activities.BlockedWordActivity
 import io.github.warleysr.dechainer.activities.NsfwContentBlockedActivity
 import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
 import io.github.warleysr.dechainer.activities.TimeUpActivity
+import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
 import io.github.warleysr.dechainer.utils.PlayStoreRatingFetcher
 import io.github.warleysr.dechainer.utils.VisualBlockingSettings
@@ -94,6 +95,9 @@ class DechainerAccessibilityService : AccessibilityService() {
     // Pending "lift the suspension" callbacks, keyed by package so a new suspension of the same
     // app replaces the previous timer instead of racing it.
     private val nsfwSuspensionReleases = HashMap<String, Runnable>()
+
+    // Same idea for the impulse block, which suspends its whole app list as one unit.
+    private var impulseReleaseRunnable: Runnable? = null
 
     // NsfwContentDetector may use a GPU delegate, which LiteRT requires to be created and
     // driven from the same thread — this dedicated single-thread dispatcher is what gives it
@@ -188,6 +192,12 @@ class DechainerAccessibilityService : AccessibilityService() {
 
             visualBlockingPrefs -> {
                 updateVisualBlockingSettings()
+            }
+
+            securityPrefs -> {
+                // Written by SecurityManager both when the panic button starts a block and when
+                // the block is found to have run out.
+                if (key == "impulse_block_active") syncImpulseSuspension()
             }
         }
     }
@@ -347,6 +357,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         limitPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         visualBlockingPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        securityPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
 
         updateForbiddenPatterns()
         updateVisualBlockingSettings()
@@ -355,8 +366,9 @@ class DechainerAccessibilityService : AccessibilityService() {
         suspendPackages(blockedPackages, false)
 
         // Must run after the un-suspend above, which would otherwise release a package that is
-        // still serving a visual-blocking suspension.
+        // still serving a visual-blocking suspension or an impulse block.
         restoreNsfwSuspensions()
+        syncImpulseSuspension()
 
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
@@ -400,6 +412,9 @@ class DechainerAccessibilityService : AccessibilityService() {
         limitPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         visualBlockingPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        securityPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        impulseReleaseRunnable?.let { handler.removeCallbacks(it) }
+        impulseReleaseRunnable = null
         // Drop the pending release timers: with the service gone the block below re-suspends the
         // controlled packages on purpose, and a stale timer firing afterwards would undo that.
         // The deadlines stay persisted, so restoreNsfwSuspensions() picks them up on reconnect.
@@ -863,6 +878,63 @@ class DechainerAccessibilityService : AccessibilityService() {
             flags = FLAG_ACTIVITY_NEW_TASK
             putExtra(NsfwContentBlockedActivity.EXTRA_SUSPENDED_MINUTES, suspendedMinutes)
         })
+    }
+
+    /**
+     * Brings the app suspensions in line with the current state of the impulse block: suspends the
+     * configured list while a block is running with [SecurityManager.ImpulseAction.TIMER_AND_SUSPEND]
+     * selected, and releases whatever was suspended once it isn't.
+     *
+     * Called both from the prefs listener (the panic button, and the block expiring) and from
+     * [onServiceConnected], which is what re-applies a block that outlived this service.
+     */
+    private fun syncImpulseSuspension() {
+        val ctx = applicationContext
+        val remaining = SecurityManager.getImpulseBlockRemainingTime(ctx)
+        val targets = SecurityManager.getImpulseSuspendedApps(ctx)
+        val shouldSuspend = remaining > 0 &&
+            SecurityManager.getImpulseAction(ctx) == SecurityManager.ImpulseAction.TIMER_AND_SUSPEND &&
+            targets.isNotEmpty()
+
+        if (!shouldSuspend) {
+            releaseImpulseSuspension()
+            return
+        }
+
+        // The configured list may have changed since the block started; let go of anything that
+        // is no longer part of it before applying the current one.
+        val alreadySuspended = SecurityManager.getActiveImpulseSuspension(ctx)
+        val dropped = alreadySuspended - targets
+        if (dropped.isNotEmpty()) suspendPackages(dropped.toTypedArray(), false)
+
+        suspendPackages(targets.toTypedArray(), true)
+        SecurityManager.setActiveImpulseSuspension(ctx, targets)
+
+        impulseReleaseRunnable?.let { handler.removeCallbacks(it) }
+        val release = Runnable {
+            impulseReleaseRunnable = null
+            releaseImpulseSuspension()
+        }
+        impulseReleaseRunnable = release
+        handler.postDelayed(release, remaining)
+        Timber.d("Impulse block: suspended ${targets.size} app(s) for ${remaining}ms")
+    }
+
+    private fun releaseImpulseSuspension() {
+        impulseReleaseRunnable?.let { handler.removeCallbacks(it) }
+        impulseReleaseRunnable = null
+
+        val ctx = applicationContext
+        val suspended = SecurityManager.getActiveImpulseSuspension(ctx)
+        if (suspended.isEmpty()) return
+
+        // A package can be serving a visual-blocking suspension at the same time; releasing it
+        // here would cut that one short, so those are left alone for their own timer to lift.
+        val releasable = suspended.filterNot { nsfwSuspensionTracker.isSuspended(it) }
+        if (releasable.isNotEmpty()) suspendPackages(releasable.toTypedArray(), false)
+
+        SecurityManager.clearActiveImpulseSuspension(ctx)
+        Timber.d("Impulse block: released ${releasable.size} app(s)")
     }
 
     private fun suspendPackages(packages: Array<String>, suspend: Boolean = true) {
