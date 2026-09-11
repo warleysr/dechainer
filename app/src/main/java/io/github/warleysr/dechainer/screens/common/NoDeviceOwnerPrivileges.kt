@@ -18,10 +18,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
-import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import io.github.warleysr.dechainer.viewmodels.NavigationViewModel
 
 @Composable
-fun NoDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel) {
+fun NoDeviceOwnerPrivileges(navViewModel: NavigationViewModel) {
     Column(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -35,7 +35,7 @@ fun NoDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel) {
                     modifier = Modifier.padding(16.dp)
                 )
                 TextButton(onClick = {
-                    viewModel.navigateTo("config")
+                    navViewModel.navigateTo("config")
                 }) {
                     Row {
                         Icon(Icons.Outlined.Settings, null)

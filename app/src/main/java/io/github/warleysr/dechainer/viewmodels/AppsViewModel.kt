@@ -1,32 +1,17 @@
 package io.github.warleysr.dechainer.viewmodels
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.content.Context
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
-import android.graphics.drawable.Drawable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.warleysr.dechainer.DechainerApplication
-import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.models.AppItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.core.content.edit
-import java.util.concurrent.TimeUnit
 
 class AppsViewModel : ViewModel() {
-    private val context = DechainerApplication.getInstance()
-    private val packageManager = context.packageManager
-    private val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    private val adminName = ComponentName(context, DechainerDeviceAdminReceiver::class.java)
-
     var apps by mutableStateOf<List<AppItem>>(emptyList())
         private set
 
@@ -54,7 +39,7 @@ class AppsViewModel : ViewModel() {
     fun blockApp(packageName: String, hidden: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                dpm.setApplicationHidden(adminName, packageName, hidden)
+                AppRepository.setAppHidden(packageName, hidden)
                 loadApps()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -65,7 +50,7 @@ class AppsViewModel : ViewModel() {
     fun suspendApp(packageName: String, suspended: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                dpm.setPackagesSuspended(adminName, arrayOf(packageName), suspended)
+                AppRepository.setAppSuspended(packageName, suspended)
                 loadApps()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -76,7 +61,7 @@ class AppsViewModel : ViewModel() {
     fun setUninstallBlocked(packageName: String, block: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                dpm.setUninstallBlocked(adminName, packageName, block)
+                AppRepository.setUninstallBlocked(packageName, block)
                 loadApps()
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -85,29 +70,19 @@ class AppsViewModel : ViewModel() {
     }
 
     fun setAppTimeLimit(packageName: String, minutes: Int) {
-        context.getSharedPreferences("app_limits", Context.MODE_PRIVATE).edit {
-            if (minutes > 0) putInt(packageName, minutes) else remove(packageName)
-        }
+        AppRepository.setAppTimeLimit(packageName, minutes)
         loadApps()
     }
 
     fun getAppUsage(packageName: String, inMinutes: Boolean = false): Long {
-        val prefs = context.getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)
-        val used = prefs.getLong(packageName, 0L)
-
-        if (inMinutes)
-            return TimeUnit.MILLISECONDS.toMinutes(used)
-
-        return used
+        return AppRepository.getAppUsage(packageName, inMinutes)
     }
 
     fun setAppReopenTime(packageName: String, seconds: Int) {
-        context.getSharedPreferences("reopen_times", Context.MODE_PRIVATE).edit {
-            if (seconds > 0) putInt(packageName, seconds) else remove(packageName)
-        }
+        AppRepository.setAppReopenTime(packageName, seconds)
     }
 
     fun getAppReopenTime(packageName: String): Int {
-        return context.getSharedPreferences("reopen_times", Context.MODE_PRIVATE).getInt(packageName, 0)
+        return AppRepository.getAppReopenTime(packageName)
     }
 }
