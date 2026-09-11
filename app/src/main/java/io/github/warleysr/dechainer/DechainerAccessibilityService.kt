@@ -33,11 +33,12 @@ import io.github.warleysr.dechainer.activities.BlockedWordActivity
 import io.github.warleysr.dechainer.activities.NsfwContentBlockedActivity
 import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
 import io.github.warleysr.dechainer.activities.TimeUpActivity
+import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
+import io.github.warleysr.dechainer.data.PlayStoreRatingFetcher
+import io.github.warleysr.dechainer.data.VisualBlockingSettings
+import io.github.warleysr.dechainer.data.VisualBlockingSuspensionTracker
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
-import io.github.warleysr.dechainer.utils.PlayStoreRatingFetcher
-import io.github.warleysr.dechainer.utils.VisualBlockingSettings
-import io.github.warleysr.dechainer.utils.VisualBlockingSuspensionTracker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -129,7 +130,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             }
             else {
                 val isTorrentApp = manager.isTorrentApp(packageName)
-                if (isTorrentApp && securityPrefs.getBoolean("block_torrents", false))
+                if (isTorrentApp && SecurityManager.isBlockTorrentsEnabled(applicationContext))
                     suspendPackage(packageName)
             }
 

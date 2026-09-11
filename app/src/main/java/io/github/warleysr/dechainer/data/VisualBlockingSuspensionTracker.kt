@@ -1,4 +1,4 @@
-package io.github.warleysr.dechainer.utils
+package io.github.warleysr.dechainer.data
 
 import android.content.Context
 import android.content.SharedPreferences

@@ -1,4 +1,4 @@
-package io.github.warleysr.dechainer
+package io.github.warleysr.dechainer.data
 
 import android.content.RestrictionsManager
 import android.content.Context
@@ -9,7 +9,6 @@ import org.json.JSONArray
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.core.net.toUri
-import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 
 class BrowserRestrictionsManager(private val context: Context) {
 
@@ -97,9 +96,8 @@ class BrowserRestrictionsManager(private val context: Context) {
                 putBoolean("ForceGoogleSafeSearch", true)
         }
 
-        val viewModel = DeviceOwnerViewModel()
         getPossibleBrowsers().forEach { info ->
-            viewModel.setApplicationRestrictions(info.activityInfo.packageName, urlRestrictions)
+            AppRepository.setApplicationRestrictions(info.activityInfo.packageName, urlRestrictions)
         }
     }
 }
