@@ -37,7 +37,7 @@ jobs:
         uses: derailed-dash/gemini-review-action@v1
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}
         with:
           gemini_model: 'gemini-3.6-flash'
           language: 'English (US)'
