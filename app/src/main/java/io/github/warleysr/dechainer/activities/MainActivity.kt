@@ -31,6 +31,7 @@ import io.github.warleysr.dechainer.screens.tabs.*
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.ui.theme.DechainerTheme
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import io.github.warleysr.dechainer.viewmodels.NavigationViewModel
 import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
@@ -45,12 +46,13 @@ class MainActivity : ComponentActivity() {
             DechainerTheme {
                 val viewModel: DeviceOwnerViewModel = viewModel()
                 viewModel.addShizukuListener()
+                val navViewModel: NavigationViewModel = viewModel()
 
-                val currentScreen = viewModel.selectedTab()
+                val currentScreen = navViewModel.selectedTab()
                 val isRoot = currentScreen in listOf("restrictions", "apps", "config")
 
                 BackHandler(enabled = !isRoot) {
-                    viewModel.goBack()
+                    navViewModel.goBack()
                 }
 
                 var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -68,7 +70,7 @@ class MainActivity : ComponentActivity() {
                             title = { Text(stringResource(R.string.app_name)) },
                             navigationIcon = {
                                 if (!isRoot) {
-                                    IconButton(onClick = { viewModel.goBack() }) {
+                                    IconButton(onClick = { navViewModel.goBack() }) {
                                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, null)
                                     }
                                 }
@@ -113,7 +115,7 @@ class MainActivity : ComponentActivity() {
                             tabs.forEach { pair ->
                                 NavigationBarItem(
                                     selected = selectedBaseTab == pair.first,
-                                    onClick = { viewModel.navigateTo(pair.first) },
+                                    onClick = { navViewModel.navigateTo(pair.first) },
                                     label = { Text(pair.second) },
                                     icon = {
                                         Icon(

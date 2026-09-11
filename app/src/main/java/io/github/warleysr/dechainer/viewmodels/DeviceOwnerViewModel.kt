@@ -1,57 +1,27 @@
 package io.github.warleysr.dechainer.viewmodels
 
-import android.accounts.AccountManager
-import android.app.admin.DevicePolicyManager
-import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.Context.DEVICE_POLICY_SERVICE
 import android.content.RestrictionEntry
-import android.content.RestrictionsManager
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import io.github.warleysr.dechainer.DechainerApplication
-import io.github.warleysr.dechainer.utils.ShizukuRunner
+import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import rikka.shizuku.Shizuku
 import rikka.shizuku.Shizuku.OnRequestPermissionResultListener
-import androidx.core.net.toUri
-import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
 
-class DeviceOwnerViewModel() : ViewModel() {
+class DeviceOwnerViewModel : ViewModel() {
 
-    private val dpm = DechainerApplication.getInstance().getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    private val adminName = ComponentName(DechainerApplication.getInstance(), DechainerDeviceAdminReceiver::class.java)
-    private val packageName = DechainerApplication.getInstance().packageName
-
-    private var navigationStack = mutableStateListOf("restrictions")
-    private var shizukuPermission = mutableStateOf(Shizuku.pingBinder() && checkShizukuPermission())
-    private var isDeviceOwner = mutableStateOf(dpm.isDeviceOwnerApp(packageName))
-    private val serviceComponent = "$packageName/.DechainerAccessibilityService"
-
-    companion object {
-        private const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
-    }
+    private var shizukuPermission = mutableStateOf(
+        Shizuku.pingBinder() && DeviceOwnerRepository.checkShizukuPermission()
+    )
+    private var isDeviceOwner = mutableStateOf(DeviceOwnerRepository.isDeviceOwner())
 
     private val requestResultPermissionListener =
-        OnRequestPermissionResultListener { requestCode: Int, permissions: Int ->
-            this.onRequestPermissionsResult(
-                requestCode,
-                permissions
-            )
+        OnRequestPermissionResultListener { requestCode: Int, grantResult: Int ->
+            shizukuPermission.value = grantResult == PackageManager.PERMISSION_GRANTED
         }
-
-    private fun onRequestPermissionsResult(requestCode: Int, grantResult: Int) {
-        println("requestCode: $requestCode requestResult: $grantResult")
-        val granted = grantResult == PackageManager.PERMISSION_GRANTED
-        shizukuPermission.value = granted
-    }
-
-    fun isShizukuPermissionGranted() = shizukuPermission.value
 
     fun addShizukuListener() {
         Shizuku.addRequestPermissionResultListener(requestResultPermissionListener)
@@ -61,307 +31,43 @@ class DeviceOwnerViewModel() : ViewModel() {
         Shizuku.removeRequestPermissionResultListener(requestResultPermissionListener)
     }
 
-    fun selectedTab() = navigationStack.lastOrNull() ?: "restrictions"
+    fun isShizukuPermissionGranted() = shizukuPermission.value
 
-    fun navigateTo(screen: String) {
-        if (screen in listOf("restrictions", "apps", "config")) {
-            navigationStack.clear()
-        }
-        navigationStack.add(screen)
-    }
+    fun isDeviceOwner() = isDeviceOwner.value
 
-    fun goBack(): Boolean {
-        if (navigationStack.size > 1) {
-            navigationStack.removeAt(navigationStack.size - 1)
-            return true
-        }
-        return false
-    }
+    fun isShizukuInstalled() = DeviceOwnerRepository.isShizukuInstalled()
 
-    fun isDeviceOwner() : Boolean {
-        return isDeviceOwner.value
-    }
+    fun installShizuku() = DeviceOwnerRepository.installShizuku()
 
-    fun isShizukuInstalled(): Boolean {
-        return try {
-            DechainerApplication.getInstance().packageManager.getPackageInfo(SHIZUKU_PACKAGE, 0) != null
-        } catch (_: PackageManager.NameNotFoundException) {
-            false
-        }
-    }
+    fun openShizukuSetupGuide() = DeviceOwnerRepository.openShizukuSetupGuide()
 
-    fun installShizuku() {
-        val intent = try {
-            Intent(Intent.ACTION_VIEW, "market://details?id=$SHIZUKU_PACKAGE".toUri())
-                .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
-        } catch (e: ActivityNotFoundException) {
-            Intent(
-                Intent.ACTION_VIEW,
-                "https://play.google.com/store/apps/details?id=$SHIZUKU_PACKAGE".toUri(),
-            ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
-        }
-        DechainerApplication.getInstance().applicationContext.startActivity(intent)
-    }
-
-    fun openShizukuSetupGuide() {
-        val intent = Intent(
-            Intent.ACTION_VIEW,
-            "https://shizuku.rikka.app/guide/setup/".toUri(),
-        ).apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK }
-        DechainerApplication.getInstance().applicationContext.startActivity(intent)
-    }
-
-    fun checkShizukuPermission(): Boolean {
-        if (Shizuku.isPreV11()) {
-            // Pre-v11 is unsupported
-            return false
-        }
-
-        if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-            // Granted
-            return true
-        } else if (Shizuku.shouldShowRequestPermissionRationale()) {
-            // Users choose "Deny and don't ask again"
-            return false
-        } else {
-            // Request the permission
-            return false
-        }
-    }
-
-    fun removeDeviceOwner() {
-        processDeviceOwnerPrivileges(remove = true)
-    }
+    fun removeDeviceOwner() = processDeviceOwnerPrivileges(remove = true)
 
     fun processDeviceOwnerPrivileges(remove: Boolean = false) {
-        if (remove && dpm.isAdminActive(adminName)) {
-            dpm.clearDeviceOwnerApp(packageName)
-            isDeviceOwner.value = false
-            return
-        }
-        val packageName = DechainerApplication.getInstance().packageName
-        ShizukuRunner.command(
-            command = "dpm set-device-owner $packageName/.DechainerDeviceAdminReceiver",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                    isDeviceOwner.value = dpm.isDeviceOwnerApp(packageName)
-                }
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                    isDeviceOwner.value = dpm.isDeviceOwnerApp(packageName)
-                }
-            })
+        isDeviceOwner.value = DeviceOwnerRepository.processDeviceOwnerPrivileges(remove)
     }
 
-    fun setPrivateDNS(host: String): Int {
-        return dpm.setGlobalPrivateDnsModeSpecifiedHost(adminName, host)
-    }
+    fun setPrivateDNS(host: String): Int = DeviceOwnerRepository.setPrivateDNS(host)
 
-    fun getPrivateDNS(): String? {
-        if (dpm.getGlobalPrivateDnsMode(adminName) != DevicePolicyManager.PRIVATE_DNS_MODE_PROVIDER_HOSTNAME)
-            return null
-        return dpm.getGlobalPrivateDnsHost(adminName)
-    }
+    fun getPrivateDNS(): String? = DeviceOwnerRepository.getPrivateDNS()
 
-    fun getAllAccountsViaShizuku(): List<Pair<String, String>> {
-        val accounts = mutableListOf<Pair<String, String>>()
-        try {
-            ShizukuRunner.command(
-                command = "dumpsys account",
-                listener = object : ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        val regex = " {4}Account \\{name=(.*?), type=(.*?)\\}".toRegex()
+    fun getAllAccountsViaShizuku(): List<Pair<String, String>> = DeviceOwnerRepository.getAllAccountsViaShizuku()
 
-                        output.lines().forEach { line ->
-                            val match = regex.find(line)
-                            if (match != null) {
-                                val accountName = match.groupValues[1]
-                                val accountType = match.groupValues[2]
-                                accounts.add(Pair(accountType, accountName))
-                            }
-                        }
+    fun getAppNameFromAccountType(context: Context, accountType: String): String =
+        DeviceOwnerRepository.getAppNameFromAccountType(context, accountType)
 
-                        println("Output: \n$output")
-                    }
-                    override fun onCommandError(error: String) {
-                        Log.e("Shizuku", error)
-                    }
-                })
+    fun getCurrentDeviceOwner(): Pair<String, String>? = DeviceOwnerRepository.getCurrentDeviceOwner()
 
-        } catch (e: Exception) {
-            Log.e("ShizukuError", "Erro ao buscar contas", e)
-        }
-        return accounts
-    }
+    fun getExtraUsersInfo(): List<String> = DeviceOwnerRepository.getExtraUsersInfo()
 
-    fun getAppNameFromAccountType(context: Context, accountType: String): String {
-        val am = AccountManager.get(context)
-        val packManager = context.packageManager
+    fun changeAccessibilityPermission(grant: Boolean) = DeviceOwnerRepository.changeAccessibilityPermission(grant)
 
-        val authenticators = am.authenticatorTypes
+    fun getApplicationRestrictions(packageName: String): Bundle =
+        AppRepository.getApplicationRestrictions(packageName)
 
-        val auth = authenticators.find { it.type == accountType }
+    fun setApplicationRestrictions(packageName: String, restrictions: Bundle) =
+        AppRepository.setApplicationRestrictions(packageName, restrictions)
 
-        return if (auth != null) {
-            try {
-                val appInfo = packManager.getApplicationInfo(auth.packageName, 0)
-                packManager.getApplicationLabel(appInfo).toString()
-            } catch (e: Exception) {
-                accountType
-            }
-        } else {
-            accountType
-        }
-    }
-
-    fun getCurrentDeviceOwner(): Pair<String, String>? {
-        return try {
-            var dpmOutput = ""
-            ShizukuRunner.command(
-                command = "dpm list-owners",
-                listener = object : ShizukuRunner.CommandResultListener {
-                    override fun onCommandResult(output: String, done: Boolean) {
-                        println("Output: $output Done: $done")
-                        dpmOutput = output
-                    }
-
-                    override fun onCommandError(error: String) {
-                        Log.e("Shizuku", error)
-                    }
-                })
-            val componentPath = dpmOutput
-                .substringAfter("admin=", "")
-                .substringBefore(",", "")
-
-            if (componentPath.isEmpty() || !componentPath.contains("/")) return null
-
-            val parts = componentPath.split("/")
-            val packageName = parts[0].trim()
-            var receiverName = parts[1].trim()
-
-            if (receiverName.startsWith(".")) {
-                receiverName = "$packageName/$receiverName"
-            }
-
-            Pair(packageName, receiverName)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
-    fun getExtraUsersInfo(): List<String> {
-        val users = mutableListOf<String>()
-
-        ShizukuRunner.command(
-            command = "pm list users",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-
-                    val regex = Regex("""UserInfo\{(\d+):([^:]+):""")
-
-                    val matches = regex.findAll(output)
-                    for (match in matches) {
-                        val id = match.groupValues[1].toInt()
-                        val name = match.groupValues[2]
-
-                        if (id != 0)
-                            users.add(name)
-                    }
-                }
-
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                }
-            })
-
-        return users
-    }
-
-    fun getAccessibilityServices(): String {
-        var services = ""
-        ShizukuRunner.command(
-            "settings get secure enabled_accessibility_services",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                    services = output
-                }
-
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                }
-            })
-        return services.replace("\n", "")
-    }
-
-    fun changeAccessibilityPermission(grant: Boolean) {
-        var services = getAccessibilityServices()
-        val isGranted = isAccessibilityGranted()
-
-        if (grant && !isGranted) {
-            if (services.isNotEmpty())
-                services += ":"
-            services += serviceComponent
-        }
-        else if (!grant && isGranted) {
-            services = "'null'"
-        }
-
-        ShizukuRunner.command(
-            "settings put secure enabled_accessibility_services $services",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                }
-
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                }
-            })
-
-        ShizukuRunner.command(
-            "settings put secure accessibility_enabled 1",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                }
-
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                }
-            })
-    }
-
-    fun isAccessibilityGranted(): Boolean {
-        return getAccessibilityServices().contains(".DechainerAccessibilityService")
-    }
-
-    fun getApplicationRestrictions(packageName: String): Bundle {
-        return dpm.getApplicationRestrictions(adminName, packageName)
-    }
-
-    fun setApplicationRestrictions(packageName: String, restrictions: Bundle) {
-        val current = dpm.getApplicationRestrictions(adminName, packageName)
-        current.putAll(restrictions)
-        dpm.setApplicationRestrictions(adminName, packageName, current)
-    }
-
-    fun getAvailableRestrictions(packageName: String): List<RestrictionEntry> {
-        val rm = DechainerApplication.getInstance().getSystemService(Context.RESTRICTIONS_SERVICE) as RestrictionsManager
-
-        try {
-            val appInfo = DechainerApplication.getInstance().packageManager.getApplicationInfo(
-                packageName,
-                PackageManager.GET_META_DATA
-            )
-            if (appInfo.metaData == null) return emptyList()
-        } catch (_: PackageManager.NameNotFoundException) {
-            return emptyList()
-        }
-
-        val restrictions = rm.getManifestRestrictions(packageName)
-        return restrictions?.toList() ?: emptyList()
-    }
+    fun getAvailableRestrictions(packageName: String): List<RestrictionEntry> =
+        AppRepository.getAvailableRestrictions(packageName)
 }

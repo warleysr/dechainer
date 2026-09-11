@@ -1,19 +1,13 @@
 package io.github.warleysr.dechainer.viewmodels
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.content.Context
 import android.os.UserManager
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
-import io.github.warleysr.dechainer.DechainerApplication
-import io.github.warleysr.dechainer.DechainerDeviceAdminReceiver
-import kotlin.collections.forEach
+import io.github.warleysr.dechainer.data.DeviceAdmin
 
 class RestrictionsViewModel : ViewModel() {
-    private val context = DechainerApplication.getInstance()
-    private val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-    private val adminName = ComponentName(context, DechainerDeviceAdminReceiver::class.java)
+    private val dpm = DeviceAdmin.policyManager
+    private val adminName = DeviceAdmin.component
 
     // Current state in the UI (draft)
     val draftRestrictions = mutableStateMapOf<String, Boolean>()
