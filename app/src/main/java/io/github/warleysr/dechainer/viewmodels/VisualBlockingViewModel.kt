@@ -11,8 +11,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.data.VisualBlockingSettings
 import io.github.warleysr.dechainer.models.AppItem
-import io.github.warleysr.dechainer.utils.VisualBlockingSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext

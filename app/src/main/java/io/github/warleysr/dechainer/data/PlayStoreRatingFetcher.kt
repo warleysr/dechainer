@@ -1,4 +1,4 @@
-package io.github.warleysr.dechainer.utils
+package io.github.warleysr.dechainer.data
 
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document

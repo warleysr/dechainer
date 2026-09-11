@@ -1,4 +1,6 @@
-package io.github.warleysr.dechainer.utils
+package io.github.warleysr.dechainer.data
+
+import io.github.warleysr.dechainer.utils.NsfwContentDetector
 
 /**
  * Shared source of truth for the "Visual blocking" (NSFW image/video monitoring) preferences —

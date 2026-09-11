@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import io.github.warleysr.dechainer.DechainerApplication
 import androidx.core.content.edit
-import io.github.warleysr.dechainer.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.models.AppItem
 import io.github.warleysr.dechainer.models.BlockedList
 import org.json.JSONArray
