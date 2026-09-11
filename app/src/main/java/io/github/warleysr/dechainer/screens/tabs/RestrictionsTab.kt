@@ -14,28 +14,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
-import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import io.github.warleysr.dechainer.viewmodels.NavigationViewModel
 import io.github.warleysr.dechainer.viewmodels.RestrictionsViewModel
 
 @Composable
 fun RestrictionsTab(
     deviceOwnerViewModel: DeviceOwnerViewModel = viewModel(),
-    restrictionsViewModel: RestrictionsViewModel = viewModel()
+    restrictionsViewModel: RestrictionsViewModel = viewModel(),
+    navViewModel: NavigationViewModel = viewModel()
 ) {
-    var showConfirmDialog by remember { mutableStateOf(false) }
-    val context = LocalContext.current
+    val recoveryGate = rememberRecoveryGate()
 
     if (!deviceOwnerViewModel.isDeviceOwner()) {
-        NoDeviceOwnerPrivileges(deviceOwnerViewModel)
+        NoDeviceOwnerPrivileges(navViewModel)
     } else {
         Column(
             modifier = Modifier
@@ -70,7 +70,7 @@ fun RestrictionsTab(
             Spacer(modifier = Modifier.height(16.dp))
             
             Button(
-                onClick = { showConfirmDialog = true },
+                onClick = { recoveryGate.run { restrictionsViewModel.applyChanges() } },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.apply_restrictions))
@@ -78,26 +78,7 @@ fun RestrictionsTab(
         }
     }
 
-    if (showConfirmDialog) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        if (storedCode == null) {
-            restrictionsViewModel.applyChanges()
-            showConfirmDialog = false
-        } else {
-            RecoveryConfirmDialog(
-                onConfirm = { code ->
-                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
-                        restrictionsViewModel.applyChanges()
-                        showConfirmDialog = false
-                        true
-                    } else {
-                        false
-                    }
-                },
-                onDismiss = { showConfirmDialog = false }
-            )
-        }
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 

@@ -14,15 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
-import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.BlockedWordsViewModel
 
 @Composable
@@ -31,24 +30,12 @@ fun BlockedWordsScreen(
 ) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
     var showPassiveAppSelectionDialog by remember { mutableStateOf(false) }
-    var showRecoveryDialog by remember { mutableStateOf(false) }
-    var onRecoverySuccess by remember { mutableStateOf<(() -> Unit)?>(null) }
-    
     var passiveAppToEdit by remember { mutableStateOf<String?>(null) }
-    
+
     var activeExpanded by remember { mutableStateOf(true) }
     var passiveExpanded by remember { mutableStateOf(true) }
 
-    val context = LocalContext.current
-
-    fun runWithRecovery(action: () -> Unit) {
-        if (SecurityManager.isSessionActive()) {
-            action()
-        } else {
-            onRecoverySuccess = action
-            showRecoveryDialog = true
-        }
-    }
+    val recoveryGate = rememberRecoveryGate()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize()
@@ -73,7 +60,7 @@ fun BlockedWordsScreen(
                         },
                         trailingContent = {
                             Button(onClick = {
-                                runWithRecovery { showAppSelectionDialog = true }
+                                recoveryGate.run { showAppSelectionDialog = true }
                             }) {
                                 Text(stringResource(R.string.select_apps))
                             }
@@ -87,9 +74,9 @@ fun BlockedWordsScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                         TextButton(
-                            onClick = { runWithRecovery {} },
+                            onClick = { recoveryGate.run {} },
                             modifier = Modifier.padding(horizontal = 16.dp),
-                            enabled = !SecurityManager.isSessionActive()
+                            enabled = !recoveryGate.isSessionActive
                         ) {
                             Icon(Icons.Outlined.Edit, null, modifier = Modifier.size(18.dp))
                         }
@@ -106,7 +93,7 @@ fun BlockedWordsScreen(
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         placeholder = { Text(stringResource(R.string.word_hint)) },
                         supportingText = { Text(stringResource(R.string.one_word_per_line)) },
-                        enabled = SecurityManager.isSessionActive()
+                        enabled = recoveryGate.isSessionActive
                     )
                 }
             }
@@ -145,13 +132,13 @@ fun BlockedWordsScreen(
                             },
                             trailingContent = {
                                 Row {
-                                    IconButton(onClick = { 
-                                        runWithRecovery { passiveAppToEdit = pkg }
+                                    IconButton(onClick = {
+                                        recoveryGate.run { passiveAppToEdit = pkg }
                                     }) {
                                         Icon(Icons.Outlined.Edit, null)
                                     }
-                                    IconButton(onClick = { 
-                                        runWithRecovery { viewModel.updatePassiveWords(pkg, "") }
+                                    IconButton(onClick = {
+                                        recoveryGate.run { viewModel.updatePassiveWords(pkg, "") }
                                     }) {
                                         Icon(Icons.Default.Delete, null)
                                     }
@@ -161,8 +148,8 @@ fun BlockedWordsScreen(
                     }
 
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                        TextButton(onClick = { 
-                            runWithRecovery { showPassiveAppSelectionDialog = true }
+                        TextButton(onClick = {
+                            recoveryGate.run { showPassiveAppSelectionDialog = true }
                         }) {
                             Icon(Icons.Default.Add, null)
                             Spacer(Modifier.width(8.dp))
@@ -228,23 +215,7 @@ fun BlockedWordsScreen(
         )
     }
 
-    if (showRecoveryDialog) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        RecoveryConfirmDialog(
-            onConfirm = { code ->
-                if (SecurityManager.validateRecoveryCode(code, storedCode!!)) {
-                    showRecoveryDialog = false
-                    onRecoverySuccess?.invoke()
-                    onRecoverySuccess = null
-                    true
-                } else false
-            },
-            onDismiss = { 
-                showRecoveryDialog = false
-                onRecoverySuccess = null
-            }
-        )
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 @Composable
