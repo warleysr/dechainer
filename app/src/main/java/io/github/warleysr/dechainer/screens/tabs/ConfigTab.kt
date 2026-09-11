@@ -1,7 +1,6 @@
 package io.github.warleysr.dechainer.screens.tabs
 
 import android.app.admin.DevicePolicyManager
-import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,12 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.RecoveryGenerateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.LocaleUtils
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
-import androidx.core.content.edit
+import io.github.warleysr.dechainer.viewmodels.NavigationViewModel
 import kotlinx.coroutines.CoroutineScope
 import rikka.shizuku.Shizuku
 import kotlinx.coroutines.Dispatchers
@@ -45,14 +45,17 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
-fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
+fun ConfigTab(
+    viewModel: DeviceOwnerViewModel = viewModel(),
+    navViewModel: NavigationViewModel = viewModel()
+) {
     var showDnsDialog by remember { mutableStateOf(false) }
     var dnsErrorRes by remember { mutableStateOf<Int?>(null) }
     var isApplyingDns by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showKeyboardDialog by remember { mutableStateOf(false) }
     var showRecoveryDialog by remember { mutableStateOf(false) }
-    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val recoveryGate = rememberRecoveryGate()
     var showStartForcedRemovalDialog by remember { mutableStateOf(false) }
     var showCancelForcedRemovalDialog by remember { mutableStateOf(false) }
     var showFinishForcedRemovalDialog by remember { mutableStateOf(false) }
@@ -63,9 +66,8 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
     val snackbarHostState = remember { SnackbarHostState() }
     val shizukuNotRunningMsg = stringResource(R.string.shizuku_not_running)
 
-    val securityPrefs = remember { context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE) }
-    var shuffleKeyboard by remember { mutableStateOf(securityPrefs.getBoolean("shuffle_keyboard", false)) }
-    var blockTorrents by remember { mutableStateOf(securityPrefs.getBoolean("block_torrents", false)) }
+    var shuffleKeyboard by remember { mutableStateOf(SecurityManager.isShuffleKeyboardEnabled(context)) }
+    var blockTorrents by remember { mutableStateOf(SecurityManager.isBlockTorrentsEnabled(context)) }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
 
@@ -92,7 +94,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                             Text(badgeText, style = MaterialTheme.typography.bodyMedium)
                         }
                     },
-                    modifier = Modifier.clickable(onClick = { viewModel.navigateTo("setup_device_owner") })
+                    modifier = Modifier.clickable(onClick = { navViewModel.navigateTo("setup_device_owner") })
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -115,7 +117,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     headlineContent = { Text(stringResource(R.string.browser_restrictions)) },
                     supportingContent = { Text(stringResource(R.string.browser_restrictions_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Web, "") },
-                    modifier = Modifier.clickable { viewModel.navigateTo("browser_restrictions") }
+                    modifier = Modifier.clickable { navViewModel.navigateTo("browser_restrictions") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -126,11 +128,10 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     leadingContent = { Icon(Icons.Outlined.FileDownload, "") },
                     trailingContent = {
                         Switch(blockTorrents, onCheckedChange = { checked ->
-                            val action = {
+                            recoveryGate.run {
                                 blockTorrents = checked
-                                securityPrefs.edit { putBoolean("block_torrents", checked) }
+                                SecurityManager.setBlockTorrentsEnabled(context, checked)
                             }
-                            pendingAction = action
                         })
                     }
                 )
@@ -149,14 +150,13 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                                 }
                                 return@Switch
                             }
-                            val action = {
+                            recoveryGate.run {
                                 DechainerAccessibilityService.prepareServiceDisable()
                                 viewModel.changeAccessibilityPermission(checked)
                             }
-                            pendingAction = action
                         })
                     },
-                    modifier = Modifier.clickable { viewModel.navigateTo("activity_blocker") }
+                    modifier = Modifier.clickable { navViewModel.navigateTo("activity_blocker") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -165,7 +165,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     headlineContent = { Text(stringResource(R.string.blocked_words_feat)) },
                     supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
                     leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
-                    modifier = Modifier.clickable { viewModel.navigateTo("blocked_words") }
+                    modifier = Modifier.clickable { navViewModel.navigateTo("blocked_words") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -174,7 +174,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     headlineContent = { Text(stringResource(R.string.visual_blocking)) },
                     supportingContent = { Text(stringResource(R.string.visual_blocking_desc)) },
                     leadingContent = { Icon(Icons.Outlined.ImageSearch, "") },
-                    modifier = Modifier.clickable { viewModel.navigateTo("visual_blocking") }
+                    modifier = Modifier.clickable { navViewModel.navigateTo("visual_blocking") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -192,7 +192,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     headlineContent = { Text(stringResource(R.string.impulse_lock)) },
                     supportingContent = { Text(stringResource(R.string.impulse_lock_desc)) },
                     leadingContent = { Icon(Icons.Outlined.LockClock, "") },
-                    modifier = Modifier.clickable { viewModel.navigateTo("impulse_lock") }
+                    modifier = Modifier.clickable { navViewModel.navigateTo("impulse_lock") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -215,7 +215,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                     leadingContent = { Icon(Icons.Outlined.VpnKey, "") },
                     supportingContent = { Text(stringResource(R.string.change_recovery_code_desc)) },
                     modifier = Modifier.clickable {
-                        pendingAction = { showRecoveryDialog = true }
+                        recoveryGate.run { showRecoveryDialog = true }
                     }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -359,7 +359,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             isLoading = isApplyingDns,
             onDismiss = { if (!isApplyingDns) showDnsDialog = false },
             onApply = { host ->
-                val action = {
+                recoveryGate.run {
                     dnsErrorRes = null
                     isApplyingDns = true
                     scope.launch {
@@ -379,9 +379,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
                             }
                         }
                     }
-                    Unit
                 }
-                pendingAction = action
             }
         )
     }
@@ -401,12 +399,11 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
             currentShuffle = shuffleKeyboard,
             onDismiss = { showKeyboardDialog = false },
             onApply = { isShuffle ->
-                val action = {
+                recoveryGate.run {
                     shuffleKeyboard = isShuffle
-                    securityPrefs.edit { putBoolean("shuffle_keyboard", isShuffle) }
+                    SecurityManager.setShuffleKeyboardEnabled(context, isShuffle)
                     showKeyboardDialog = false
                 }
-                pendingAction = action
             }
         )
     }
@@ -421,24 +418,7 @@ fun ConfigTab(viewModel: DeviceOwnerViewModel = viewModel()) {
         )
     }
 
-    if (pendingAction != null) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        if (storedCode == null || SecurityManager.isSessionActive()) {
-            pendingAction?.invoke()
-            pendingAction = null
-        } else {
-            RecoveryConfirmDialog(
-                onConfirm = { code ->
-                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
-                        pendingAction?.invoke()
-                        pendingAction = null
-                        true
-                    } else false
-                },
-                onDismiss = { pendingAction = null }
-            )
-        }
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 @Composable

@@ -22,10 +22,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.warleysr.dechainer.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.R
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
-import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.models.AppItem
 import io.github.warleysr.dechainer.models.BlockedList
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
@@ -42,8 +42,7 @@ fun BrowserRestrictionsScreen(
     var showEditDialog by remember { mutableStateOf<BlockedList?>(null) }
     var isCreatingNew by remember { mutableStateOf(false) }
     var showRestrictionsDialog by remember { mutableStateOf<AppItem?>(null) }
-    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    var onCancelAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val recoveryGate = rememberRecoveryGate()
     val context = LocalContext.current
 
     Scaffold { padding ->
@@ -94,10 +93,11 @@ fun BrowserRestrictionsScreen(
                                         onCheckedChange = { checked ->
                                             val wasSuspended = browser.isSuspended
                                             viewModel.browsers[index] = browser.copy(isSuspended = !checked)
-                                            onCancelAction = {
-                                                viewModel.browsers[index] = browser.copy(isSuspended = wasSuspended)
-                                            }
-                                            pendingAction = {
+                                            recoveryGate.run(
+                                                onCancel = {
+                                                    viewModel.browsers[index] = browser.copy(isSuspended = wasSuspended)
+                                                }
+                                            ) {
                                                 appsViewModel.suspendApp(browser.packageName, !checked)
                                             }
                                         }
@@ -110,7 +110,6 @@ fun BrowserRestrictionsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
 
-            // Blocked Sites Section
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -138,7 +137,7 @@ fun BrowserRestrictionsScreen(
                         showEditDialog = list 
                     },
                     onDelete = {
-                        pendingAction = { viewModel.removeList(list.id) }
+                        recoveryGate.run { viewModel.removeList(list.id) }
                     }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -160,7 +159,7 @@ fun BrowserRestrictionsScreen(
             viewModel = deviceOwnerViewModel,
             onDismiss = { showRestrictionsDialog = null },
             onSave = { restrictions ->
-                pendingAction = {
+                recoveryGate.run {
                     deviceOwnerViewModel.setApplicationRestrictions(browser.packageName, restrictions)
                 }
                 showRestrictionsDialog = null
@@ -203,7 +202,7 @@ fun BrowserRestrictionsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (title.isNotBlank()) {
-                        pendingAction = { 
+                        recoveryGate.run {
                             viewModel.saveOrUpdateList(
                                 if (isCreatingNew) null else currentList.id,
                                 title,
@@ -222,30 +221,7 @@ fun BrowserRestrictionsScreen(
         )
     }
 
-    if (pendingAction != null) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        if (storedCode == null) {
-            pendingAction?.invoke()
-            pendingAction = null
-            onCancelAction = null
-        } else {
-            RecoveryConfirmDialog(
-                onConfirm = { code ->
-                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
-                        pendingAction?.invoke()
-                        pendingAction = null
-                        onCancelAction = null
-                        true
-                    } else false
-                },
-                onDismiss = { 
-                    onCancelAction?.invoke()
-                    onCancelAction = null
-                    pendingAction = null 
-                }
-            )
-        }
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 @Composable

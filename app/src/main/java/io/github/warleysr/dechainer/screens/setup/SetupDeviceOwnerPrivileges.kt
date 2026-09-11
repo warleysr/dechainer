@@ -6,13 +6,12 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.R
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
-import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import kotlinx.coroutines.delay
 import rikka.shizuku.Shizuku
@@ -21,8 +20,7 @@ import rikka.shizuku.Shizuku
 fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
     var shizukuInstalled by remember { mutableStateOf(viewModel.isShizukuInstalled()) }
     var shizukuRunning by remember { mutableStateOf(Shizuku.pingBinder()) }
-    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val context = LocalContext.current
+    val recoveryGate = rememberRecoveryGate()
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -44,7 +42,7 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
         when {
             viewModel.isDeviceOwner() -> DeviceOwnerRemoveContent(
                 onRemoveAction = {
-                    pendingAction = { viewModel.processDeviceOwnerPrivileges(remove = true) }
+                    recoveryGate.run { viewModel.processDeviceOwnerPrivileges(remove = true) }
                 }
             )
             !shizukuInstalled -> ShizukuNotInstalledCard(viewModel)
@@ -54,26 +52,7 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
         }
     }
 
-    if (pendingAction != null) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        if (storedCode == null) {
-            pendingAction?.invoke()
-            pendingAction = null
-        } else {
-            RecoveryConfirmDialog(
-                onConfirm = { code ->
-                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
-                        pendingAction?.invoke()
-                        pendingAction = null
-                        true
-                    } else {
-                        false
-                    }
-                },
-                onDismiss = { pendingAction = null }
-            )
-        }
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 @Composable

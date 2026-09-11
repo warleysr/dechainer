@@ -14,15 +14,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
-import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.ActivityBlockerViewModel
 import io.github.warleysr.dechainer.viewmodels.GroupedActivityLog
 
@@ -32,8 +31,7 @@ fun ActivityBlockerScreen(
     viewModel: ActivityBlockerViewModel = viewModel(),
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
-    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val context = LocalContext.current
+    val recoveryGate = rememberRecoveryGate()
 
     Scaffold { padding ->
         LazyColumn(
@@ -64,7 +62,7 @@ fun ActivityBlockerScreen(
                     headlineContent = { Text(className) },
                     trailingContent = {
                         IconButton(onClick = {
-                            pendingAction = { viewModel.removeBlockedActivity(className) }
+                            recoveryGate.run { viewModel.removeBlockedActivity(className) }
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = null)
                         }
@@ -105,7 +103,7 @@ fun ActivityBlockerScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (activityName.isNotBlank()) {
-                        pendingAction = { viewModel.addBlockedActivity(activityName) }
+                        recoveryGate.run { viewModel.addBlockedActivity(activityName) }
                     }
                     showAddDialog = false
                 }) { Text(stringResource(R.string.confirm)) }
@@ -118,24 +116,7 @@ fun ActivityBlockerScreen(
         )
     }
 
-    if (pendingAction != null) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        if (storedCode == null) {
-            pendingAction?.invoke()
-            pendingAction = null
-        } else {
-            RecoveryConfirmDialog(
-                onConfirm = { code ->
-                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
-                        pendingAction?.invoke()
-                        pendingAction = null
-                        true
-                    } else false
-                },
-                onDismiss = { pendingAction = null }
-            )
-        }
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 @Composable

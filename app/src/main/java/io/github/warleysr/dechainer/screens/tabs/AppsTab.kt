@@ -14,18 +14,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
-import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.models.AppItem
 import io.github.warleysr.dechainer.viewmodels.AppsViewModel
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
+import io.github.warleysr.dechainer.viewmodels.NavigationViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -48,10 +48,11 @@ import androidx.compose.material.icons.filled.Block
 @Composable
 fun AppsTab(
     deviceOwnerViewModel: DeviceOwnerViewModel = viewModel(),
-    appsViewModel: AppsViewModel = viewModel()
+    appsViewModel: AppsViewModel = viewModel(),
+    navViewModel: NavigationViewModel = viewModel()
 ) {
     if (!deviceOwnerViewModel.isDeviceOwner()) {
-        NoDeviceOwnerPrivileges(deviceOwnerViewModel)
+        NoDeviceOwnerPrivileges(navViewModel)
     } else {
         AppsScreen(appsViewModel, deviceOwnerViewModel)
     }
@@ -63,10 +64,9 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
     var selectedApp by remember { mutableStateOf<AppItem?>(null) }
     var showTimeLimitDialog by remember { mutableStateOf<AppItem?>(null) }
     var showRestrictionsDialog by remember { mutableStateOf<AppItem?>(null) }
-    var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val recoveryGate = rememberRecoveryGate()
     var showSystemApps by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    val context = LocalContext.current
 
     val filteredApps = remember(viewModel.apps, searchQuery, showSystemApps) {
         viewModel.apps.filter {
@@ -123,7 +123,7 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(filteredApps, key = { it.packageName }) { app ->
-                    AppRow(app) { selectedApp = app }
+                    AppRow(app, viewModel) { selectedApp = app }
                 }
             }
         }
@@ -134,15 +134,15 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             app = app,
             onDismiss = { selectedApp = null },
             onBlock = {
-                pendingAction = { viewModel.blockApp(app.packageName, !app.isHidden) }
+                recoveryGate.run { viewModel.blockApp(app.packageName, !app.isHidden) }
                 selectedApp = null
             },
             onToggleUninstall = {
-                pendingAction = { viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked) }
+                recoveryGate.run { viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked) }
                 selectedApp = null
             },
             onSuspend = {
-                pendingAction = { viewModel.suspendApp(app.packageName, !app.isSuspended) }
+                recoveryGate.run { viewModel.suspendApp(app.packageName, !app.isSuspended) }
                 selectedApp = null
             },
             onSetTimeLimit = {
@@ -161,7 +161,7 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             app = app,
             onDismiss = { showTimeLimitDialog = null },
             onConfirm = { minutes, reopeningSeconds ->
-                pendingAction = {
+                recoveryGate.run {
                     viewModel.setAppTimeLimit(app.packageName, minutes)
                     viewModel.setAppReopenTime(app.packageName, reopeningSeconds)
                 }
@@ -176,7 +176,7 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             viewModel = deviceOwnerViewModel,
             onDismiss = { showRestrictionsDialog = null },
             onSave = { restrictions ->
-                pendingAction = {
+                recoveryGate.run {
                     deviceOwnerViewModel.setApplicationRestrictions(app.packageName, restrictions)
                 }
                 showRestrictionsDialog = null
@@ -184,26 +184,7 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
         )
     }
 
-    if (pendingAction != null) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        if (storedCode == null) {
-            pendingAction?.invoke()
-            pendingAction = null
-        } else {
-            RecoveryConfirmDialog(
-                onConfirm = { code ->
-                    if (SecurityManager.validateRecoveryCode(code, storedCode)) {
-                        pendingAction?.invoke()
-                        pendingAction = null
-                        true
-                    } else {
-                        false
-                    }
-                },
-                onDismiss = { pendingAction = null }
-            )
-        }
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 @Composable
@@ -338,8 +319,7 @@ fun AppRestrictionsDialog(
 }
 
 @Composable
-fun AppRow(app: AppItem, onClick: () -> Unit) {
-    val viewModel: AppsViewModel = viewModel()
+fun AppRow(app: AppItem, viewModel: AppsViewModel, onClick: () -> Unit) {
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
         headlineContent = { Text(app.name) },
@@ -585,7 +565,6 @@ fun NumberPickerWheel(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // Selection Highlight
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

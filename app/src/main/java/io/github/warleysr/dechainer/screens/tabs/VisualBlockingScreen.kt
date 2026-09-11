@@ -13,7 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,29 +22,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.AppPickerDialog
-import io.github.warleysr.dechainer.screens.common.RecoveryConfirmDialog
-import io.github.warleysr.dechainer.security.SecurityManager
-import io.github.warleysr.dechainer.utils.VisualBlockingSettings
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
+import io.github.warleysr.dechainer.data.VisualBlockingSettings
 import io.github.warleysr.dechainer.viewmodels.VisualBlockingViewModel
 
 @Composable
 fun VisualBlockingScreen(viewModel: VisualBlockingViewModel = viewModel()) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
-    var showRecoveryDialog by remember { mutableStateOf(false) }
-    var onRecoverySuccess by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val recoveryGate = rememberRecoveryGate()
 
-    val context = LocalContext.current
-    val sessionActive = SecurityManager.isSessionActive()
+    val sessionActive = recoveryGate.isSessionActive
     val accessibilityActive = DechainerAccessibilityService.isRunning
-
-    fun runWithRecovery(action: () -> Unit) {
-        if (SecurityManager.isSessionActive()) {
-            action()
-        } else {
-            onRecoverySuccess = action
-            showRecoveryDialog = true
-        }
-    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -62,7 +50,7 @@ fun VisualBlockingScreen(viewModel: VisualBlockingViewModel = viewModel()) {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.visual_blocking_locked)) },
                     leadingContent = { Icon(Icons.Outlined.Lock, null) },
-                    modifier = Modifier.clickable { runWithRecovery {} }
+                    modifier = Modifier.clickable { recoveryGate.run {} }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -246,23 +234,7 @@ fun VisualBlockingScreen(viewModel: VisualBlockingViewModel = viewModel()) {
         )
     }
 
-    if (showRecoveryDialog) {
-        val storedCode = SecurityManager.getRecoveryCode(context)
-        RecoveryConfirmDialog(
-            onConfirm = { code ->
-                if (SecurityManager.validateRecoveryCode(code, storedCode!!)) {
-                    showRecoveryDialog = false
-                    onRecoverySuccess?.invoke()
-                    onRecoverySuccess = null
-                    true
-                } else false
-            },
-            onDismiss = {
-                showRecoveryDialog = false
-                onRecoverySuccess = null
-            }
-        )
-    }
+    RecoveryGateDialog(recoveryGate)
 }
 
 /**
