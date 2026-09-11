@@ -45,6 +45,26 @@ class SecurityManager {
             sessionEndTime = 0L
         }
 
+        fun isShuffleKeyboardEnabled(context: Context): Boolean {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            return prefs.getBoolean("shuffle_keyboard", false)
+        }
+
+        fun setShuffleKeyboardEnabled(context: Context, enabled: Boolean) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putBoolean("shuffle_keyboard", enabled) }
+        }
+
+        fun isBlockTorrentsEnabled(context: Context): Boolean {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            return prefs.getBoolean("block_torrents", false)
+        }
+
+        fun setBlockTorrentsEnabled(context: Context, enabled: Boolean) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putBoolean("block_torrents", enabled) }
+        }
+
         fun getImpulseLockMode(context: Context): ImpulseLockMode {
             val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
             return ImpulseLockMode.valueOf(prefs.getString("impulse_lock_mode", ImpulseLockMode.OFF.name)!!)

@@ -1,6 +1,5 @@
 package io.github.warleysr.dechainer.screens.common
 
-import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -30,10 +29,7 @@ fun RecoveryConfirmDialog(
     }
 
     val context = LocalContext.current
-    val shuffleKeyboard = remember {
-        context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
-            .getBoolean("shuffle_keyboard", false)
-    }
+    val shuffleKeyboard = remember { SecurityManager.isShuffleKeyboardEnabled(context) }
 
     if (shuffleKeyboard) {
         ShuffleKeyboardRecoveryDialog(
