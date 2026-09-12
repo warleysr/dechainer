@@ -17,7 +17,25 @@ object AppRepository {
     private val dpm get() = DeviceAdmin.policyManager
     private val adminName get() = DeviceAdmin.component
 
-    fun getApps(): List<AppItem> {
+    @Volatile
+    private var cachedApps: List<AppItem>? = null
+    private val cacheLock = Any()
+
+    fun getApps(forceRefresh: Boolean = false): List<AppItem> {
+        if (!forceRefresh) {
+            cachedApps?.let { return it }
+        }
+        synchronized(cacheLock) {
+            if (!forceRefresh) {
+                cachedApps?.let { return it }
+            }
+            val fresh = loadAppsFromSystem()
+            cachedApps = fresh
+            return fresh
+        }
+    }
+
+    private fun loadAppsFromSystem(): List<AppItem> {
         val limitsPrefs = context.getSharedPreferences("app_limits", Context.MODE_PRIVATE)
         val reopenPrefs = context.getSharedPreferences("reopen_times", Context.MODE_PRIVATE)
         val ratingsPrefs = context.getSharedPreferences("app_ratings", Context.MODE_PRIVATE)
@@ -51,22 +69,38 @@ object AppRepository {
             .toList()
     }
 
+    fun invalidateCache() {
+        synchronized(cacheLock) {
+            cachedApps = null
+        }
+    }
+
+    private fun updateCachedApp(packageName: String, transform: (AppItem) -> AppItem) {
+        synchronized(cacheLock) {
+            cachedApps = cachedApps?.map { if (it.packageName == packageName) transform(it) else it }
+        }
+    }
+
     fun setAppHidden(packageName: String, hidden: Boolean) {
         dpm.setApplicationHidden(adminName, packageName, hidden)
+        updateCachedApp(packageName) { it.copy(isHidden = hidden) }
     }
 
     fun setAppSuspended(packageName: String, suspended: Boolean) {
         dpm.setPackagesSuspended(adminName, arrayOf(packageName), suspended)
+        updateCachedApp(packageName) { it.copy(isSuspended = suspended) }
     }
 
     fun setUninstallBlocked(packageName: String, block: Boolean) {
         dpm.setUninstallBlocked(adminName, packageName, block)
+        updateCachedApp(packageName) { it.copy(isUninstallBlocked = block) }
     }
 
     fun setAppTimeLimit(packageName: String, minutes: Int) {
         context.getSharedPreferences("app_limits", Context.MODE_PRIVATE).edit {
             if (minutes > 0) putInt(packageName, minutes) else remove(packageName)
         }
+        updateCachedApp(packageName) { it.copy(timeLimitMinutes = minutes) }
     }
 
     fun getAppUsage(packageName: String, inMinutes: Boolean = false): Long {
@@ -79,6 +113,7 @@ object AppRepository {
         context.getSharedPreferences("reopen_times", Context.MODE_PRIVATE).edit {
             if (seconds > 0) putInt(packageName, seconds) else remove(packageName)
         }
+        updateCachedApp(packageName) { it.copy(reopeningSeconds = seconds) }
     }
 
     fun getAppReopenTime(packageName: String): Int {

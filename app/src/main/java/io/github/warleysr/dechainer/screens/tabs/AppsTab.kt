@@ -363,8 +363,9 @@ fun AppRow(app: AppItem, viewModel: AppsViewModel, onClick: () -> Unit) {
             }
         },
         leadingContent = {
+            val iconBitmap = remember(app.packageName) { app.icon.toBitmap().asImageBitmap() }
             Image(
-                bitmap = app.icon.toBitmap().asImageBitmap(),
+                bitmap = iconBitmap,
                 contentDescription = null,
                 modifier = Modifier.size(40.dp)
             )
