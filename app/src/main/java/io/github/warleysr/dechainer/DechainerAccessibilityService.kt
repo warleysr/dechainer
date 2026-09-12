@@ -39,6 +39,7 @@ import io.github.warleysr.dechainer.data.VisualBlockingSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSuspensionTracker
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
+import org.jsoup.HttpStatusException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -147,6 +148,11 @@ class DechainerAccessibilityService : AccessibilityService() {
                             }
 
                         ratingPrefs.edit { putBoolean(packageName, info.hasExplicitContent) }
+                    } catch (e: HttpStatusException) {
+                        e.printStackTrace()
+                        if (e.statusCode == 404) {
+                            ratingPrefs.edit { putBoolean(packageName, false) }
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
@@ -531,9 +537,14 @@ class DechainerAccessibilityService : AccessibilityService() {
                             }
 
                         ratingPrefs.edit { putBoolean(pkg, info.hasExplicitContent) }
-                        checkingRating = false
+                    } catch (e: HttpStatusException) {
+                        e.printStackTrace()
+                        if (e.statusCode == 404) {
+                            ratingPrefs.edit { putBoolean(pkg, false) }
+                        }
                     } catch (e: Exception) {
                         e.printStackTrace()
+                    } finally {
                         checkingRating = false
                     }
                 }
