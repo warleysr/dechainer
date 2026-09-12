@@ -75,4 +75,6 @@ class RestrictionsViewModel : ViewModel() {
     }
 
     fun isAllDraftsEnabled(keys: List<String>): Boolean = keys.all { draftRestrictions[it] == true }
+
+    fun hasPendingChanges(): Boolean = allKeys.any { draftRestrictions[it] != appliedRestrictions[it] }
 }

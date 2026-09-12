@@ -4,8 +4,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
@@ -65,12 +68,27 @@ fun RestrictionsTab(
             }
             
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Button(
                 onClick = { recoveryGate.run { restrictionsViewModel.applyChanges() } },
-                modifier = Modifier.fillMaxWidth()
+                enabled = restrictionsViewModel.hasPendingChanges(),
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .height(52.dp)
+                    .align(Alignment.CenterHorizontally)
             ) {
-                Text(stringResource(R.string.apply_restrictions))
+                Icon(
+                    imageVector = Icons.Default.Block,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.apply_restrictions),
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }

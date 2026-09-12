@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.screens.challenges.MathChallenge
 import io.github.warleysr.dechainer.screens.challenges.WordChallenge
 import io.github.warleysr.dechainer.security.SecurityManager
@@ -125,20 +126,22 @@ fun LockScreen(onAuthenticated: () -> Unit) {
             if (impulseRemaining > 0) {
                 ImpulseCountdown(impulseRemaining)
             } else {
-                BigActionButton(
-                    icon = Icons.Filled.Warning,
-                    title = stringResource(R.string.having_impulses),
-                    subtitle = stringResource(R.string.having_impulses_subtitle),
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError,
-                    height = 120.dp,
-                    onClick = {
-                        SecurityManager.startImpulseBlock(context)
-                        impulseRemaining = SecurityManager.getImpulseBlockRemainingTime(context)
-                    }
-                )
+                if (DeviceOwnerRepository.isDeviceOwner()) {
+                    BigActionButton(
+                        icon = Icons.Filled.Warning,
+                        title = stringResource(R.string.having_impulses),
+                        subtitle = stringResource(R.string.having_impulses_subtitle),
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError,
+                        height = 120.dp,
+                        onClick = {
+                            SecurityManager.startImpulseBlock(context)
+                            impulseRemaining = SecurityManager.getImpulseBlockRemainingTime(context)
+                        }
+                    )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
 
                 BigActionButton(
                     icon = Icons.Outlined.LockOpen,
