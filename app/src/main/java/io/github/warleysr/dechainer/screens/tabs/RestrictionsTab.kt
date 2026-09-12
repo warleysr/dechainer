@@ -1,6 +1,5 @@
 package io.github.warleysr.dechainer.screens.tabs
 
-import android.os.UserManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,10 +13,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
@@ -51,17 +50,15 @@ fun RestrictionsTab(
                     title = stringResource(R.string.recommended_configs),
                     keys = restrictionsViewModel.recommendedKeys,
                     viewModel = restrictionsViewModel,
-                    labelMap = getLabelMap(),
                     defaultExpanded = true
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
-                
+
                 RestrictionAccordion(
                     title = stringResource(R.string.other_restrictions),
                     keys = restrictionsViewModel.otherKeys,
                     viewModel = restrictionsViewModel,
-                    labelMap = getLabelMap(),
                     defaultExpanded = false,
                     showSearch = true
                 )
@@ -87,20 +84,27 @@ private fun RestrictionAccordion(
     title: String,
     keys: List<String>,
     viewModel: RestrictionsViewModel,
-    labelMap: Map<String, Int>,
     defaultExpanded: Boolean,
     showSearch: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
     var searchQuery by remember { mutableStateOf("") }
-    val resources = DechainerApplication.getInstance().resources
+    val context = LocalContext.current
+
+    val labelMap = remember(keys) {
+        keys.associateWith { key ->
+            viewModel.resourceNameFor(key)
+                ?.let { context.resources.getIdentifier(it, "string", context.packageName) }
+                ?.takeIf { it != 0 }
+        }
+    }
 
     val filteredKeys = remember(keys, searchQuery, labelMap) {
         if (searchQuery.isEmpty()) {
             keys
         } else {
             keys.filter { key ->
-                val label = labelMap[key]?.let { resources.getString(it) } ?: key
+                val label = labelMap[key]?.let { context.getString(it) } ?: key
                 label.contains(searchQuery, ignoreCase = true) || key.contains(searchQuery, ignoreCase = true)
             }
         }
@@ -158,7 +162,8 @@ private fun RestrictionAccordion(
 
                     filteredKeys.forEach { key ->
                         RestrictionItem(
-                            label = if (labelMap.containsKey(key)) stringResource(labelMap[key]!!) else key,
+                            label = labelMap[key]?.let { stringResource(it) } ?: key,
+                            value = key,
                             checked = viewModel.draftRestrictions[key] == true,
                             isApplied = viewModel.appliedRestrictions[key] == true,
                             onCheckedChange = { viewModel.toggleDraft(key, it) }
@@ -173,6 +178,7 @@ private fun RestrictionAccordion(
 @Composable
 fun RestrictionItem(
     label: String,
+    value: String,
     checked: Boolean,
     isApplied: Boolean,
     onCheckedChange: (Boolean) -> Unit
@@ -188,11 +194,17 @@ fun RestrictionItem(
             checked = checked,
             onCheckedChange = onCheckedChange
         )
-        Text(
-            text = label,
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         if (isApplied) {
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
@@ -208,18 +220,4 @@ fun RestrictionItem(
             }
         }
     }
-}
-
-private fun getLabelMap(): Map<String, Int> {
-    return mapOf(
-        UserManager.DISALLOW_CONFIG_VPN to R.string.block_vpn,
-        UserManager.DISALLOW_CONFIG_PRIVATE_DNS to R.string.block_private_dns,
-        UserManager.DISALLOW_FACTORY_RESET to R.string.block_factory_reset,
-        UserManager.DISALLOW_SAFE_BOOT to R.string.disallow_safe_boot,
-        UserManager.DISALLOW_USB_FILE_TRANSFER to R.string.disallow_usb_file_transfer,
-        UserManager.DISALLOW_DEBUGGING_FEATURES to R.string.disallow_debugging_features,
-        UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES to R.string.disallow_install_unknown_sources,
-        UserManager.DISALLOW_MODIFY_ACCOUNTS to R.string.disallow_modify_accounts,
-        UserManager.DISALLOW_ADD_USER to R.string.disallow_add_user
-    )
 }

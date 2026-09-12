@@ -21,18 +21,21 @@ class RestrictionsViewModel : ViewModel() {
         UserManager.DISALLOW_FACTORY_RESET,
     )
 
-    val otherKeys = UserManager::class.java.fields
+    private val restrictionFieldNames: Map<String, String> = UserManager::class.java.fields
         .filter { field ->
-
             java.lang.reflect.Modifier.isStatic(field.modifiers) &&
                     java.lang.reflect.Modifier.isFinal(field.modifiers) &&
                     (field.name.startsWith("DISALLOW_") || field.name.startsWith("ALLOW_"))
-                    && !recommendedKeys.contains(field.get(null))
         }
-        .map { it.get(null) as String }
+        .associate { (it.get(null) as String) to it.name.lowercase() }
+
+    val otherKeys = restrictionFieldNames.keys
+        .filter { it !in recommendedKeys }
         .sorted()
 
     private val allKeys = (recommendedKeys + otherKeys).distinct()
+
+    fun resourceNameFor(key: String): String? = restrictionFieldNames[key]
 
     init {
         loadRestrictions()

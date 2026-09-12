@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Restriction labels in RestrictionsTab are resolved at runtime via
+    Resources.getIdentifier() (see RestrictionAccordion), so R8's resource shrinker can't see
+    they're used and would otherwise strip them from release builds.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@string/disallow_*,@string/allow_*" />
