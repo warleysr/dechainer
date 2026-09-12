@@ -15,6 +15,7 @@
     <string name="device_owner_description">Permission required to apply restrictions and prevent app uninstallation</string>
     <string name="dns_description">Private DNS used to block access to sites</string>
     <string name="dns_settings">Private DNS</string>
+    <string name="get_owner_privileges_first">Get owner privileges first!</string>
     <string name="granted">Granted</string>
     <string name="not_granted">Not granted</string>
     <string name="vpn_settings">Allowed VPN</string>
@@ -86,8 +87,10 @@
     <string name="browser_support_warning">Restrictions do not work in this browser, it is recommended to disable it.</string>
     
     <string name="activity_blocker">Advanced blocking</string>
-    <string name="activity_blocker_description">Time control, blocking specific screens and prohibited words in apps</string>
+    <string name="activity_blocker_description">Uses an accessibility service to enable more effective blocking</string>
+    <string name="advanced_blocking_required">Turn on advanced blocking first!</string>
     <string name="blocked_activities">Blocked activities</string>
+    <string name="blocked_activities_desc">Block specific screens within apps</string>
     <string name="accessed_activities">Accessed activities</string>
     <string name="add_activity">Add Activity</string>
     <string name="activity_name_hint">Ex: com.android.settings.Settings</string>

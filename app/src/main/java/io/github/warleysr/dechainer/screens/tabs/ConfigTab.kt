@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.ImageSearch
@@ -65,6 +66,8 @@ fun ConfigTab(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val shizukuNotRunningMsg = stringResource(R.string.shizuku_not_running)
+    val ownerPrivilegesFirstMsg = stringResource(R.string.get_owner_privileges_first)
+    val advancedBlockingRequiredMsg = stringResource(R.string.advanced_blocking_required)
 
     var shuffleKeyboard by remember { mutableStateOf(SecurityManager.isShuffleKeyboardEnabled(context)) }
     var blockTorrents by remember { mutableStateOf(SecurityManager.isBlockTorrentsEnabled(context)) }
@@ -105,9 +108,15 @@ fun ConfigTab(
                         Text( stringResource(R.string.dns_description))
                     },
                     leadingContent = { Icon(Icons.Outlined.Dns, "") },
-                    modifier = Modifier.clickable { 
+                    modifier = Modifier.clickable {
+                        if (!viewModel.isDeviceOwner()) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(ownerPrivilegesFirstMsg)
+                            }
+                            return@clickable
+                        }
                         dnsErrorRes = null
-                        showDnsDialog = true 
+                        showDnsDialog = true
                     }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
@@ -118,22 +127,6 @@ fun ConfigTab(
                     supportingContent = { Text(stringResource(R.string.browser_restrictions_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Web, "") },
                     modifier = Modifier.clickable { navViewModel.navigateTo("browser_restrictions") }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.block_torrents)) },
-                    supportingContent = { Text(stringResource(R.string.block_torrents_desc)) },
-                    leadingContent = { Icon(Icons.Outlined.FileDownload, "") },
-                    trailingContent = {
-                        Switch(blockTorrents, onCheckedChange = { checked ->
-                            recoveryGate.run {
-                                blockTorrents = checked
-                                SecurityManager.setBlockTorrentsEnabled(context, checked)
-                            }
-                        })
-                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -155,17 +148,24 @@ fun ConfigTab(
                                 viewModel.changeAccessibilityPermission(checked)
                             }
                         })
-                    },
-                    modifier = Modifier.clickable { navViewModel.navigateTo("activity_blocker") }
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.blocked_words_feat)) },
-                    supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
-                    leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
-                    modifier = Modifier.clickable { navViewModel.navigateTo("blocked_words") }
+                    headlineContent = { Text(stringResource(R.string.blocked_activities)) },
+                    supportingContent = { Text(stringResource(R.string.blocked_activities_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.Block, "") },
+                    modifier = Modifier.clickable {
+                        if (!advancedBlocking) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(advancedBlockingRequiredMsg)
+                            }
+                            return@clickable
+                        }
+                        navViewModel.navigateTo("activity_blocker")
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -174,7 +174,54 @@ fun ConfigTab(
                     headlineContent = { Text(stringResource(R.string.visual_blocking)) },
                     supportingContent = { Text(stringResource(R.string.visual_blocking_desc)) },
                     leadingContent = { Icon(Icons.Outlined.ImageSearch, "") },
-                    modifier = Modifier.clickable { navViewModel.navigateTo("visual_blocking") }
+                    modifier = Modifier.clickable {
+                        if (!advancedBlocking) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(advancedBlockingRequiredMsg)
+                            }
+                            return@clickable
+                        }
+                        navViewModel.navigateTo("visual_blocking")
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.blocked_words_feat)) },
+                    supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
+                    leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
+                    modifier = Modifier.clickable {
+                        if (!advancedBlocking) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar(advancedBlockingRequiredMsg)
+                            }
+                            return@clickable
+                        }
+                        navViewModel.navigateTo("blocked_words")
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.block_torrents)) },
+                    supportingContent = { Text(stringResource(R.string.block_torrents_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.FileDownload, "") },
+                    trailingContent = {
+                        Switch(blockTorrents, onCheckedChange = { checked ->
+                            if (checked && !advancedBlocking) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(advancedBlockingRequiredMsg)
+                                }
+                                return@Switch
+                            }
+                            recoveryGate.run {
+                                blockTorrents = checked
+                                SecurityManager.setBlockTorrentsEnabled(context, checked)
+                            }
+                        })
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
