@@ -66,6 +66,11 @@ fun ImpulseLockScreen(viewModel: ImpulseLockViewModel = viewModel()) {
                         SecurityManager.ImpulseLockMode.NORMAL -> stringResource(R.string.impulse_lock_normal)
                         SecurityManager.ImpulseLockMode.HARD -> stringResource(R.string.impulse_lock_hard)
                     },
+                    supporting = when (mode) {
+                        SecurityManager.ImpulseLockMode.OFF -> stringResource(R.string.impulse_lock_off_desc)
+                        SecurityManager.ImpulseLockMode.NORMAL -> stringResource(R.string.impulse_lock_normal_desc)
+                        SecurityManager.ImpulseLockMode.HARD -> stringResource(R.string.impulse_lock_hard_desc)
+                    },
                     onClick = { viewModel.updateLockMode(mode) }
                 )
             }

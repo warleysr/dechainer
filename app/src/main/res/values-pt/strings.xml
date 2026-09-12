@@ -231,8 +231,11 @@
     <string name="impulse_lock">Bloqueio de impulsos</string>
     <string name="impulse_lock_desc">Desafio para acessar o app e o que o botão de pânico faz</string>
     <string name="impulse_lock_off">Desativado</string>
-    <string name="impulse_lock_normal">Normal (Matemática)</string>
-    <string name="impulse_lock_hard">Difícil (Palavras)</string>
+    <string name="impulse_lock_off_desc">Sem desafio, desbloqueia imediatamente</string>
+    <string name="impulse_lock_normal">Normal</string>
+    <string name="impulse_lock_normal_desc">Resolva 5 problemas de adição com números de 2 dígitos</string>
+    <string name="impulse_lock_hard">Difícil</string>
+    <string name="impulse_lock_hard_desc">Digite 32 palavras corretamente, uma de cada vez</string>
     <string name="having_impulses">Estou tendo impulsos</string>
     <string name="having_impulses_subtitle">Trancar tudo agora</string>
     <string name="access_app">Acessar app</string>

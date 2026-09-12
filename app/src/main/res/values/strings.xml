@@ -231,8 +231,11 @@
     <string name="impulse_lock">Impulse lock</string>
     <string name="impulse_lock_desc">Challenge to access the app, and what the panic button does</string>
     <string name="impulse_lock_off">Off</string>
-    <string name="impulse_lock_normal">Normal (Math)</string>
-    <string name="impulse_lock_hard">Hard (Words)</string>
+    <string name="impulse_lock_off_desc">No challenge, unlocks immediately</string>
+    <string name="impulse_lock_normal">Normal</string>
+    <string name="impulse_lock_normal_desc">Solve 5 addition problems with 2-digit numbers</string>
+    <string name="impulse_lock_hard">Hard</string>
+    <string name="impulse_lock_hard_desc">Type 32 words correctly, one at a time</string>
     <string name="having_impulses">I\'m having impulses</string>
     <string name="having_impulses_subtitle">Lock everything right now</string>
     <string name="access_app">Access app</string>

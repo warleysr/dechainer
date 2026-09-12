@@ -7,8 +7,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
 import kotlin.random.Random
@@ -104,7 +110,11 @@ fun WordChallenge(onSuccess: () -> Unit) {
     val selectedWords = remember { List(48) { COMMON_WORDS[Random.nextInt(COMMON_WORDS.size)] } }
     var currentIndex by remember { mutableIntStateOf(0) }
     var currentInput by remember { mutableStateOf("") }
-    var isError by remember { mutableStateOf(false) }
+
+    val targetWord = selectedWords[currentIndex]
+    val correctColor = MaterialTheme.colorScheme.primary
+    val incorrectColor = MaterialTheme.colorScheme.error
+    val untypedColor = MaterialTheme.colorScheme.onSurface
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -116,39 +126,50 @@ fun WordChallenge(onSuccess: () -> Unit) {
         Text("${currentIndex + 1} / 32", style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text(selectedWords[currentIndex], style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
+        Text(
+            text = buildAnnotatedString {
+                targetWord.forEachIndexed { i, c ->
+                    val color = when {
+                        i >= currentInput.length -> untypedColor
+                        currentInput[i] == c -> correctColor
+                        else -> incorrectColor
+                    }
+                    withStyle(SpanStyle(color = color)) {
+                        append(c)
+                    }
+                }
+            },
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold
+        )
 
         OutlinedTextField(
             value = currentInput,
-            onValueChange = {
-                currentInput = it.lowercase()
-                isError = false
-            },
-            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-            isError = isError,
-            supportingText = {
-                if (isError) Text(stringResource(R.string.challenge_error))
-            }
-        )
-
-        Button(
-            onClick = {
-                if (currentInput.trim() == selectedWords[currentIndex]) {
+            onValueChange = { input ->
+                val newInput = input.lowercase().take(targetWord.length)
+                if (newInput == targetWord) {
+                    currentInput = ""
                     if (currentIndex + 1 >= 32) {
                         onSuccess()
                     } else {
                         currentIndex++
-                        currentInput = ""
                     }
                 } else {
-                    isError = true
-                    currentIndex = 0
-                    currentInput = ""
+                    currentInput = newInput
                 }
             },
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text(stringResource(R.string.confirm))
-        }
+            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+            visualTransformation = VisualTransformation { text ->
+                val annotated = buildAnnotatedString {
+                    text.text.forEachIndexed { i, c ->
+                        val isCorrect = i < targetWord.length && c == targetWord[i]
+                        withStyle(SpanStyle(color = if (isCorrect) correctColor else incorrectColor)) {
+                            append(c)
+                        }
+                    }
+                }
+                TransformedText(annotated, OffsetMapping.Identity)
+            }
+        )
     }
 }
