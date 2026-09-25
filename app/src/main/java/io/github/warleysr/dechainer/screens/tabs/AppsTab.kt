@@ -793,6 +793,8 @@ fun TimeWindowsDialog(
     title: String,
     initialWindows: List<TimeWindow>,
     onDismiss: () -> Unit,
+    lockedWindows: Set<TimeWindow> = emptySet(),
+    emptyMessage: String = stringResource(R.string.no_time_windows),
     onConfirm: (List<TimeWindow>) -> Unit
 ) {
     val windows = remember { mutableStateListOf(*initialWindows.toTypedArray()) }
@@ -809,7 +811,7 @@ fun TimeWindowsDialog(
         text = {
             Column {
                 if (windows.isEmpty() && !showAddForm) {
-                    Text(stringResource(R.string.no_time_windows), style = MaterialTheme.typography.bodySmall)
+                    Text(emptyMessage, style = MaterialTheme.typography.bodySmall)
                 }
                 windows.forEachIndexed { index, window ->
                     Row(
@@ -817,7 +819,7 @@ fun TimeWindowsDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(window.formatted(), modifier = Modifier.weight(1f))
-                        IconButton(onClick = { windows.removeAt(index) }) {
+                        IconButton(onClick = { windows.removeAt(index) }, enabled = window !in lockedWindows) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.remove))
                         }
                     }

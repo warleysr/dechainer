@@ -48,6 +48,11 @@ Déchaîner runs with **Device Owner** privileges, which let it enforce restrict
 - The timer resists system clock changes and survives the app or its service being restarted.
 - Opening Déchaîner normally requires biometric or device authentication, plus an optional extra challenge before entry: a 5-problem arithmetic quiz, or typing 32 words correctly in a row.
 
+### Color Modes
+- Applies screen color filters during user-defined time windows (including windows that span midnight): grayscale, night light, extra dim (Android 12+) and color inversion, alone or combined, with adjustable intensity for night light and extra dim.
+- While a window is active the filters can't be turned off: switching them off (e.g. from Quick Settings) is reverted right away, and the active window, the selected modes and their intensity can't be changed until it ends. Adding windows or modes never asks for the recovery code; removing them, changing intensity or disabling the feature does.
+- The user's own display settings are restored once the window ends. Requires the Accessibility Service and the `WRITE_SECURE_SETTINGS` permission, granted automatically through Shizuku when Device Owner or the Accessibility Service is set up (or from the Color modes screen).
+
 ### Other Safeguards
 - Optional shuffled keypad, so the recovery code can't be memorized by watching finger position.
 - Any configuration change requires the recovery code, which unlocks a 10-minute session so it isn't asked for on every single action.
