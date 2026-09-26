@@ -2,10 +2,13 @@ package io.github.warleysr.dechainer
 
 import android.app.Application
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.provider.Settings
 import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.data.ColorFilterController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -50,5 +53,17 @@ class DechainerApplication : Application() {
         applicationScope.launch {
             AppRepository.getApps()
         }
+
+        releaseOrphanedColorFilters()
+    }
+
+    // A killed process skips the service's onUnbind, leaving the modes applied.
+    private fun releaseOrphanedColorFilters() {
+        if (!ColorFilterController.isApplied(this)) return
+        val service = ComponentName(this, DechainerAccessibilityService::class.java)
+        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            ?.split(':')
+            ?.any { ComponentName.unflattenFromString(it) == service } == true
+        if (!enabled) ColorFilterController.release(this)
     }
 }

@@ -541,6 +541,8 @@ class DechainerAccessibilityService : AccessibilityService() {
         securityPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         contentResolver.unregisterContentObserver(colorFilterObserver)
         handler.removeCallbacks(colorFilterSyncRunnable)
+        // Must run after unregistering the observer, or restoring would re-enforce the modes.
+        ColorFilterController.release(applicationContext)
         impulseReleaseRunnable?.let { handler.removeCallbacks(it) }
         impulseReleaseRunnable = null
         // Drop the pending release timers: with the service gone the block below re-suspends the
