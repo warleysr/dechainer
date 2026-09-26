@@ -46,10 +46,12 @@ import io.github.warleysr.dechainer.data.UsageWarningSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSuspensionTracker
 import io.github.warleysr.dechainer.models.AppGroup
+import io.github.warleysr.dechainer.models.ColorFilterMode
 import io.github.warleysr.dechainer.models.TimeWindow
 import io.github.warleysr.dechainer.models.UsageAlertStage
 import io.github.warleysr.dechainer.notifications.UsageWarningNotifier
 import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.utils.NightLightOverlay
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
 import org.jsoup.HttpStatusException
 import kotlinx.coroutines.CoroutineScope
@@ -362,6 +364,8 @@ class DechainerAccessibilityService : AccessibilityService() {
         syncColorFilters()
     }
 
+    private val nightLightOverlay by lazy { NightLightOverlay(this) }
+
     companion object {
         private const val NSFW_SCAN_INTERVAL_MS = 2000L
 
@@ -543,6 +547,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         handler.removeCallbacks(colorFilterSyncRunnable)
         // Must run after unregistering the observer, or restoring would re-enforce the modes.
         ColorFilterController.release(applicationContext)
+        nightLightOverlay.hide()
         impulseReleaseRunnable?.let { handler.removeCallbacks(it) }
         impulseReleaseRunnable = null
         // Drop the pending release timers: with the service gone the block below re-suspends the
@@ -1065,11 +1070,17 @@ class DechainerAccessibilityService : AccessibilityService() {
     private fun syncColorFilters() {
         handler.removeCallbacks(colorFilterSyncRunnable)
 
-        if (ColorFilterSettings.shouldEnforce(colorFilterPrefs)) {
+        val enforce = ColorFilterSettings.shouldEnforce(colorFilterPrefs)
+        if (enforce) {
             ColorFilterController.enforce(applicationContext, ColorFilterController.targetsFor(colorFilterPrefs))
         } else {
             ColorFilterController.release(applicationContext)
         }
+
+        val overlayNightLight = enforce && !ColorFilterController.platformNightLight &&
+            ColorFilterMode.NIGHT_LIGHT in ColorFilterSettings.loadModes(colorFilterPrefs)
+        if (overlayNightLight) nightLightOverlay.show(ColorFilterSettings.nightLightIntensity(colorFilterPrefs))
+        else nightLightOverlay.hide()
 
         if (!ColorFilterSettings.isEnabled(colorFilterPrefs)) return
         val delay = ColorFilterSettings.millisUntilNextBoundary(ColorFilterSettings.loadWindows(colorFilterPrefs))

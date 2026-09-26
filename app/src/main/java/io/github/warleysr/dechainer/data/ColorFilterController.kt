@@ -36,6 +36,9 @@ object ColorFilterController {
         NIGHT_DISPLAY_TEMPERATURE, EXTRA_DIM_ACTIVATED, EXTRA_DIM_LEVEL
     )
 
+    // Some OEMs (e.g. Samsung) disable it, and forcing its settings there can black out the screen.
+    val platformNightLight: Boolean by lazy { systemBoolean("config_nightDisplayAvailable") }
+
     val observedUris: List<Uri>
         get() = allKeys.map { Settings.Secure.getUriFor(it) }
 
@@ -65,7 +68,7 @@ object ColorFilterController {
             targets += DALTONIZER_MODE to MODE_MONOCHROMACY
             targets += DALTONIZER_ENABLED to "1"
         }
-        if (ColorFilterMode.NIGHT_LIGHT in modes) {
+        if (ColorFilterMode.NIGHT_LIGHT in modes && platformNightLight) {
             targets += NIGHT_DISPLAY_TEMPERATURE to
                 nightLightTemperature(ColorFilterSettings.nightLightIntensity(prefs)).toString()
             targets += NIGHT_DISPLAY_ACTIVATED to "1"
@@ -129,6 +132,13 @@ object ColorFilterController {
         val min = systemInteger("config_nightDisplayColorTemperatureMin", FALLBACK_NIGHT_TEMPERATURE_MIN)
         val max = systemInteger("config_nightDisplayColorTemperatureMax", FALLBACK_NIGHT_TEMPERATURE_MAX)
         return max - (max - min) * intensity.coerceIn(0, 100) / 100
+    }
+
+    @SuppressLint("DiscouragedApi")
+    private fun systemBoolean(name: String): Boolean {
+        val resources = Resources.getSystem()
+        val id = resources.getIdentifier(name, "bool", "android")
+        return id != 0 && resources.getBoolean(id)
     }
 
     @SuppressLint("DiscouragedApi")
