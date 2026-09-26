@@ -152,6 +152,16 @@ class SecurityManager {
             prefs.edit { putInt("tetris_minutes", minutes.coerceIn(TETRIS_MIN_MINUTES, TETRIS_MAX_MINUTES)) }
         }
 
+        fun isTetrisSoundEnabled(context: Context): Boolean {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            return prefs.getBoolean("tetris_sound", true)
+        }
+
+        fun setTetrisSoundEnabled(context: Context, enabled: Boolean) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putBoolean("tetris_sound", enabled) }
+        }
+
         fun getImpulseAction(context: Context): ImpulseAction {
             val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
             val stored = prefs.getString("impulse_action", ImpulseAction.TIMER_ONLY.name)!!

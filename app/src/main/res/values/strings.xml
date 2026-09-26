@@ -314,9 +314,12 @@
     <string name="challenge_step">Challenge %1$d of %2$d</string>
     <string name="challenge_give_up">I don\'t want to open it anymore</string>
     <string name="challenge_gave_up_message">Good call. The urge fades in a few minutes — go do something else.</string>
-    <string name="tetris_title">Play Tetris</string>
     <string name="tetris_lines">Lines: %1$d</string>
     <string name="tetris_paused">Paused — touch the board or a button to play. Time only counts while you play.</string>
+    <string name="tetris_level">Level %1$d</string>
+    <string name="tetris_sound_on">Turn sound off</string>
+    <string name="tetris_sound_off">Turn sound on</string>
+    <string name="tetris_continue">Continue</string>
     <string name="tetris_next">Next</string>
     <string name="tetris_move_left">Move left</string>
     <string name="tetris_move_right">Move right</string>

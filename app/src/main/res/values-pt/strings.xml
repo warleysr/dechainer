@@ -314,9 +314,12 @@
     <string name="challenge_step">Desafio %1$d de %2$d</string>
     <string name="challenge_give_up">Não quero mais abrir</string>
     <string name="challenge_gave_up_message">Boa escolha. A vontade passa em alguns minutos — vá fazer outra coisa.</string>
-    <string name="tetris_title">Jogue Tetris</string>
     <string name="tetris_lines">Linhas: %1$d</string>
     <string name="tetris_paused">Pausado — toque no tabuleiro ou em um botão para jogar. O tempo só conta enquanto você joga.</string>
+    <string name="tetris_level">Nível %1$d</string>
+    <string name="tetris_sound_on">Desativar som</string>
+    <string name="tetris_sound_off">Ativar som</string>
+    <string name="tetris_continue">Continuar</string>
     <string name="tetris_next">Próxima</string>
     <string name="tetris_move_left">Mover para a esquerda</string>
     <string name="tetris_move_right">Mover para a direita</string>

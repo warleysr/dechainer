@@ -43,8 +43,12 @@ fun ChallengeScaffold(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             content()
         }
-        FilledTonalButton(
+        Button(
             onClick = onGiveUp,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.error,
+                contentColor = MaterialTheme.colorScheme.onError
+            ),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
