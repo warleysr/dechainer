@@ -14,8 +14,8 @@ import androidx.core.content.edit
 
 class SecurityManager {
 
-    enum class ImpulseLockMode {
-        OFF, NORMAL, HARD
+    enum class ChallengeType {
+        MATH, WORDS, TETRIS
     }
 
     /** What the "I'm having impulses" panic button does on top of locking Dechainer itself. */
@@ -33,6 +33,10 @@ class SecurityManager {
         const val IMPULSE_MIN_DURATION_MINUTES = 15
         const val IMPULSE_MAX_DURATION_MINUTES = 360
         const val IMPULSE_DEFAULT_DURATION_MINUTES = 60
+
+        const val TETRIS_MIN_MINUTES = 1
+        const val TETRIS_MAX_MINUTES = 15
+        const val TETRIS_DEFAULT_MINUTES = 3
 
         const val DEBUG_AUTO_START_SESSION_KEY = "debug_auto_start_session"
 
@@ -115,14 +119,36 @@ class SecurityManager {
             prefs.edit { putBoolean("block_torrents", enabled) }
         }
 
-        fun getImpulseLockMode(context: Context): ImpulseLockMode {
+        fun getAccessChallenges(context: Context): List<ChallengeType> {
             val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
-            return ImpulseLockMode.valueOf(prefs.getString("impulse_lock_mode", ImpulseLockMode.OFF.name)!!)
+            val stored = prefs.getStringSet("access_challenges", null)
+                ?: return when (prefs.getString("impulse_lock_mode", null)) {
+                    "NORMAL" -> listOf(ChallengeType.MATH)
+                    "HARD" -> listOf(ChallengeType.WORDS)
+                    else -> emptyList()
+                }
+            return stored
+                .mapNotNull { runCatching { ChallengeType.valueOf(it) }.getOrNull() }
+                .sortedBy { it.ordinal }
         }
 
-        fun setImpulseLockMode(context: Context, mode: ImpulseLockMode) {
+        fun setAccessChallenges(context: Context, challenges: Set<ChallengeType>) {
             val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
-            prefs.edit { putString("impulse_lock_mode", mode.name) }
+            prefs.edit {
+                putStringSet("access_challenges", challenges.map { it.name }.toSet())
+                remove("impulse_lock_mode")
+            }
+        }
+
+        fun getTetrisMinutes(context: Context): Int {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            return prefs.getInt("tetris_minutes", TETRIS_DEFAULT_MINUTES)
+                .coerceIn(TETRIS_MIN_MINUTES, TETRIS_MAX_MINUTES)
+        }
+
+        fun setTetrisMinutes(context: Context, minutes: Int) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putInt("tetris_minutes", minutes.coerceIn(TETRIS_MIN_MINUTES, TETRIS_MAX_MINUTES)) }
         }
 
         fun getImpulseAction(context: Context): ImpulseAction {

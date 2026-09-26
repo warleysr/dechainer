@@ -261,12 +261,6 @@
 
     <string name="impulse_lock">Impulse lock</string>
     <string name="impulse_lock_desc">Challenge to access the app, and what the panic button does</string>
-    <string name="impulse_lock_off">Off</string>
-    <string name="impulse_lock_off_desc">No challenge, unlocks immediately</string>
-    <string name="impulse_lock_normal">Normal</string>
-    <string name="impulse_lock_normal_desc">Solve 5 addition problems with 2-digit numbers</string>
-    <string name="impulse_lock_hard">Hard</string>
-    <string name="impulse_lock_hard_desc">Type 32 words correctly, one at a time</string>
     <string name="having_impulses">I\'m having impulses</string>
     <string name="having_impulses_subtitle">Lock everything right now</string>
     <string name="access_app">Access app</string>
@@ -274,7 +268,7 @@
     <string name="impulse_timer_active">Impulse block active</string>
     <string name="impulse_lock_explanation">The panic button locks Dechainer itself for the time set here, and there is no way to undo it before the timer runs out. You can also have it suspend a list of apps for the same period — they come back automatically at the end.</string>
     <string name="impulse_lock_challenge_section">Challenge to access</string>
-    <string name="impulse_lock_challenge_desc">Solved after authentication, every time you open Dechainer</string>
+    <string name="impulse_lock_challenge_desc">Done after authentication, every time you open Dechainer. Select as many as you want — they run one after the other. With none selected, it unlocks right away</string>
     <string name="impulse_action_section">What the panic button does</string>
     <string name="impulse_action_desc">Both options start the timer that locks Dechainer</string>
     <string name="impulse_action_timer_only">Timer only</string>
@@ -288,6 +282,25 @@
     <string name="math_challenge_title">Solve the problems</string>
     <string name="word_challenge_title">Type the words</string>
     <string name="challenge_error">Incorrect, starting over…</string>
+    <string name="challenge_option_math">Math problems</string>
+    <string name="challenge_option_math_desc">Solve 5 addition problems with 2-digit numbers</string>
+    <string name="challenge_option_words">Type words</string>
+    <string name="challenge_option_words_desc">Type 32 words correctly, one at a time</string>
+    <string name="challenge_option_tetris">Tetris</string>
+    <string name="challenge_option_tetris_desc">Play for a set time. Visual puzzles compete with the mental images that feed an urge, making it fade faster</string>
+    <string name="tetris_duration">Time to play</string>
+    <string name="challenge_step">Challenge %1$d of %2$d</string>
+    <string name="challenge_give_up">I don\'t want to open it anymore</string>
+    <string name="challenge_gave_up_message">Good call. The urge fades in a few minutes — go do something else.</string>
+    <string name="tetris_title">Play Tetris</string>
+    <string name="tetris_lines">Lines: %1$d</string>
+    <string name="tetris_paused">Paused — touch the board or a button to play. Time only counts while you play.</string>
+    <string name="tetris_next">Next</string>
+    <string name="tetris_move_left">Move left</string>
+    <string name="tetris_move_right">Move right</string>
+    <string name="tetris_rotate">Rotate</string>
+    <string name="tetris_soft_drop">Move down</string>
+    <string name="tetris_hard_drop">Drop</string>
     <string name="biometric_title">Authentication required</string>
     <string name="biometric_subtitle">Use your biometric credential to access Dechainer</string>
     <string name="biometric_error">Authentication failed</string>

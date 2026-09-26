@@ -1,8 +1,16 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val releaseStoreFile = localProperties.getProperty("dechainer.storeFile")
 
 android {
     namespace = "io.github.warleysr.dechainer"
@@ -24,8 +32,27 @@ android {
         noCompress.add("tflite")
     }
 
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("dechainer") {
+                storeFile = file(releaseStoreFile)
+                storePassword = localProperties.getProperty("dechainer.storePassword")
+                keyAlias = localProperties.getProperty("dechainer.keyAlias")
+                keyPassword = localProperties.getProperty("dechainer.keyPassword")
+            }
+        }
+    }
+
     buildTypes {
+        if (releaseStoreFile != null) {
+            debug {
+                signingConfig = signingConfigs.getByName("dechainer")
+            }
+        }
         release {
+            if (releaseStoreFile != null) {
+                signingConfig = signingConfigs.getByName("dechainer")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -20,6 +20,42 @@ import io.github.warleysr.dechainer.R
 import kotlin.random.Random
 
 @Composable
+fun ChallengeScaffold(
+    step: Int,
+    total: Int,
+    onGiveUp: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .padding(bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (total > 1) {
+            Text(
+                stringResource(R.string.challenge_step, step, total),
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        }
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            content()
+        }
+        FilledTonalButton(
+            onClick = onGiveUp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(56.dp)
+        ) {
+            Text(stringResource(R.string.challenge_give_up), style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}
+
+@Composable
 fun MathChallenge(onSuccess: () -> Unit) {
     var problemIndex by remember { mutableIntStateOf(0) }
     var num1 by remember { mutableIntStateOf(Random.nextInt(10, 99)) }

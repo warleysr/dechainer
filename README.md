@@ -46,7 +46,7 @@ Déchaîner runs with **Device Owner** privileges, which let it enforce restrict
 ### Impulse Lock (panic button)
 - A panic button on the lock screen, reachable even before authenticating: starts a 15-minute to 6-hour lock on Déchaîner itself, optionally also suspending a user-chosen list of apps for the same duration.
 - The timer resists system clock changes and survives the app or its service being restarted.
-- Opening Déchaîner normally requires biometric or device authentication, plus an optional extra challenge before entry: a 5-problem arithmetic quiz, or typing 32 words correctly in a row.
+- Opening Déchaîner normally requires biometric or device authentication, plus optional extra challenges before entry, done one after the other: a 5-problem arithmetic quiz, typing 32 words correctly in a row, and playing Tetris for a configurable number of minutes (time only counts while actually playing). Every challenge screen has a "give up" button that goes back to the lock screen.
 
 ### Other Safeguards
 - Optional shuffled keypad, so the recovery code can't be memorized by watching finger position.

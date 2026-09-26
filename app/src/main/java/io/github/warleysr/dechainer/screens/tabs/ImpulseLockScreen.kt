@@ -57,21 +57,44 @@ fun ImpulseLockScreen(viewModel: ImpulseLockViewModel = viewModel()) {
                 title = stringResource(R.string.impulse_lock_challenge_section),
                 description = stringResource(R.string.impulse_lock_challenge_desc)
             )
-            SecurityManager.ImpulseLockMode.entries.forEach { mode ->
+            SecurityManager.ChallengeType.entries.forEach { type ->
                 OptionRow(
-                    selected = viewModel.lockMode == mode,
+                    selected = type in viewModel.challenges,
                     enabled = sessionActive,
-                    title = when (mode) {
-                        SecurityManager.ImpulseLockMode.OFF -> stringResource(R.string.impulse_lock_off)
-                        SecurityManager.ImpulseLockMode.NORMAL -> stringResource(R.string.impulse_lock_normal)
-                        SecurityManager.ImpulseLockMode.HARD -> stringResource(R.string.impulse_lock_hard)
+                    multiple = true,
+                    title = when (type) {
+                        SecurityManager.ChallengeType.MATH -> stringResource(R.string.challenge_option_math)
+                        SecurityManager.ChallengeType.WORDS -> stringResource(R.string.challenge_option_words)
+                        SecurityManager.ChallengeType.TETRIS -> stringResource(R.string.challenge_option_tetris)
                     },
-                    supporting = when (mode) {
-                        SecurityManager.ImpulseLockMode.OFF -> stringResource(R.string.impulse_lock_off_desc)
-                        SecurityManager.ImpulseLockMode.NORMAL -> stringResource(R.string.impulse_lock_normal_desc)
-                        SecurityManager.ImpulseLockMode.HARD -> stringResource(R.string.impulse_lock_hard_desc)
+                    supporting = when (type) {
+                        SecurityManager.ChallengeType.MATH -> stringResource(R.string.challenge_option_math_desc)
+                        SecurityManager.ChallengeType.WORDS -> stringResource(R.string.challenge_option_words_desc)
+                        SecurityManager.ChallengeType.TETRIS -> stringResource(R.string.challenge_option_tetris_desc)
                     },
-                    onClick = { viewModel.updateLockMode(mode) }
+                    onClick = { viewModel.toggleChallenge(type) }
+                )
+            }
+            if (SecurityManager.ChallengeType.TETRIS in viewModel.challenges) {
+                Text(
+                    stringResource(R.string.tetris_duration),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+                Text(
+                    formatDuration(viewModel.tetrisMinutes),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                Slider(
+                    value = viewModel.tetrisMinutes.toFloat(),
+                    enabled = sessionActive,
+                    onValueChange = { viewModel.updateTetrisMinutes(it.toInt()) },
+                    valueRange = SecurityManager.TETRIS_MIN_MINUTES.toFloat()..
+                        SecurityManager.TETRIS_MAX_MINUTES.toFloat(),
+                    steps = SecurityManager.TETRIS_MAX_MINUTES - SecurityManager.TETRIS_MIN_MINUTES - 1,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
@@ -216,7 +239,8 @@ private fun OptionRow(
     enabled: Boolean,
     title: String,
     onClick: () -> Unit,
-    supporting: String? = null
+    supporting: String? = null,
+    multiple: Boolean = false
 ) {
     Row(
         modifier = Modifier
@@ -225,7 +249,11 @@ private fun OptionRow(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        RadioButton(selected = selected, enabled = enabled, onClick = onClick)
+        if (multiple) {
+            Checkbox(checked = selected, enabled = enabled, onCheckedChange = { onClick() })
+        } else {
+            RadioButton(selected = selected, enabled = enabled, onClick = onClick)
+        }
         Column(modifier = Modifier.padding(start = 8.dp)) {
             Text(title, fontWeight = FontWeight.Bold)
             if (supporting != null) {

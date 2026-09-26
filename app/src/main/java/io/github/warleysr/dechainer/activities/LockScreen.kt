@@ -1,5 +1,6 @@
 package io.github.warleysr.dechainer.activities
 
+import androidx.activity.compose.BackHandler
 import androidx.biometric.AuthenticationRequest
 import androidx.biometric.AuthenticationResult
 import androidx.biometric.AuthenticationResultCallback
@@ -27,7 +28,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.DeviceOwnerRepository
+import io.github.warleysr.dechainer.screens.challenges.ChallengeScaffold
 import io.github.warleysr.dechainer.screens.challenges.MathChallenge
+import io.github.warleysr.dechainer.screens.challenges.TetrisChallenge
 import io.github.warleysr.dechainer.screens.challenges.WordChallenge
 import io.github.warleysr.dechainer.security.SecurityManager
 import kotlinx.coroutines.delay
@@ -40,7 +43,9 @@ import kotlin.time.Duration.Companion.seconds
  */
 @Composable
 fun LockScreen(onAuthenticated: () -> Unit) {
-    var challengeMode by remember { mutableStateOf<SecurityManager.ImpulseLockMode?>(null) }
+    var challenges by remember { mutableStateOf<List<SecurityManager.ChallengeType>?>(null) }
+    var challengeIndex by remember { mutableIntStateOf(0) }
+    var gaveUp by remember { mutableStateOf(false) }
     var authError by remember { mutableStateOf<String?>(null) }
     var impulseRemaining by remember { mutableLongStateOf(-1L) }
 
@@ -48,8 +53,14 @@ fun LockScreen(onAuthenticated: () -> Unit) {
 
     fun proceedAfterAuthentication() {
         authError = null
-        val mode = SecurityManager.getImpulseLockMode(context)
-        if (mode == SecurityManager.ImpulseLockMode.OFF) onAuthenticated() else challengeMode = mode
+        gaveUp = false
+        val required = SecurityManager.getAccessChallenges(context)
+        if (required.isEmpty()) {
+            onAuthenticated()
+        } else {
+            challengeIndex = 0
+            challenges = required
+        }
     }
 
     val launcher = rememberAuthenticationLauncher(
@@ -107,11 +118,29 @@ fun LockScreen(onAuthenticated: () -> Unit) {
     }
 
     Surface(modifier = Modifier.fillMaxSize()) {
-        if (challengeMode != null) {
-            when (challengeMode) {
-                SecurityManager.ImpulseLockMode.NORMAL -> MathChallenge(onSuccess = onAuthenticated)
-                SecurityManager.ImpulseLockMode.HARD -> WordChallenge(onSuccess = onAuthenticated)
-                else -> onAuthenticated()
+        val pending = challenges
+        if (pending != null) {
+            fun giveUp() {
+                challenges = null
+                gaveUp = true
+            }
+
+            fun completeCurrent() {
+                if (challengeIndex + 1 >= pending.size) onAuthenticated() else challengeIndex++
+            }
+
+            BackHandler(onBack = ::giveUp)
+            ChallengeScaffold(step = challengeIndex + 1, total = pending.size, onGiveUp = ::giveUp) {
+                key(challengeIndex) {
+                    when (pending[challengeIndex]) {
+                        SecurityManager.ChallengeType.MATH -> MathChallenge(onSuccess = ::completeCurrent)
+                        SecurityManager.ChallengeType.WORDS -> WordChallenge(onSuccess = ::completeCurrent)
+                        SecurityManager.ChallengeType.TETRIS -> TetrisChallenge(
+                            minutes = SecurityManager.getTetrisMinutes(context),
+                            onSuccess = ::completeCurrent
+                        )
+                    }
+                }
             }
             return@Surface
         }
@@ -126,6 +155,16 @@ fun LockScreen(onAuthenticated: () -> Unit) {
             if (impulseRemaining > 0) {
                 ImpulseCountdown(impulseRemaining)
             } else {
+                if (gaveUp) {
+                    Text(
+                        stringResource(R.string.challenge_gave_up_message),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
                 if (DeviceOwnerRepository.isDeviceOwner()) {
                     BigActionButton(
                         icon = Icons.Filled.Warning,

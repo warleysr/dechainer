@@ -22,7 +22,10 @@ import kotlinx.coroutines.withContext
 class ImpulseLockViewModel : ViewModel() {
     private val context = DechainerApplication.getInstance()
 
-    var lockMode by mutableStateOf(SecurityManager.getImpulseLockMode(context))
+    var challenges by mutableStateOf(SecurityManager.getAccessChallenges(context).toSet())
+        private set
+
+    var tetrisMinutes by mutableIntStateOf(SecurityManager.getTetrisMinutes(context))
         private set
 
     var action by mutableStateOf(SecurityManager.getImpulseAction(context))
@@ -44,9 +47,17 @@ class ImpulseLockViewModel : ViewModel() {
         loadApps()
     }
 
-    fun updateLockMode(mode: SecurityManager.ImpulseLockMode) {
-        lockMode = mode
-        SecurityManager.setImpulseLockMode(context, mode)
+    fun toggleChallenge(type: SecurityManager.ChallengeType) {
+        val newSet = challenges.toMutableSet()
+        if (!newSet.remove(type)) newSet.add(type)
+        challenges = newSet
+        SecurityManager.setAccessChallenges(context, newSet)
+    }
+
+    fun updateTetrisMinutes(value: Int) {
+        val clamped = value.coerceIn(SecurityManager.TETRIS_MIN_MINUTES, SecurityManager.TETRIS_MAX_MINUTES)
+        tetrisMinutes = clamped
+        SecurityManager.setTetrisMinutes(context, clamped)
     }
 
     fun updateAction(value: SecurityManager.ImpulseAction) {
