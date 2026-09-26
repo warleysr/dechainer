@@ -57,14 +57,15 @@ class SecurityManager {
             sessionEndTime = 0L
         }
 
-        fun consumeDebugAutoStartSession(context: Context) {
-            if (!BuildConfig.DEBUG) return
+        fun consumeDebugAutoStartSession(context: Context): Boolean {
+            if (!BuildConfig.DEBUG) return false
 
             val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
-            if (prefs.getBoolean(DEBUG_AUTO_START_SESSION_KEY, false)) {
-                prefs.edit { remove(DEBUG_AUTO_START_SESSION_KEY) }
-                startSession()
-            }
+            if (!prefs.getBoolean(DEBUG_AUTO_START_SESSION_KEY, false)) return false
+
+            prefs.edit { remove(DEBUG_AUTO_START_SESSION_KEY) }
+            startSession()
+            return true
         }
 
         fun suspendUnknownSourcesRestrictionForDebugInstall(context: Context) {

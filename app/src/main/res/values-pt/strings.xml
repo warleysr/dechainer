@@ -1,11 +1,33 @@
 <resources>
     <string name="app_name" translatable="false">Déchaîner</string>
     <string name="attention">Atenção!</string>
-    <string name="self_lock_risk">Este app utiliza privilégios de Dono do Dispositivo para bloquear componentes de sistema e controlar o acesso a outros aplicativos. Há o risco de se \"auto trancar\" e não conseguir ter acesso as funcionalidades bloqueadas novamente. Para evitar isso você deve ter um código de recuperação. Esse código pode ser gerado abaixo e deve ser salvo em um local seguro, de preferência em forma física em um papel.</string>
-    <string name="confirm_key_saved">Confirmo que salvei o código</string>
-    <string name="proceed">Prosseguir</string>
-    <string name="generate_key">Gerar código</string>
-    <string name="your_key">Seu código é:</string>
+    <string name="recovery_wizard_step">Passo %1$d de %2$d</string>
+    <string name="recovery_wizard_next">Próximo</string>
+    <string name="recovery_wizard_back">Voltar</string>
+    <string name="recovery_wizard_finish">Concluir</string>
+    <string name="recovery_wizard_intro_title">Seu código de recuperação</string>
+    <string name="recovery_wizard_intro_text">O código será pedido sempre que você for alterar as configurações do Déchaîner. Sem ele, você pode ficar trancado para fora das funções bloqueadas.</string>
+    <string name="recovery_wizard_intro_how">Como funciona</string>
+    <string name="recovery_wizard_intro_step_generate">O Déchaîner gera um código de 16 letras</string>
+    <string name="recovery_wizard_intro_step_write">Escreva o código em um papel</string>
+    <string name="recovery_wizard_intro_step_confirm">Digite-o de volta para conferir</string>
+    <string name="recovery_wizard_intro_step_store">Guarde o papel em um local seguro</string>
+    <string name="recovery_wizard_intro_hint">Pegue papel e caneta antes de continuar.</string>
+    <string name="recovery_wizard_write_title">Escreva no papel</string>
+    <string name="recovery_wizard_write_text">Copie as 16 letras exatamente como aparecem. Não tire print nem salve no celular — uma cópia ao alcance é fácil de usar num momento de impulso.</string>
+    <string name="recovery_wizard_reveal">Mostrar código</string>
+    <string name="recovery_wizard_written">Escrevi o código no papel</string>
+    <string name="recovery_wizard_confirm_title">Confira o que você escreveu</string>
+    <string name="recovery_wizard_confirm_text">Agora o código está oculto. Digite-o a partir do papel para garantir que todas as letras estão certas.</string>
+    <string name="recovery_wizard_confirm_match">O código está correto</string>
+    <string name="recovery_wizard_confirm_mismatch">Não confere. Volte e compare com o papel.</string>
+    <string name="recovery_wizard_store_title">Guarde em um local seguro</string>
+    <string name="recovery_wizard_store_text">O papel agora é a única cópia do seu código. Escolha bem onde guardá-lo.</string>
+    <string name="recovery_wizard_store_tip_away">Longe do celular, onde você não alcance por impulso</string>
+    <string name="recovery_wizard_store_tip_findable">Fácil de achar quando realmente precisar — uma gaveta, uma pasta ou com alguém de confiança</string>
+    <string name="recovery_wizard_store_tip_digital">Sem fotos ou cópias digitais</string>
+    <string name="recovery_wizard_store_tip_old">Jogue fora o papel com o código antigo</string>
+    <string name="recovery_wizard_stored">Guardei o papel em um local seguro</string>
     <string name="restrictions">Restrições</string>
     <string name="apps" translatable="false">Apps</string>
     <string name="config" translatable="false">Config</string>

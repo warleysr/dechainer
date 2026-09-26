@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -26,7 +27,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        SecurityManager.consumeDebugAutoStartSession(this)
+        if (SecurityManager.consumeDebugAutoStartSession(this)) authenticated.value = true
         SecurityManager.consumeDebugRestoreUnknownSourcesRestriction(this)
         enableEdgeToEdge()
         setContent {
@@ -129,6 +129,8 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     bottomBar = {
+                        if (!SecurityManager.isRecoveryCodeSet(this) || !authenticated.value) return@Scaffold
+
                         val tabs = listOf(
                             Pair("restrictions", stringResource(R.string.restrictions)),
                             Pair("apps", stringResource(R.string.apps)),
@@ -142,9 +144,7 @@ class MainActivity : ComponentActivity() {
                             else -> "restrictions"
                         }
 
-                        NavigationBar(
-                            modifier = Modifier.alpha(if (!authenticated.value) 0f else 1f)
-                        ) {
+                        NavigationBar {
                             tabs.forEach { pair ->
                                 NavigationBarItem(
                                     selected = selectedBaseTab == pair.first,
@@ -169,9 +169,13 @@ class MainActivity : ComponentActivity() {
                         SetupRecovery(innerPadding)
                     else {
                         if (!authenticated.value)
-                            LockScreen(
-                                onAuthenticated = { authenticated.value = true }
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .padding(innerPadding)
+                                    .consumeWindowInsets(innerPadding)
+                            ) {
+                                LockScreen(onAuthenticated = { authenticated.value = true })
+                            }
                         else
                             Box(modifier = Modifier.padding(innerPadding)) {
                                 when (currentScreen) {

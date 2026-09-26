@@ -1,11 +1,33 @@
 <resources>
     <string name="app_name" translatable="false">Déchaîner</string>
     <string name="attention">Attention!</string>
-    <string name="self_lock_risk">This app uses Device Owner privileges to block system components and control access to other apps. There is a risk of "locking yourself out" and being unable to regain access to the blocked features. To prevent this, you must have a recovery code. This code can be generated below and should be saved in a secure location—preferably in physical form, on paper.</string>
-    <string name="confirm_key_saved">I confirm that I have saved the code</string>
-    <string name="proceed">Proceed</string>
-    <string name="generate_key">Generate code</string>
-    <string name="your_key">Your code is:</string>
+    <string name="recovery_wizard_step">Step %1$d of %2$d</string>
+    <string name="recovery_wizard_next">Next</string>
+    <string name="recovery_wizard_back">Back</string>
+    <string name="recovery_wizard_finish">Finish</string>
+    <string name="recovery_wizard_intro_title">Your recovery code</string>
+    <string name="recovery_wizard_intro_text">The code will be asked for whenever you change Déchaîner\'s settings. Without it, you could be locked out of the blocked features.</string>
+    <string name="recovery_wizard_intro_how">How it works</string>
+    <string name="recovery_wizard_intro_step_generate">Déchaîner generates a 16-letter code</string>
+    <string name="recovery_wizard_intro_step_write">Write the code down on a piece of paper</string>
+    <string name="recovery_wizard_intro_step_confirm">Type it back to make sure it\'s correct</string>
+    <string name="recovery_wizard_intro_step_store">Store the paper in a safe place</string>
+    <string name="recovery_wizard_intro_hint">Grab a pen and paper before continuing.</string>
+    <string name="recovery_wizard_write_title">Write it on paper</string>
+    <string name="recovery_wizard_write_text">Copy the 16 letters exactly as shown. Don\'t take a screenshot or save it on your phone — a copy within reach is easy to use in a moment of impulse.</string>
+    <string name="recovery_wizard_reveal">Show code</string>
+    <string name="recovery_wizard_written">I wrote the code on paper</string>
+    <string name="recovery_wizard_confirm_title">Check what you wrote</string>
+    <string name="recovery_wizard_confirm_text">The code is hidden now. Type it from your paper to make sure every letter is right.</string>
+    <string name="recovery_wizard_confirm_match">The code is correct</string>
+    <string name="recovery_wizard_confirm_mismatch">It doesn\'t match. Go back and compare it with your paper.</string>
+    <string name="recovery_wizard_store_title">Store it in a safe place</string>
+    <string name="recovery_wizard_store_text">The paper is now the only copy of your code. Choose carefully where to keep it.</string>
+    <string name="recovery_wizard_store_tip_away">Away from your phone, somewhere you won\'t reach on impulse</string>
+    <string name="recovery_wizard_store_tip_findable">Easy to find when you really need it — a drawer, a folder or with someone you trust</string>
+    <string name="recovery_wizard_store_tip_digital">No photos or digital copies</string>
+    <string name="recovery_wizard_store_tip_old">Throw away the paper with the old code</string>
+    <string name="recovery_wizard_stored">I stored the paper in a safe place</string>
     <string name="restrictions">Restrictions</string>
     <string name="apps" translatable="false">Apps</string>
     <string name="config" translatable="false">Config</string>
