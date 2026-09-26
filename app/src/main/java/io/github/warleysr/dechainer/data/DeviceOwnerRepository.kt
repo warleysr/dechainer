@@ -75,7 +75,9 @@ object DeviceOwnerRepository {
                     Log.e("Shizuku", error)
                 }
             })
-        return dpm.isDeviceOwnerApp(packageName)
+        val granted = dpm.isDeviceOwnerApp(packageName)
+        if (granted) ColorFilterController.grantPermissionViaShizuku(context)
+        return granted
     }
 
     fun setPrivateDNS(host: String): Int {
@@ -260,5 +262,7 @@ object DeviceOwnerRepository {
                     Log.e("Shizuku", error)
                 }
             })
+
+        if (grant) ColorFilterController.grantPermissionViaShizuku(context)
     }
 }

@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.os.Build
@@ -38,6 +39,8 @@ import io.github.warleysr.dechainer.data.AppGroupRepository
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.data.AppTimeWindows
 import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
+import io.github.warleysr.dechainer.data.ColorFilterController
+import io.github.warleysr.dechainer.data.ColorFilterSettings
 import io.github.warleysr.dechainer.data.PlayStoreRatingFetcher
 import io.github.warleysr.dechainer.data.UsageWarningSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSettings
@@ -79,6 +82,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var ratingPrefs: SharedPreferences
     private lateinit var visualBlockingPrefs: SharedPreferences
     private lateinit var usageWarningPrefs: SharedPreferences
+    private lateinit var colorFilterPrefs: SharedPreferences
 
     private var forbiddenPatterns: Map<String, Regex> = emptyMap()
     private var passiveForbiddenPatterns: Map<String, Map<String, Regex>> = emptyMap()
@@ -200,6 +204,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 }
 
                 Intent.ACTION_SCREEN_ON -> {
+                    syncColorFilters()
                     lastForegroundPackage?.let {
                         currentPackage = it
                         sessionStartTime = SystemClock.elapsedRealtime()
@@ -207,7 +212,15 @@ class DechainerAccessibilityService : AccessibilityService() {
                         startTracking(it)
                     }
                 }
+
+                Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED -> syncColorFilters()
             }
+        }
+    }
+
+    private val colorFilterObserver = object : ContentObserver(handler) {
+        override fun onChange(selfChange: Boolean) {
+            syncColorFilters()
         }
     }
 
@@ -240,6 +253,10 @@ class DechainerAccessibilityService : AccessibilityService() {
 
             visualBlockingPrefs -> {
                 updateVisualBlockingSettings()
+            }
+
+            colorFilterPrefs -> {
+                syncColorFilters()
             }
 
             usageWarningPrefs -> {
@@ -341,6 +358,10 @@ class DechainerAccessibilityService : AccessibilityService() {
         tickUsageWarning()
     }
 
+    private val colorFilterSyncRunnable = Runnable {
+        syncColorFilters()
+    }
+
     companion object {
         private const val NSFW_SCAN_INTERVAL_MS = 2000L
 
@@ -436,6 +457,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         ratingPrefs = getSharedPreferences("app_ratings", MODE_PRIVATE)
         visualBlockingPrefs = getSharedPreferences(VisualBlockingSettings.PREFS_NAME, MODE_PRIVATE)
         usageWarningPrefs = getSharedPreferences(UsageWarningSettings.PREFS_NAME, MODE_PRIVATE)
+        colorFilterPrefs = getSharedPreferences(ColorFilterSettings.PREFS_NAME, MODE_PRIVATE)
         nsfwSuspensionTracker = VisualBlockingSuspensionTracker(applicationContext)
 
         limitPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -444,11 +466,17 @@ class DechainerAccessibilityService : AccessibilityService() {
         blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         visualBlockingPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         usageWarningPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        colorFilterPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         securityPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
 
         updateForbiddenPatterns()
         updateVisualBlockingSettings()
         updateUsageWarningSettings()
+
+        ColorFilterController.observedUris.forEach {
+            contentResolver.registerContentObserver(it, false, colorFilterObserver)
+        }
+        syncColorFilters()
 
         val blockedPackages = getControlledPackages()
         suspendPackages(blockedPackages, false)
@@ -473,6 +501,8 @@ class DechainerAccessibilityService : AccessibilityService() {
         val screenFilter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
         }
         registerReceiver(screenReceiver, screenFilter)
 
@@ -507,7 +537,10 @@ class DechainerAccessibilityService : AccessibilityService() {
         blockedWordsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         visualBlockingPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         usageWarningPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        colorFilterPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         securityPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        contentResolver.unregisterContentObserver(colorFilterObserver)
+        handler.removeCallbacks(colorFilterSyncRunnable)
         impulseReleaseRunnable?.let { handler.removeCallbacks(it) }
         impulseReleaseRunnable = null
         // Drop the pending release timers: with the service gone the block below re-suspends the
@@ -1025,6 +1058,21 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         SecurityManager.clearActiveImpulseSuspension(ctx)
         Timber.d("Impulse block: released ${releasable.size} app(s)")
+    }
+
+    private fun syncColorFilters() {
+        handler.removeCallbacks(colorFilterSyncRunnable)
+
+        if (ColorFilterSettings.shouldEnforce(colorFilterPrefs)) {
+            ColorFilterController.enforce(applicationContext, ColorFilterController.targetsFor(colorFilterPrefs))
+        } else {
+            ColorFilterController.release(applicationContext)
+        }
+
+        if (!ColorFilterSettings.isEnabled(colorFilterPrefs)) return
+        val delay = ColorFilterSettings.millisUntilNextBoundary(ColorFilterSettings.loadWindows(colorFilterPrefs))
+            ?: return
+        handler.postDelayed(colorFilterSyncRunnable, delay)
     }
 
     private fun suspendPackages(packages: Array<String>, suspend: Boolean = true) {

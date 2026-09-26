@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LockClock
 import androidx.compose.material.icons.outlined.NoAdultContent
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material3.*
@@ -250,6 +251,15 @@ fun ConfigTab(
                     supportingContent = { Text(stringResource(R.string.usage_warning_settings_desc)) },
                     leadingContent = { Icon(Icons.Outlined.NotificationsActive, "") },
                     modifier = Modifier.clickable { navViewModel.navigateTo("usage_warning") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.color_filter_settings)) },
+                    supportingContent = { Text(stringResource(R.string.color_filter_settings_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.Palette, "") },
+                    modifier = Modifier.clickable { navViewModel.navigateTo("color_filters") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
