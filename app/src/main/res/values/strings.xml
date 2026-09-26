@@ -383,11 +383,7 @@
     <string name="color_filter_settings">Color modes</string>
     <string name="color_filter_settings_desc">Grayscale, night light and other screen color filters during the time windows you choose.</string>
     <string name="color_filter_explanation">Applies screen color filters, such as grayscale, night light or extra dim, during the time windows you choose, making the phone less appealing. While a window is active the filters can\'t be turned off: they are switched back on right away, and the active window, the selected modes and their strength can\'t be changed until it ends.</string>
-    <string name="color_filter_permission">Permission to change display colors</string>
-    <string name="color_filter_permission_desc">Granted once through Shizuku (automatically when Device Owner is set up), and kept after restarts.</string>
-    <string name="color_filter_grant_permission">Grant</string>
     <string name="color_filter_permission_failed">Could not grant the permission. Make sure Shizuku is running and Déchaîner has access to it.</string>
-    <string name="color_filter_permission_required">Grant the permission above first</string>
     <string name="color_filter_enable">Enable color mode windows</string>
     <string name="color_filter_locked">Active now (%1$s), it can\'t be turned off until the window ends</string>
     <string name="color_filter_locked_error">Color modes can\'t be turned off or weakened during an active window</string>

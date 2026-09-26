@@ -11,12 +11,10 @@ import androidx.compose.material.icons.outlined.InvertColors
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,39 +65,6 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
             }
 
             item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.color_filter_permission)) },
-                    supportingContent = { Text(stringResource(R.string.color_filter_permission_desc)) },
-                    leadingContent = { Icon(Icons.Outlined.Security, null) },
-                    trailingContent = {
-                        if (viewModel.permissionGranted) {
-                            Badge(containerColor = Color(26, 163, 63), contentColor = Color.White) {
-                                Text(stringResource(R.string.granted), style = MaterialTheme.typography.bodyMedium)
-                            }
-                        } else {
-                            Button(
-                                enabled = !viewModel.grantingPermission,
-                                onClick = {
-                                    if (!Shizuku.pingBinder()) {
-                                        scope.launch { snackbarHostState.showSnackbar(shizukuNotRunningMsg) }
-                                        return@Button
-                                    }
-                                    viewModel.grantPermission { granted ->
-                                        if (!granted) {
-                                            scope.launch { snackbarHostState.showSnackbar(permissionFailedMsg) }
-                                        }
-                                    }
-                                }
-                            ) {
-                                Text(stringResource(R.string.color_filter_grant_permission))
-                            }
-                        }
-                    }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
-
-            item {
                 val activeWindowsText = viewModel.activeWindows.joinToString { it.formatted() }
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.color_filter_enable)) },
@@ -107,10 +72,6 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
                         when {
                             !accessibilityActive -> Text(
                                 stringResource(R.string.advanced_blocking_required),
-                                color = MaterialTheme.colorScheme.error
-                            )
-                            !viewModel.permissionGranted -> Text(
-                                stringResource(R.string.color_filter_permission_required),
                                 color = MaterialTheme.colorScheme.error
                             )
                             viewModel.isLocked -> Text(
@@ -130,10 +91,19 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
                         Switch(
                             checked = viewModel.enabled,
                             enabled = if (viewModel.enabled) !viewModel.isLocked
-                                else accessibilityActive && viewModel.permissionGranted,
+                                else accessibilityActive && !viewModel.grantingPermission,
                             onCheckedChange = { checked ->
                                 if (checked) {
-                                    viewModel.updateEnabled(true)
+                                    if (viewModel.permissionGranted) {
+                                        viewModel.updateEnabled(true)
+                                    } else if (!Shizuku.pingBinder()) {
+                                        scope.launch { snackbarHostState.showSnackbar(shizukuNotRunningMsg) }
+                                    } else {
+                                        viewModel.grantPermission { granted ->
+                                            if (granted) viewModel.updateEnabled(true)
+                                            else scope.launch { snackbarHostState.showSnackbar(permissionFailedMsg) }
+                                        }
+                                    }
                                     return@Switch
                                 }
                                 recoveryGate.run {
@@ -253,7 +223,7 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
         TimeWindowsDialog(
             title = stringResource(R.string.color_filter_windows),
             initialWindows = viewModel.windows,
-            lockedWindows = viewModel.activeWindows.toSet(),
+            lockedWindows = viewModel.lockedWindows.toSet(),
             emptyMessage = stringResource(R.string.color_filter_no_windows),
             onDismiss = { showWindowsDialog = false },
             onConfirm = { newWindows ->

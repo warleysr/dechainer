@@ -14,6 +14,7 @@ import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.ColorFilterSettings
 import io.github.warleysr.dechainer.models.ColorFilterMode
 import io.github.warleysr.dechainer.models.TimeWindow
+import io.github.warleysr.dechainer.security.SecurityManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,7 +53,9 @@ class ColorFilterViewModel : ViewModel() {
         get() = if (enabled && modes.isNotEmpty()) ColorFilterSettings.activeWindows(windows, minuteOfDay)
             else emptyList()
 
-    val isLocked: Boolean get() = activeWindows.isNotEmpty()
+    val isLocked: Boolean get() = activeWindows.isNotEmpty() && !SecurityManager.isSessionActive()
+
+    val lockedWindows: List<TimeWindow> get() = if (isLocked) activeWindows else emptyList()
 
     fun refresh() {
         minuteOfDay = ColorFilterSettings.currentMinuteOfDay()
@@ -97,7 +100,7 @@ class ColorFilterViewModel : ViewModel() {
 
     fun updateWindows(newWindows: List<TimeWindow>): Boolean {
         refresh()
-        if (!newWindows.containsAll(activeWindows)) return false
+        if (!newWindows.containsAll(lockedWindows)) return false
         windows = newWindows
         prefs.edit { putString(ColorFilterSettings.KEY_WINDOWS, AppTimeWindows.encode(newWindows)) }
         return true

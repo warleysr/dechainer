@@ -383,11 +383,7 @@
     <string name="color_filter_settings">Modos de cor</string>
     <string name="color_filter_settings_desc">Escala de cinza, luz noturna e outros filtros de cor da tela durante as janelas de horário que você escolher.</string>
     <string name="color_filter_explanation">Aplica filtros de cor na tela, como escala de cinza, luz noturna ou escurecimento extra, durante as janelas de horário que você escolher, tornando o celular menos atraente. Enquanto uma janela está ativa os filtros não podem ser desativados: eles são religados na hora, e a janela ativa, os modos selecionados e a intensidade deles não podem ser alterados até ela terminar.</string>
-    <string name="color_filter_permission">Permissão para alterar as cores da tela</string>
-    <string name="color_filter_permission_desc">Concedida uma única vez pelo Shizuku (automaticamente ao configurar o Device Owner), e mantida após reiniciar.</string>
-    <string name="color_filter_grant_permission">Conceder</string>
     <string name="color_filter_permission_failed">Não foi possível conceder a permissão. Verifique se o Shizuku está rodando e se o Déchaîner tem acesso a ele.</string>
-    <string name="color_filter_permission_required">Conceda a permissão acima primeiro</string>
     <string name="color_filter_enable">Ativar janelas de modos de cor</string>
     <string name="color_filter_locked">Ativo agora (%1$s), não pode ser desativado até a janela terminar</string>
     <string name="color_filter_locked_error">Os modos de cor não podem ser desativados nem enfraquecidos durante uma janela ativa</string>
