@@ -42,6 +42,7 @@ import io.github.warleysr.dechainer.data.AppTimeWindows
 import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.ColorFilterSettings
+import io.github.warleysr.dechainer.data.FocusMode
 import io.github.warleysr.dechainer.data.PlayStoreRatingFetcher
 import io.github.warleysr.dechainer.data.UsageWarningSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSettings
@@ -50,6 +51,7 @@ import io.github.warleysr.dechainer.models.AppGroup
 import io.github.warleysr.dechainer.models.ColorFilterMode
 import io.github.warleysr.dechainer.models.TimeWindow
 import io.github.warleysr.dechainer.models.UsageAlertStage
+import io.github.warleysr.dechainer.notifications.FocusService
 import io.github.warleysr.dechainer.notifications.UsageWarningNotifier
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.NightLightOverlay
@@ -490,9 +492,10 @@ class DechainerAccessibilityService : AccessibilityService() {
         suspendPackages(blockedPackages, false)
 
         // Must run after the un-suspend above, which would otherwise release a package that is
-        // still serving a visual-blocking suspension or an impulse block.
+        // still serving a visual-blocking suspension, an impulse block or a focus period.
         restoreNsfwSuspensions()
         syncImpulseSuspension()
+        FocusMode.sync(applicationContext)
 
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
@@ -523,6 +526,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                         putBoolean(SecurityManager.DEBUG_AUTO_START_SESSION_KEY, true)
                     }
                     SecurityManager.suspendUnknownSourcesRestrictionForDebugInstall(context)
+                    FocusService.stopForDebugInstall(context)
                     disableSelf()
                 }
             }
@@ -983,7 +987,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         val release = Runnable {
             nsfwSuspensionReleases.remove(pkg)
             nsfwSuspensionTracker.endSuspension(pkg)
-            suspendPackage(pkg, suspend = false)
+            if (!isHeldByOtherBlock(pkg)) suspendPackage(pkg, suspend = false)
             Timber.d("NSFW scan: suspension of $pkg lifted")
         }
         nsfwSuspensionReleases[pkg] = release
@@ -1000,7 +1004,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         nsfwSuspensionTracker.activeSuspensions().forEach { (pkg, until) ->
             if (until <= now) {
                 nsfwSuspensionTracker.endSuspension(pkg)
-                suspendPackage(pkg, suspend = false)
+                if (!isHeldByOtherBlock(pkg)) suspendPackage(pkg, suspend = false)
             } else {
                 suspendPackage(pkg)
                 scheduleNsfwSuspensionRelease(pkg, until)
@@ -1039,7 +1043,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         // The configured list may have changed since the block started; let go of anything that
         // is no longer part of it before applying the current one.
         val alreadySuspended = SecurityManager.getActiveImpulseSuspension(ctx)
-        val dropped = alreadySuspended - targets
+        val dropped = (alreadySuspended - targets).filterNot { FocusMode.isHolding(ctx, it) }
         if (dropped.isNotEmpty()) suspendPackages(dropped.toTypedArray(), false)
 
         suspendPackages(targets.toTypedArray(), true)
@@ -1063,13 +1067,18 @@ class DechainerAccessibilityService : AccessibilityService() {
         val suspended = SecurityManager.getActiveImpulseSuspension(ctx)
         if (suspended.isEmpty()) return
 
-        // A package can be serving a visual-blocking suspension at the same time; releasing it
-        // here would cut that one short, so those are left alone for their own timer to lift.
-        val releasable = suspended.filterNot { nsfwSuspensionTracker.isSuspended(it) }
+        // A package can be serving a visual-blocking suspension or a focus period at the same time;
+        // releasing it here would cut that one short, so those are left alone for their own timer to lift.
+        val releasable = suspended.filterNot { nsfwSuspensionTracker.isSuspended(it) || FocusMode.isHolding(ctx, it) }
         if (releasable.isNotEmpty()) suspendPackages(releasable.toTypedArray(), false)
 
         SecurityManager.clearActiveImpulseSuspension(ctx)
         Timber.d("Impulse block: released ${releasable.size} app(s)")
+    }
+
+    private fun isHeldByOtherBlock(pkg: String): Boolean {
+        val ctx = applicationContext
+        return pkg in SecurityManager.getActiveImpulseSuspension(ctx) || FocusMode.isHolding(ctx, pkg)
     }
 
     private fun syncColorFilters() {

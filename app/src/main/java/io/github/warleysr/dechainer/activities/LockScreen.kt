@@ -9,6 +9,8 @@ import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.compose.rememberAuthenticationLauncher
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
@@ -29,12 +31,16 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.DeviceOwnerRepository
+import io.github.warleysr.dechainer.data.FocusMode
 import io.github.warleysr.dechainer.screens.challenges.ChallengeScaffold
 import io.github.warleysr.dechainer.screens.challenges.MathChallenge
 import io.github.warleysr.dechainer.screens.challenges.ReadingChallenge
 import io.github.warleysr.dechainer.screens.challenges.TetrisChallenge
 import io.github.warleysr.dechainer.screens.challenges.WordChallenge
 import io.github.warleysr.dechainer.screens.common.UsageLimitsOverview
+import io.github.warleysr.dechainer.screens.common.FocusSessionCard
+import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.security.SecurityManager
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
@@ -54,6 +60,8 @@ fun LockScreen(onAuthenticated: () -> Unit) {
     var showingLimits by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
+    var focusStatus by remember { mutableStateOf(FocusMode.getStatus(context)) }
+    val recoveryGate = rememberRecoveryGate()
 
     fun proceedAfterAuthentication() {
         authError = null
@@ -117,6 +125,8 @@ fun LockScreen(onAuthenticated: () -> Unit) {
     LaunchedEffect(Unit) {
         while (true) {
             impulseRemaining = SecurityManager.getImpulseBlockRemainingTime(context)
+            FocusMode.syncIfDue(context)
+            focusStatus = FocusMode.getStatus(context)
             delay(1.seconds)
         }
     }
@@ -156,31 +166,60 @@ fun LockScreen(onAuthenticated: () -> Unit) {
             return@Surface
         }
 
-        val viewLimitsButton: @Composable () -> Unit = {
-            if (DeviceOwnerRepository.isDeviceOwner()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                BigActionButton(
-                    icon = Icons.Outlined.HourglassBottom,
-                    title = stringResource(R.string.view_usage_limits),
-                    subtitle = stringResource(R.string.view_usage_limits_subtitle),
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    height = 88.dp,
-                    onClick = { showingLimits = true }
-                )
+        val secondaryButtons: @Composable (showAccess: Boolean) -> Unit = { showAccess ->
+            val showLimits = DeviceOwnerRepository.isDeviceOwner()
+            if (showAccess || showLimits) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    if (showAccess) {
+                        SmallActionButton(
+                            icon = Icons.Outlined.LockOpen,
+                            title = stringResource(R.string.access_app),
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            onClick = { launchAuthentication() },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    if (showLimits) {
+                        SmallActionButton(
+                            icon = Icons.Outlined.HourglassBottom,
+                            title = stringResource(R.string.view_usage_limits),
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            onClick = { showingLimits = true },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
 
+        // Works before authentication, like the panic button.
+        val focusSection: @Composable () -> Unit = {
+            FocusSessionCard(
+                status = focusStatus,
+                gate = recoveryGate,
+                onChanged = { focusStatus = FocusMode.getStatus(context) },
+                compact = true
+            )
+        }
+
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = maxHeight)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             if (impulseRemaining > 0) {
                 ImpulseCountdown(impulseRemaining)
-                viewLimitsButton()
+                Spacer(modifier = Modifier.height(16.dp))
+                focusSection()
+                Spacer(modifier = Modifier.height(16.dp))
+                secondaryButtons(false)
             } else {
                 if (gaveUp) {
                     Text(
@@ -199,25 +238,19 @@ fun LockScreen(onAuthenticated: () -> Unit) {
                         subtitle = stringResource(R.string.having_impulses_subtitle),
                         containerColor = MaterialTheme.colorScheme.error,
                         contentColor = MaterialTheme.colorScheme.onError,
-                        height = 120.dp,
+                        height = 104.dp,
                         onClick = {
                             SecurityManager.startImpulseBlock(context)
                             impulseRemaining = SecurityManager.getImpulseBlockRemainingTime(context)
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                BigActionButton(
-                    icon = Icons.Outlined.LockOpen,
-                    title = stringResource(R.string.access_app),
-                    subtitle = stringResource(R.string.access_app_subtitle),
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    height = 88.dp,
-                    onClick = { launchAuthentication() }
-                )
+                focusSection()
+                Spacer(modifier = Modifier.height(16.dp))
+                secondaryButtons(true)
 
                 if (authError != null) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -228,10 +261,42 @@ fun LockScreen(onAuthenticated: () -> Unit) {
                         textAlign = TextAlign.Center
                     )
                 }
-
-                viewLimitsButton()
             }
         }
+        }
+
+        RecoveryGateDialog(recoveryGate)
+    }
+}
+
+@Composable
+private fun SmallActionButton(
+    icon: ImageVector,
+    title: String,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        modifier = modifier.height(64.dp)
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            textAlign = TextAlign.Center
+        )
     }
 }
 

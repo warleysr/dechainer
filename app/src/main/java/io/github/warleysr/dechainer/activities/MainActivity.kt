@@ -144,7 +144,7 @@ class MainActivity : ComponentActivity() {
                         val selectedBaseTab = when (currentScreen) {
                             "restrictions" -> "restrictions"
                             "apps" -> "apps"
-                            "config", "setup_device_owner", "activity_blocker", "browser_restrictions", "blocked_words", "visual_blocking", "impulse_lock", "usage_warning", "color_filters" -> "config"
+                            "config", "setup_device_owner", "activity_blocker", "browser_restrictions", "blocked_words", "visual_blocking", "impulse_lock", "focus_mode", "usage_warning", "color_filters" -> "config"
                             else -> "restrictions"
                         }
 
@@ -192,6 +192,7 @@ class MainActivity : ComponentActivity() {
                                     "blocked_words" -> BlockedWordsScreen()
                                     "visual_blocking" -> VisualBlockingScreen()
                                     "impulse_lock" -> ImpulseLockScreen()
+                                    "focus_mode" -> FocusModeScreen()
                                     "usage_warning" -> UsageWarningScreen()
                                     "color_filters" -> ColorFilterScreen()
                                 }

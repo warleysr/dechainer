@@ -445,4 +445,50 @@
     <string name="color_filter_no_windows">Nenhuma janela definida. Os filtros não serão ligados.</string>
     <string name="color_filter_window_active">%1$s (ativa agora)</string>
     <string name="color_filter_edit_windows">Editar</string>
+
+    <!-- Modo foco -->
+    <string name="focus_mode">Modo foco</string>
+    <string name="focus_mode_desc">Timer pomodoro que suspende apps que distraem enquanto você foca</string>
+    <string name="focus_mode_explanation">Os apps selecionados ficam suspensos durante o foco e voltam nas pausas. Após alguns períodos de foco, vem uma pausa longa.</string>
+    <string name="focus_status_idle">Nenhuma sessão de foco em andamento</string>
+    <string name="focus_phase_focus_count">Foco %1$d/%2$d</string>
+    <string name="focus_phase_short_break">Pausa curta</string>
+    <string name="focus_phase_long_break">Pausa longa</string>
+    <string name="focus_phase_waiting">Pausa terminada</string>
+    <string name="focus_waiting_text">Inicie o próximo período de foco quando estiver pronto</string>
+    <string name="focus_focus_text">Mantenha o foco</string>
+    <string name="focus_break_text">Seus apps estão liberados até o fim da pausa</string>
+    <plurals name="focus_apps_suspended">
+        <item quantity="one">%1$d app suspenso até a pausa</item>
+        <item quantity="many">%1$d apps suspensos até a pausa</item>
+        <item quantity="other">%1$d apps suspensos até a pausa</item>
+    </plurals>
+    <string name="focus_cycle_progress">Períodos de foco concluídos: %1$d/%2$d</string>
+    <string name="focus_start">Iniciar foco</string>
+    <string name="focus_start_subtitle">%1$d min de foco, suspendendo os apps selecionados</string>
+    <string name="focus_skip_break">Pular pausa</string>
+    <string name="focus_pause">Pausar</string>
+    <string name="focus_resume">Retomar</string>
+    <string name="focus_phase_paused">%1$s · pausado</string>
+    <string name="focus_paused_text">Contagem pausada — retome para continuar</string>
+    <string name="focus_end_session">Encerrar sessão</string>
+    <string name="focus_end_requires_code">Pausar ou encerrar exige o código de recuperação</string>
+    <string name="focus_duration">Duração do foco</string>
+    <string name="focus_short_break_duration">Pausa curta</string>
+    <string name="focus_long_break_duration">Pausa longa</string>
+    <string name="focus_cycles">Períodos de foco antes da pausa longa</string>
+    <string name="focus_auto_start">Iniciar o próximo foco automaticamente</string>
+    <string name="focus_auto_start_desc">Desligado, a sessão espera por você depois de cada pausa</string>
+    <string name="focus_sound">Alerta sonoro</string>
+    <string name="focus_sound_desc">Toca um som quando um período de foco ou uma pausa termina</string>
+    <string name="focus_apps_section">Apps a suspender durante o foco</string>
+    <string name="focus_requires_device_owner">Requer privilégios de proprietário do dispositivo — sem eles o timer funciona, mas nenhum app é suspenso</string>
+    <string name="focus_channel_timer">Timer do modo foco</string>
+    <string name="focus_channel_alert">Alertas do modo foco</string>
+    <string name="focus_alert_focus_done">Período de foco concluído</string>
+    <string name="focus_alert_short_break">Hora de uma pausa curta — seus apps estão de volta</string>
+    <string name="focus_alert_long_break">Hora de uma pausa longa — seus apps estão de volta</string>
+    <string name="focus_alert_break_done">Pausa terminada</string>
+    <string name="focus_alert_focus_started">O próximo período de foco começou</string>
+    <string name="focus_alert_start_when_ready">Inicie o próximo período de foco quando estiver pronto</string>
 </resources>
