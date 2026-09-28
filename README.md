@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="fastlane/metadata/android/en-US/images/icon.png" width="128" alt="Déchaîner logo">
+<img src="docs/logo.png" width="128" alt="Déchaîner logo">
 
 # Déchaîner
 
