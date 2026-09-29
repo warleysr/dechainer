@@ -65,6 +65,7 @@ object FocusMode {
     private const val KEY_CYCLES = "cycles_before_long_break"
     private const val KEY_AUTO_START_FOCUS = "auto_start_focus"
     private const val KEY_SOUND_ENABLED = "sound_enabled"
+    private const val KEY_VIBRATION_ENABLED = "vibration_enabled"
     private const val KEY_APPS = "suspended_apps"
 
     private const val KEY_PHASE = "phase"
@@ -116,6 +117,11 @@ object FocusMode {
         prefs(context).edit { putBoolean(KEY_AUTO_START_FOCUS, enabled) }
 
     fun isSoundEnabled(context: Context) = prefs(context).getBoolean(KEY_SOUND_ENABLED, true)
+
+    fun isVibrationEnabled(context: Context) = prefs(context).getBoolean(KEY_VIBRATION_ENABLED, true)
+
+    fun setVibrationEnabled(context: Context, enabled: Boolean) =
+        prefs(context).edit { putBoolean(KEY_VIBRATION_ENABLED, enabled) }
 
     fun setSoundEnabled(context: Context, enabled: Boolean) =
         prefs(context).edit { putBoolean(KEY_SOUND_ENABLED, enabled) }
@@ -233,7 +239,7 @@ object FocusMode {
             phase = nextPhase(ctx, finished)
             Timber.d("Focus mode: $finished ran out, moving to $phase")
             startPhase(ctx, phase)
-            FocusNotifier.alertPhaseEnded(ctx, finished, phase)
+            FocusNotifier.alertPhaseEnded(ctx)
         }
 
         applyState(ctx)

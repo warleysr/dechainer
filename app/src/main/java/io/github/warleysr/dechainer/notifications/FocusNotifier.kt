@@ -12,6 +12,8 @@ import android.media.RingtoneManager
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
@@ -29,9 +31,7 @@ object FocusNotifier {
     private const val CHANNEL_ALERT = "focus_alert"
 
     const val STATUS_ID = 0x0F0C05
-    private const val ALERT_ID = 0x0F0C06
 
-    private const val ALERT_TIMEOUT_MS = 60_000L
     private const val SOUND_MAX_MS = 5_000L
 
     private val vibrationPattern = longArrayOf(0, 300, 200, 300)
@@ -56,19 +56,8 @@ object FocusNotifier {
                 }
             )
         }
-        if (manager.getNotificationChannel(CHANNEL_ALERT) == null) {
-            // Silent on purpose: the sound is played by alertPhaseEnded() on the alarm stream, so it
-            // follows the in-app toggle and is still heard with the ringer on vibrate.
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    CHANNEL_ALERT, localizedContext.getString(R.string.focus_channel_alert), NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    setSound(null, null)
-                    enableVibration(true)
-                    vibrationPattern = this@FocusNotifier.vibrationPattern
-                }
-            )
-        }
+        // The phase-end alert notification is gone; drop its channel from earlier versions.
+        manager.deleteNotificationChannel(CHANNEL_ALERT)
     }
 
     private fun contentIntent(context: Context) = PendingIntent.getActivity(
@@ -201,47 +190,25 @@ object FocusNotifier {
         return builder.build()
     }
 
-    fun alertPhaseEnded(context: Context, finished: FocusMode.Phase, next: FocusMode.Phase) {
+    /** Sound and vibration only: the status notification itself moves on to the next phase's countdown. */
+    fun alertPhaseEnded(context: Context) {
         if (FocusMode.isSoundEnabled(context)) playSound(context)
-
-        val manager = NotificationManagerCompat.from(context)
-        if (!manager.areNotificationsEnabled()) return
-        ensureChannels(context)
-        val localizedContext = localized(context)
-
-        val (title, text) = when {
-            finished == FocusMode.Phase.FOCUS && next == FocusMode.Phase.LONG_BREAK ->
-                R.string.focus_alert_focus_done to R.string.focus_alert_long_break
-            finished == FocusMode.Phase.FOCUS ->
-                R.string.focus_alert_focus_done to R.string.focus_alert_short_break
-            next == FocusMode.Phase.FOCUS ->
-                R.string.focus_alert_break_done to R.string.focus_alert_focus_started
-            else ->
-                R.string.focus_alert_break_done to R.string.focus_alert_start_when_ready
-        }
-
-        val notification = NotificationCompat.Builder(context, CHANNEL_ALERT)
-            .setSmallIcon(R.drawable.ic_notification_focus)
-            .setContentTitle(localizedContext.getString(title))
-            .setContentText(localizedContext.getString(text))
-            .setContentIntent(contentIntent(context))
-            .setAutoCancel(true)
-            .setTimeoutAfter(ALERT_TIMEOUT_MS)
-            .setVibrate(vibrationPattern)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
-
-        try {
-            manager.notify(ALERT_ID, notification)
-        } catch (e: SecurityException) {
-            Timber.w(e, "Focus mode: could not post alert notification")
-        }
+        if (FocusMode.isVibrationEnabled(context)) vibrate(context)
     }
 
     fun cancel(context: Context) {
         FocusService.stop(context)
         NotificationManagerCompat.from(context).cancel(STATUS_ID)
+    }
+
+    private fun vibrate(context: Context) {
+        val vibrator = context.getSystemService(Vibrator::class.java) ?: return
+        if (!vibrator.hasVibrator()) return
+        try {
+            vibrator.vibrate(VibrationEffect.createWaveform(vibrationPattern, -1))
+        } catch (e: Exception) {
+            Timber.w(e, "Focus mode: could not vibrate")
+        }
     }
 
     private fun playSound(context: Context) {

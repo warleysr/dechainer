@@ -124,6 +124,17 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                     )
                 }
             )
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.focus_vibration)) },
+                supportingContent = { Text(stringResource(R.string.focus_vibration_desc)) },
+                trailingContent = {
+                    Switch(
+                        checked = viewModel.vibrationEnabled,
+                        enabled = sessionActive,
+                        onCheckedChange = { viewModel.updateVibrationEnabled(it) }
+                    )
+                }
+            )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
 

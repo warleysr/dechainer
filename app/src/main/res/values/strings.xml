@@ -480,14 +480,9 @@
     <string name="focus_auto_start_desc">When off, the session waits for you after each break</string>
     <string name="focus_sound">Sound alert</string>
     <string name="focus_sound_desc">Plays a sound when a focus period or a break ends</string>
+    <string name="focus_vibration">Vibration alert</string>
+    <string name="focus_vibration_desc">Vibrates when a focus period or a break ends</string>
     <string name="focus_apps_section">Apps to suspend during focus</string>
     <string name="focus_requires_device_owner">Requires device owner privileges — without them the timer runs, but no app is suspended</string>
     <string name="focus_channel_timer">Focus mode timer</string>
-    <string name="focus_channel_alert">Focus mode alerts</string>
-    <string name="focus_alert_focus_done">Focus period complete</string>
-    <string name="focus_alert_short_break">Time for a short break — your apps are back</string>
-    <string name="focus_alert_long_break">Time for a long break — your apps are back</string>
-    <string name="focus_alert_break_done">Break over</string>
-    <string name="focus_alert_focus_started">The next focus period has started</string>
-    <string name="focus_alert_start_when_ready">Start the next focus period when you\'re ready</string>
 </resources>

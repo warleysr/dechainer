@@ -34,6 +34,7 @@ class FocusModeViewModel : ViewModel() {
         private set
 
     var soundEnabled by mutableStateOf(FocusMode.isSoundEnabled(context))
+    var vibrationEnabled by mutableStateOf(FocusMode.isVibrationEnabled(context))
         private set
 
     var suspendedApps by mutableStateOf(FocusMode.getApps(context))
@@ -83,6 +84,11 @@ class FocusModeViewModel : ViewModel() {
     fun updateAutoStartFocus(value: Boolean) {
         FocusMode.setAutoStartFocus(context, value)
         autoStartFocus = value
+    }
+
+    fun updateVibrationEnabled(value: Boolean) {
+        FocusMode.setVibrationEnabled(context, value)
+        vibrationEnabled = value
     }
 
     fun updateSoundEnabled(value: Boolean) {

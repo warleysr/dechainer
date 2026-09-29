@@ -93,6 +93,7 @@ Both are granted once, during setup, through [Shizuku](https://shizuku.rikka.app
 | 🧠 **On-device visual blocking** | A local TensorFlow Lite model detects explicit images and video on screen and closes the app. Nothing is uploaded. |
 | ⌨️ **Word blocking** | Erases forbidden words as they're typed, or closes the app when they appear anywhere on screen. |
 | 🚨 **Impulse lock** | A panic button on the lock screen that locks Déchaîner (and chosen apps) for 15 minutes to 6 hours, resistant to clock changes. |
+| 🍅 **Focus mode** | Pomodoro sessions that suspend distracting apps during each focus period and give them back on breaks. |
 | ⏱️ **Time limits and windows** | Daily limits per app or group, per weekday, allowed time windows, reopening cooldowns and usage warnings. |
 | 🌙 **Color modes** | Grayscale, night light, extra dim or inversion during scheduled windows, which can't be switched off while active. |
 
@@ -164,6 +165,17 @@ Both are granted once, during setup, through [Shizuku](https://shizuku.rikka.app
   - **Tetris:** playing for a configurable number of minutes (time only counts while actually playing). Gravity speeds up as levels rise, with a lock delay, line clear animations and sound effects that can be muted. When the time is up the game keeps going until you tap "Continue", so the current piece or line can be finished.
   - **Reflective reading:** reading a configurable number of texts (5 by default) about lust and self-control, picked at random from one of four sources: Bible verses (King James Version / João Ferreira de Almeida), Quran verses (Saheeh International / Samir El-Hayek), quotes from philosophers and great writers, or your own phrases. Each text is timed for a slow reading pace based on its length, with words highlighted one by one, and the next one only unlocks when the time runs out.
 - Every challenge screen has a "give up" button that goes back to the lock screen.
+
+</details>
+
+<details>
+<summary><b>Focus mode (Pomodoro)</b></summary>
+
+- Alternates focus periods with short breaks, and gives a long break after a configurable number of focus periods.
+- A user-chosen list of apps is suspended during each focus period and restored as soon as the break starts.
+- Sessions can be started from the lock screen without authenticating. Starting, resuming and skipping a break are always free; pausing or ending a session requires the recovery code.
+- An ongoing notification shows the current phase, a live countdown and a progress bar, with quick actions for what doesn't need the recovery code. 
+- All times are configurable.
 
 </details>
 

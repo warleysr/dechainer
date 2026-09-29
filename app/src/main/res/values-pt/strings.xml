@@ -481,14 +481,9 @@
     <string name="focus_auto_start_desc">Desligado, a sessão espera por você depois de cada pausa</string>
     <string name="focus_sound">Alerta sonoro</string>
     <string name="focus_sound_desc">Toca um som quando um período de foco ou uma pausa termina</string>
+    <string name="focus_vibration">Alerta de vibração</string>
+    <string name="focus_vibration_desc">Vibra quando um período de foco ou uma pausa termina</string>
     <string name="focus_apps_section">Apps a suspender durante o foco</string>
     <string name="focus_requires_device_owner">Requer privilégios de proprietário do dispositivo — sem eles o timer funciona, mas nenhum app é suspenso</string>
     <string name="focus_channel_timer">Timer do modo foco</string>
-    <string name="focus_channel_alert">Alertas do modo foco</string>
-    <string name="focus_alert_focus_done">Período de foco concluído</string>
-    <string name="focus_alert_short_break">Hora de uma pausa curta — seus apps estão de volta</string>
-    <string name="focus_alert_long_break">Hora de uma pausa longa — seus apps estão de volta</string>
-    <string name="focus_alert_break_done">Pausa terminada</string>
-    <string name="focus_alert_focus_started">O próximo período de foco começou</string>
-    <string name="focus_alert_start_when_ready">Inicie o próximo período de foco quando estiver pronto</string>
 </resources>
