@@ -60,8 +60,7 @@ object ColorFilterController {
 
     fun isApplied(context: Context): Boolean = savedKeys(state(context)).isNotEmpty()
 
-    fun targetsFor(prefs: SharedPreferences): List<Pair<String, String>> {
-        val modes = ColorFilterSettings.loadModes(prefs)
+    fun targetsFor(prefs: SharedPreferences, modes: Set<ColorFilterMode>): List<Pair<String, String>> {
         val targets = mutableListOf<Pair<String, String>>()
 
         if (ColorFilterMode.GRAYSCALE in modes) {

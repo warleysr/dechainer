@@ -370,6 +370,9 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private val nightLightOverlay by lazy { NightLightOverlay(this) }
 
+    private var colorFilterForegroundPackage: String? = null
+    private var colorFilterAppliedModes: Set<ColorFilterMode> = emptySet()
+
     companion object {
         private const val NSFW_SCAN_INTERVAL_MS = 2000L
 
@@ -467,6 +470,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         visualBlockingPrefs = getSharedPreferences(VisualBlockingSettings.PREFS_NAME, MODE_PRIVATE)
         usageWarningPrefs = getSharedPreferences(UsageWarningSettings.PREFS_NAME, MODE_PRIVATE)
         colorFilterPrefs = getSharedPreferences(ColorFilterSettings.PREFS_NAME, MODE_PRIVATE)
+        ColorFilterSettings.migrate(colorFilterPrefs)
         nsfwSuspensionTracker = VisualBlockingSuspensionTracker(applicationContext)
 
         limitPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
@@ -601,6 +605,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) onColorFilterForegroundChanged(event)
         if (event.packageName == packageName) return
 
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED ||
@@ -1084,15 +1089,15 @@ class DechainerAccessibilityService : AccessibilityService() {
     private fun syncColorFilters() {
         handler.removeCallbacks(colorFilterSyncRunnable)
 
-        val enforce = ColorFilterSettings.shouldEnforce(colorFilterPrefs)
-        if (enforce) {
-            ColorFilterController.enforce(applicationContext, ColorFilterController.targetsFor(colorFilterPrefs))
+        val modes = ColorFilterSettings.modesToApply(colorFilterPrefs, colorFilterForegroundPackage)
+        colorFilterAppliedModes = modes
+        if (modes.isNotEmpty()) {
+            ColorFilterController.enforce(applicationContext, ColorFilterController.targetsFor(colorFilterPrefs, modes))
         } else {
             ColorFilterController.release(applicationContext)
         }
 
-        val overlayNightLight = enforce && !ColorFilterController.platformNightLight &&
-            ColorFilterMode.NIGHT_LIGHT in ColorFilterSettings.loadModes(colorFilterPrefs)
+        val overlayNightLight = !ColorFilterController.platformNightLight && ColorFilterMode.NIGHT_LIGHT in modes
         if (overlayNightLight) {
             nightLightOverlay.show(
                 ColorFilterSettings.nightLightTemperature(colorFilterPrefs),
@@ -1103,9 +1108,27 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
 
         if (!ColorFilterSettings.isEnabled(colorFilterPrefs)) return
-        val delay = ColorFilterSettings.millisUntilNextBoundary(ColorFilterSettings.loadWindows(colorFilterPrefs))
+        val delay = ColorFilterSettings.millisUntilNextBoundary(ColorFilterSettings.scheduledWindows(colorFilterPrefs))
             ?: return
         handler.postDelayed(colorFilterSyncRunnable, delay)
+    }
+
+    // Kept apart from currentPackage, which skips Déchaîner's own screens and is cleared when an app gets blocked.
+    private fun onColorFilterForegroundChanged(event: AccessibilityEvent) {
+        val pkg = event.packageName?.toString() ?: return
+        val className = event.className?.toString() ?: return
+        if (pkg == "com.android.systemui") return
+        if (className.contains("InputMethodService", ignoreCase = true) ||
+            className.contains("SoftInputWindow", ignoreCase = true)
+        ) return
+        // Our own overlays (e.g. night light) aren't a screen the user switched to.
+        if (pkg == packageName && !className.startsWith(packageName)) return
+        if (pkg == colorFilterForegroundPackage) return
+
+        colorFilterForegroundPackage = pkg
+        if (!ColorFilterSettings.dependsOnForegroundApp(colorFilterPrefs)) return
+        val modes = ColorFilterSettings.modesToApply(colorFilterPrefs, pkg)
+        if (modes != colorFilterAppliedModes) syncColorFilters()
     }
 
     private fun suspendPackages(packages: Array<String>, suspend: Boolean = true) {

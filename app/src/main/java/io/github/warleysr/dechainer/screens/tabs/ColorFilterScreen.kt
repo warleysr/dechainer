@@ -4,18 +4,19 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BrightnessLow
 import androidx.compose.material.icons.outlined.FilterBAndW
 import androidx.compose.material.icons.outlined.InvertColors
 import androidx.compose.material.icons.outlined.NightsStay
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -24,6 +25,9 @@ import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.ColorFilterSettings
 import io.github.warleysr.dechainer.models.ColorFilterMode
+import io.github.warleysr.dechainer.models.ColorFilterScope
+import io.github.warleysr.dechainer.models.TimeWindow
+import io.github.warleysr.dechainer.screens.common.AppPickerDialog
 import io.github.warleysr.dechainer.screens.common.RecoveryGate
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -36,7 +40,8 @@ import kotlin.time.Duration.Companion.seconds
 
 @Composable
 fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
-    var showWindowsDialog by remember { mutableStateOf(false) }
+    var editingWindowsFor by remember { mutableStateOf<ColorFilterMode?>(null) }
+    var pickingAppsFor by remember { mutableStateOf<ColorFilterMode?>(null) }
     val recoveryGate = rememberRecoveryGate()
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -47,6 +52,11 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
     val showLocked: () -> Unit = { scope.launch { snackbarHostState.showSnackbar(lockedMsg) } }
 
     val accessibilityActive = DechainerAccessibilityService.isRunning
+
+    val saveCoverage: (ColorFilterMode, ColorFilterScope.Coverage) -> Unit = { mode, newCoverage ->
+        val save = { if (!viewModel.updateCoverage(mode, newCoverage)) showLocked() }
+        if (viewModel.isLoosening(mode, newCoverage)) recoveryGate.run { save() } else save()
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -184,36 +194,27 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
                         onLocked = showLocked
                     )
                 }
+                if (selected) {
+                    ModeWindows(
+                        windows = viewModel.windows(mode),
+                        activeWindows = viewModel.activeWindows(mode),
+                        onEdit = { editingWindowsFor = mode }
+                    )
+                    val coverage = viewModel.coverage(mode)
+                    ModeScope(
+                        coverage = coverage,
+                        onScopeChange = { saveCoverage(mode, coverage.copy(scope = it)) },
+                        onPickApps = {
+                            viewModel.loadAppsIfNeeded()
+                            pickingAppsFor = mode
+                        }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
 
-            item {
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                val activeWindows = viewModel.activeWindows
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.color_filter_windows)) },
-                    supportingContent = {
-                        Column {
-                            if (viewModel.windows.isEmpty()) {
-                                Text(stringResource(R.string.color_filter_no_windows))
-                            }
-                            viewModel.windows.forEach { window ->
-                                Text(
-                                    if (window in activeWindows)
-                                        stringResource(R.string.color_filter_window_active, window.formatted())
-                                    else window.formatted()
-                                )
-                            }
-                        }
-                    },
-                    leadingContent = { Icon(Icons.Outlined.Schedule, null) },
-                    trailingContent = {
-                        Button(onClick = { showWindowsDialog = true }) {
-                            Text(stringResource(R.string.color_filter_edit_windows))
-                        }
-                    }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
+            item { Spacer(Modifier.height(24.dp)) }
         }
         SnackbarHost(
             hostState = snackbarHostState,
@@ -221,18 +222,36 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
         )
     }
 
-    if (showWindowsDialog) {
+    editingWindowsFor?.let { mode ->
         TimeWindowsDialog(
             title = stringResource(R.string.color_filter_windows),
-            initialWindows = viewModel.windows,
+            initialWindows = viewModel.windows(mode),
+            lockedWindows = viewModel.lockedWindows(mode),
             emptyMessage = stringResource(R.string.color_filter_no_windows),
-            onDismiss = { showWindowsDialog = false },
+            onDismiss = { editingWindowsFor = null },
             onConfirm = { newWindows ->
-                showWindowsDialog = false
+                editingWindowsFor = null
                 val save = {
-                    if (!viewModel.updateWindows(newWindows)) showLocked()
+                    if (!viewModel.updateWindows(mode, newWindows)) showLocked()
                 }
-                if (viewModel.isOnlyAdding(newWindows)) save() else recoveryGate.run { save() }
+                if (viewModel.isOnlyAdding(mode, newWindows)) save() else recoveryGate.run { save() }
+            }
+        )
+    }
+
+    pickingAppsFor?.let { mode ->
+        val coverage = viewModel.coverage(mode)
+        val excluding = coverage.scope == ColorFilterScope.EXCEPT_APPS
+        var draft by remember(mode) { mutableStateOf(if (excluding) coverage.excludedApps else coverage.onlyApps) }
+        AppPickerDialog(
+            apps = viewModel.apps,
+            isLoading = viewModel.isLoadingApps,
+            isSelected = { it in draft },
+            onToggle = { pkg -> draft = if (pkg in draft) draft - pkg else draft + pkg },
+            onDismiss = {
+                pickingAppsFor = null
+                val newCoverage = if (excluding) coverage.copy(excludedApps = draft) else coverage.copy(onlyApps = draft)
+                if (newCoverage != coverage) saveCoverage(mode, newCoverage)
             }
         )
     }
@@ -269,6 +288,93 @@ private fun ColorFilterModeRow(
         },
         modifier = Modifier.clickable { onSelectedChange(!selected) }
     )
+}
+
+@Composable
+private fun ModeWindows(windows: List<TimeWindow>, activeWindows: List<TimeWindow>, onEdit: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 8.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.color_filter_windows),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold
+            )
+            if (windows.isEmpty()) {
+                Text(
+                    stringResource(R.string.color_filter_no_windows),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            windows.forEach { window ->
+                Text(
+                    if (window in activeWindows) stringResource(R.string.color_filter_window_active, window.formatted())
+                    else window.formatted(),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+        TextButton(onClick = onEdit) { Text(stringResource(R.string.color_filter_edit_windows)) }
+    }
+}
+
+@Composable
+private fun ModeScope(
+    coverage: ColorFilterScope.Coverage,
+    onScopeChange: (ColorFilterScope) -> Unit,
+    onPickApps: () -> Unit
+) {
+    Column(modifier = Modifier.padding(start = 72.dp, end = 16.dp, top = 8.dp)) {
+        Text(
+            stringResource(R.string.color_filter_scope),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Bold
+        )
+        ColorFilterScope.entries.forEach { option ->
+            val labelRes = when (option) {
+                ColorFilterScope.DEVICE -> R.string.color_filter_scope_device
+                ColorFilterScope.EXCEPT_APPS -> R.string.color_filter_scope_except_apps
+                ColorFilterScope.ONLY_APPS -> R.string.color_filter_scope_only_apps
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = option == coverage.scope,
+                        role = Role.RadioButton,
+                        onClick = { if (option != coverage.scope) onScopeChange(option) }
+                    )
+            ) {
+                RadioButton(selected = option == coverage.scope, onClick = null)
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(labelRes), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+
+        val apps = when (coverage.scope) {
+            ColorFilterScope.DEVICE -> return@Column
+            ColorFilterScope.EXCEPT_APPS -> coverage.excludedApps
+            ColorFilterScope.ONLY_APPS -> coverage.onlyApps
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                when {
+                    apps.isNotEmpty() -> stringResource(R.string.visual_blocking_apps_selected, apps.size)
+                    coverage.scope == ColorFilterScope.ONLY_APPS -> stringResource(R.string.color_filter_only_apps_empty)
+                    else -> stringResource(R.string.no_apps)
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = if (apps.isEmpty() && coverage.scope == ColorFilterScope.ONLY_APPS)
+                    MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onPickApps) { Text(stringResource(R.string.select_apps)) }
+        }
+    }
 }
 
 @Composable

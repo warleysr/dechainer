@@ -420,7 +420,7 @@
     <string name="usage_warning_remove_stage">Remover estágio</string>
     <string name="color_filter_settings">Modos de cor</string>
     <string name="color_filter_settings_desc">Escala de cinza, luz noturna e outros filtros de cor da tela durante as janelas de horário que você escolher.</string>
-    <string name="color_filter_explanation">Aplica filtros de cor na tela, como escala de cinza, luz noturna ou escurecimento extra, durante as janelas de horário que você escolher, tornando o celular menos atraente.</string>
+    <string name="color_filter_explanation">Aplica filtros de cor na tela, como escala de cinza, luz noturna ou escurecimento extra, durante as janelas de horário que você escolher, no celular inteiro ou só em certos apps, tornando-o menos atraente.</string>
     <string name="color_filter_permission_failed">Não foi possível conceder a permissão. Verifique se o Shizuku está rodando e se o Déchaîner tem acesso a ele.</string>
     <string name="color_filter_enable">Ativar janelas de modos de cor</string>
     <string name="color_filter_locked">Ativo agora (%1$s), alterações exigem o código de recuperação</string>
@@ -428,7 +428,7 @@
     <string name="color_filter_status_on">Os filtros estão ligados agora</string>
     <string name="color_filter_status_off">Os filtros estão desligados agora</string>
     <string name="color_filter_modes_section">Modos</string>
-    <string name="color_filter_modes_desc">Todos os modos selecionados são aplicados juntos durante as janelas.</string>
+    <string name="color_filter_modes_desc">Cada modo selecionado liga nas suas próprias janelas de horário e onde você escolher.</string>
     <string name="color_filter_no_modes">Selecione pelo menos um modo.</string>
     <string name="color_filter_mode_grayscale">Escala de cinza</string>
     <string name="color_filter_mode_grayscale_desc">Mostra tudo em preto e branco</string>
@@ -441,8 +441,13 @@
     <string name="color_filter_night_light_intensity">Intensidade</string>
     <string name="color_filter_night_light_temperature">Temperatura de cor</string>
     <string name="color_filter_extra_dim_level">Intensidade</string>
-    <string name="color_filter_windows">Janelas dos modos de cor</string>
-    <string name="color_filter_no_windows">Nenhuma janela definida. Os filtros não serão ligados.</string>
+    <string name="color_filter_windows">Janelas de horário</string>
+    <string name="color_filter_no_windows">Nenhuma janela definida. Este modo não será ligado.</string>
+    <string name="color_filter_scope">Onde aplicar</string>
+    <string name="color_filter_scope_device">Todo o dispositivo</string>
+    <string name="color_filter_scope_except_apps">Todo o dispositivo, exceto alguns apps</string>
+    <string name="color_filter_scope_only_apps">Somente em apps específicos</string>
+    <string name="color_filter_only_apps_empty">Nenhum app selecionado. Este modo não será ligado.</string>
     <string name="color_filter_window_active">%1$s (ativa agora)</string>
     <string name="color_filter_edit_windows">Editar</string>
 
