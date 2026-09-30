@@ -483,6 +483,6 @@
     <string name="focus_vibration">Vibration alert</string>
     <string name="focus_vibration_desc">Vibrates when a focus period or a break ends</string>
     <string name="focus_apps_section">Apps to suspend during focus</string>
-    <string name="focus_requires_device_owner">Requires device owner privileges — without them the timer runs, but no app is suspended</string>
+    <string name="focus_requires_device_owner">Selecting apps requires device owner privileges — without them focus mode works only as a timer</string>
     <string name="focus_channel_timer">Focus mode timer</string>
 </resources>

@@ -150,7 +150,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 },
                 leadingContent = { Icon(Icons.Outlined.Apps, null) },
                 trailingContent = {
-                    Button(enabled = sessionActive, onClick = { showAppSelectionDialog = true }) {
+                    Button(enabled = sessionActive && isDeviceOwner, onClick = { showAppSelectionDialog = true }) {
                         Text(stringResource(R.string.select_apps))
                     }
                 }
@@ -168,7 +168,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
         item { Spacer(Modifier.height(24.dp)) }
     }
 
-    if (showAppSelectionDialog) {
+    if (showAppSelectionDialog && isDeviceOwner) {
         AppPickerDialog(
             apps = viewModel.apps,
             isLoading = viewModel.isLoadingApps,

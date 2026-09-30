@@ -484,6 +484,6 @@
     <string name="focus_vibration">Alerta de vibração</string>
     <string name="focus_vibration_desc">Vibra quando um período de foco ou uma pausa termina</string>
     <string name="focus_apps_section">Apps a suspender durante o foco</string>
-    <string name="focus_requires_device_owner">Requer privilégios de proprietário do dispositivo — sem eles o timer funciona, mas nenhum app é suspenso</string>
+    <string name="focus_requires_device_owner">Selecionar apps requer privilégios de proprietário do dispositivo — sem eles o modo foco funciona apenas como timer</string>
     <string name="focus_channel_timer">Timer do modo foco</string>
 </resources>
