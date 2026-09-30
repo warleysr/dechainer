@@ -127,6 +127,8 @@ object FocusNotifier {
         }
         val message = when {
             status.phase == FocusMode.Phase.WAITING -> localizedContext.getString(R.string.focus_waiting_text)
+            status.paused && !status.releasedApps && FocusMode.getActiveSuspension(context).isNotEmpty() ->
+                localizedContext.getString(R.string.focus_paused_blocked_text)
             status.paused -> localizedContext.getString(R.string.focus_paused_text)
             status.phase == FocusMode.Phase.FOCUS -> {
                 val apps = FocusMode.getActiveSuspension(context).size

@@ -471,7 +471,9 @@
     <string name="focus_phase_paused">%1$s · paused</string>
     <string name="focus_paused_text">Countdown paused — resume to continue</string>
     <string name="focus_end_session">End session</string>
-    <string name="focus_end_requires_code">Pausing or ending requires the recovery code</string>
+    <string name="focus_end_requires_code">Ending requires the recovery code</string>
+    <string name="focus_hold_pause_hint">Pausing keeps the apps suspended. Hold Pause to release them too</string>
+    <string name="focus_paused_blocked_text">Countdown paused — the apps stay suspended</string>
     <string name="focus_duration">Focus duration</string>
     <string name="focus_short_break_duration">Short break</string>
     <string name="focus_long_break_duration">Long break</string>

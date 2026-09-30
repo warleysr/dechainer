@@ -472,7 +472,9 @@
     <string name="focus_phase_paused">%1$s · pausado</string>
     <string name="focus_paused_text">Contagem pausada — retome para continuar</string>
     <string name="focus_end_session">Encerrar sessão</string>
-    <string name="focus_end_requires_code">Pausar ou encerrar exige o código de recuperação</string>
+    <string name="focus_end_requires_code">Encerrar exige o código de recuperação</string>
+    <string name="focus_hold_pause_hint">Pausar mantém os apps suspensos. Segure Pausar para liberá-los também</string>
+    <string name="focus_paused_blocked_text">Contagem pausada — os apps continuam suspensos</string>
     <string name="focus_duration">Duração do foco</string>
     <string name="focus_short_break_duration">Pausa curta</string>
     <string name="focus_long_break_duration">Pausa longa</string>

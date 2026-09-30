@@ -53,6 +53,7 @@ object FocusMode {
     data class Status(
         val phase: Phase,
         val paused: Boolean,
+        val releasedApps: Boolean,
         val remainingMillis: Long,
         val phaseDurationMillis: Long,
         val completedFocus: Int,
@@ -74,6 +75,7 @@ object FocusMode {
     private const val KEY_PHASE_DURATION = "phase_duration"
     private const val KEY_PHASE_BOOT_COUNT = "phase_boot_count"
     private const val KEY_PAUSED_REMAINING = "paused_remaining"
+    private const val KEY_PAUSE_RELEASES = "pause_releases"
     private const val KEY_COMPLETED_FOCUS = "completed_focus"
     private const val KEY_ACTIVE_SUSPENSION = "active_suspension"
 
@@ -149,7 +151,10 @@ object FocusMode {
         return phase != Phase.WAITING && !isPaused(context)
     }
 
-    private fun isEnforcing(context: Context) = currentPhase(context) == Phase.FOCUS && !isPaused(context)
+    private fun isReleasedPause(context: Context) = prefs(context).getBoolean(KEY_PAUSE_RELEASES, false)
+
+    private fun isEnforcing(context: Context) =
+        currentPhase(context) == Phase.FOCUS && !(isPaused(context) && isReleasedPause(context))
 
     fun getStatus(context: Context): Status? {
         val phase = currentPhase(context) ?: return null
@@ -158,6 +163,7 @@ object FocusMode {
         return Status(
             phase = phase,
             paused = paused,
+            releasedApps = paused && isReleasedPause(context),
             remainingMillis = when {
                 phase == Phase.WAITING -> 0L
                 paused -> p.getLong(KEY_PAUSED_REMAINING, 0L)
@@ -188,10 +194,13 @@ object FocusMode {
         enterPhase(context, Phase.FOCUS)
     }
 
-    /** During focus, releases the apps until [resume]; callers gate it behind the recovery code. */
-    fun pause(context: Context) {
+    /** With [releaseApps] the apps come back too, so callers gate that one behind the recovery code. */
+    fun pause(context: Context, releaseApps: Boolean) {
         if (!isTicking(context)) return
-        prefs(context).edit { putLong(KEY_PAUSED_REMAINING, remainingMillis(context).coerceAtLeast(0L)) }
+        prefs(context).edit {
+            putLong(KEY_PAUSED_REMAINING, remainingMillis(context).coerceAtLeast(0L))
+            putBoolean(KEY_PAUSE_RELEASES, releaseApps)
+        }
         sync(context)
     }
 
@@ -203,6 +212,7 @@ object FocusMode {
         // Re-anchor the start so the phase ends `remaining` from now and the progress picks up where it was.
         p.edit {
             remove(KEY_PAUSED_REMAINING)
+            remove(KEY_PAUSE_RELEASES)
             putLong(KEY_PHASE_START_RTC, System.currentTimeMillis() - elapsedSoFar)
             putLong(KEY_PHASE_START_ELAPSED, SystemClock.elapsedRealtime() - elapsedSoFar)
             putInt(KEY_PHASE_BOOT_COUNT, bootCount(context))
@@ -219,6 +229,7 @@ object FocusMode {
             remove(KEY_PHASE_DURATION)
             remove(KEY_PHASE_BOOT_COUNT)
             remove(KEY_PAUSED_REMAINING)
+            remove(KEY_PAUSE_RELEASES)
             remove(KEY_COMPLETED_FOCUS)
         }
         releaseSuspension(context)
@@ -282,6 +293,7 @@ object FocusMode {
         }
         prefs(context).edit {
             remove(KEY_PAUSED_REMAINING)
+            remove(KEY_PAUSE_RELEASES)
             putString(KEY_PHASE, phase.name)
             putLong(KEY_PHASE_START_RTC, System.currentTimeMillis())
             putLong(KEY_PHASE_START_ELAPSED, SystemClock.elapsedRealtime())

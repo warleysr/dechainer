@@ -5,6 +5,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Pause
@@ -13,11 +15,14 @@ import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Stop
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,6 +32,8 @@ import androidx.core.content.ContextCompat
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.FocusMode
 import io.github.warleysr.dechainer.notifications.FocusNotifier
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 /** Asks for the notification permission after starting if the device owner couldn't grant it. */
 @Composable
@@ -48,11 +55,17 @@ fun rememberFocusStarter(onStarted: () -> Unit = {}): () -> Unit {
     }
 }
 
-private class FocusAction(val icon: ImageVector, val label: String, val onClick: () -> Unit)
+private class FocusAction(
+    val icon: ImageVector,
+    val label: String,
+    val onLongClick: (() -> Unit)? = null,
+    val onClick: () -> Unit
+)
 
 /**
- * Starting, resuming and skipping a break are free; pausing and ending (except while waiting) go
- * through [gate], so the caller must also show [RecoveryGateDialog].
+ * Starting, resuming, skipping a break and a plain pause (apps stay suspended) are free; a long-press
+ * pause (apps released) and ending (except while waiting) go through [gate], so the caller must also
+ * show [RecoveryGateDialog].
  */
 @Composable
 fun FocusSessionCard(
@@ -65,7 +78,7 @@ fun FocusSessionCard(
     val context = LocalContext.current
     val start = rememberFocusStarter(onStarted = onChanged)
 
-    val startAction = FocusAction(Icons.Outlined.PlayArrow, stringResource(R.string.focus_start), start)
+    val startAction = FocusAction(Icons.Outlined.PlayArrow, stringResource(R.string.focus_start), onClick = start)
     val actions = when {
         status == null -> listOf(startAction)
         else -> buildList {
@@ -82,11 +95,13 @@ fun FocusSessionCard(
                 onChanged()
             })
             if (status.phase != FocusMode.Phase.WAITING && !status.paused) {
-                add(FocusAction(Icons.Outlined.Pause, stringResource(R.string.focus_pause)) {
-                    gate.run {
-                        FocusMode.pause(context)
-                        onChanged()
-                    }
+                val pause = { releaseApps: Boolean ->
+                    FocusMode.pause(context, releaseApps)
+                    onChanged()
+                }
+                val releasingPause = if (status.phase == FocusMode.Phase.FOCUS) ({ gate.run { pause(true) } }) else null
+                add(FocusAction(Icons.Outlined.Pause, stringResource(R.string.focus_pause), releasingPause) {
+                    pause(false)
                 })
             }
             add(FocusAction(Icons.Outlined.Stop, stringResource(R.string.focus_end_session)) {
@@ -179,20 +194,26 @@ private fun FullContent(status: FocusMode.Status?, actions: List<FocusAction>) {
             modifier = Modifier.fillMaxWidth()
         ) {
             actions.forEachIndexed { index, action ->
-                val content: @Composable RowScope.() -> Unit = {
-                    Icon(action.icon, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(action.label)
+                key(action.label) {
+                    val (interactionSource, onClick) = rememberLongClick(action)
+                    val content: @Composable RowScope.() -> Unit = {
+                        Icon(action.icon, null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(action.label)
+                    }
+                    if (index == 0) Button(onClick = onClick, interactionSource = interactionSource, content = content)
+                    else OutlinedButton(onClick = onClick, interactionSource = interactionSource, content = content)
                 }
-                if (index == 0) Button(onClick = action.onClick, content = content)
-                else OutlinedButton(onClick = action.onClick, content = content)
             }
         }
 
         if (status != null && status.phase != FocusMode.Phase.WAITING) {
             Spacer(Modifier.height(4.dp))
             Text(
-                stringResource(R.string.focus_end_requires_code),
+                stringResource(
+                    if (status.phase == FocusMode.Phase.FOCUS && !status.paused) R.string.focus_hold_pause_hint
+                    else R.string.focus_end_requires_code
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center
             )
@@ -241,13 +262,43 @@ private fun CompactContent(status: FocusMode.Status?, actions: List<FocusAction>
         }
 
         actions.forEachIndexed { index, action ->
-            if (index == 0) {
-                FilledIconButton(onClick = action.onClick) { Icon(action.icon, action.label) }
-            } else {
-                FilledTonalIconButton(onClick = action.onClick) { Icon(action.icon, action.label) }
+            key(action.label) {
+                val (interactionSource, onClick) = rememberLongClick(action)
+                if (index == 0) {
+                    FilledIconButton(onClick = onClick, interactionSource = interactionSource) {
+                        Icon(action.icon, action.label)
+                    }
+                } else {
+                    FilledTonalIconButton(onClick = onClick, interactionSource = interactionSource) {
+                        Icon(action.icon, action.label)
+                    }
+                }
             }
         }
     }
+}
+
+/** Material buttons take no long click, so the press is watched through their interaction source. */
+@Composable
+private fun rememberLongClick(action: FocusAction): Pair<MutableInteractionSource, () -> Unit> {
+    val interactionSource = remember { MutableInteractionSource() }
+    var longPressed by remember { mutableStateOf(false) }
+    val haptics = LocalHapticFeedback.current
+    val timeout = LocalViewConfiguration.current.longPressTimeoutMillis
+    val onLongClick by rememberUpdatedState(action.onLongClick)
+
+    LaunchedEffect(interactionSource) {
+        interactionSource.interactions.collectLatest { interaction ->
+            if (interaction !is PressInteraction.Press) return@collectLatest
+            longPressed = false
+            val longClick = onLongClick ?: return@collectLatest
+            delay(timeout)
+            longPressed = true
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            longClick()
+        }
+    }
+    return interactionSource to { if (!longPressed) action.onClick() }
 }
 
 private fun formatCountdown(millis: Long): String {
