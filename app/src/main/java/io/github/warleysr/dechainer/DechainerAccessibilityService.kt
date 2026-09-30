@@ -54,6 +54,7 @@ import io.github.warleysr.dechainer.models.UsageAlertStage
 import io.github.warleysr.dechainer.notifications.FocusService
 import io.github.warleysr.dechainer.notifications.UsageWarningNotifier
 import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.utils.HomeScreenDetector
 import io.github.warleysr.dechainer.utils.NightLightOverlay
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
 import org.jsoup.HttpStatusException
@@ -75,6 +76,11 @@ class DechainerAccessibilityService : AccessibilityService() {
     private var sessionStartTime: Long = 0
     private var lastCheckDate: String = LocalDate.now().toString()
     private val lastClosedTimes = HashMap<String, Long>();
+
+    // Apps with a reopen interval that lost the screen, keyed to when. Leaving only counts as closing once
+    // the home screen shows; coming back first (a popup, recents, an app opened from a notification) cancels it.
+    private val pendingLeaves = HashMap<String, Long>()
+    private val homeScreenDetector by lazy { HomeScreenDetector(this) }
 
     private lateinit var limitPrefs: SharedPreferences
     private lateinit var weeklyLimitPrefs: SharedPreferences
@@ -625,6 +631,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
             if (newPackage != currentPackage) {
                 stopTrackingAndSave()
+                pendingLeaves.remove(newPackage)
                 currentPackage = newPackage
                 sessionStartTime = SystemClock.elapsedRealtime()
                 checkDateReset()
@@ -635,6 +642,12 @@ class DechainerAccessibilityService : AccessibilityService() {
                 if (nsfwEnabled && newPackage in nsfwTargetPackages) {
                     warmUpNsfwDetector()
                 }
+            }
+
+            // Checked on every launcher event, not just on a package change: going from recents to home stays in the launcher.
+            if (pendingLeaves.isNotEmpty() && homeScreenDetector.isHomeScreen(event, rootInActiveWindow)) {
+                pendingLeaves.forEach { (pkg, leftAt) -> lastClosedTimes[pkg] = leftAt }
+                pendingLeaves.clear()
             }
 
             if (className.contains("Activity", ignoreCase = true)) {
@@ -1377,8 +1390,8 @@ class DechainerAccessibilityService : AccessibilityService() {
         handler.removeCallbacks(warnTickRunnable)
         val pkg = currentPackage ?: return
 
-        if (getRemainingSecondsToReopen(pkg) == 0 && !screenOff)
-            lastClosedTimes[pkg] = SystemClock.elapsedRealtime()
+        if (!screenOff && reopenPrefs.getInt(pkg, 0) > 0 && getRemainingSecondsToReopen(pkg) == 0)
+            pendingLeaves[pkg] = SystemClock.elapsedRealtime()
 
         if (sessionStartTime == 0L) return
 
