@@ -99,6 +99,23 @@
             android:launchMode="singleInstance"
             android:taskAffinity="" />
 
+        <activity
+            android:name=".activities.ApkUpdateActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:label="@string/apk_update_label"
+            android:theme="@style/Theme.Dechainer.Translucent"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/vnd.android.package-archive" />
+            </intent-filter>
+        </activity>
+
         <receiver
             android:name=".DechainerDeviceAdminReceiver"
             android:exported="true"
@@ -127,6 +144,10 @@
 
         <receiver
             android:name=".notifications.FocusReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notifications.ApkUpdateResultReceiver"
             android:exported="false" />
 
         <service
