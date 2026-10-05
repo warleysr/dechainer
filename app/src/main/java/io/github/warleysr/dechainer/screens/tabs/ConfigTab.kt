@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.LockClock
 import androidx.compose.material.icons.outlined.NoAdultContent
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
@@ -32,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.RecoveryGenerateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -74,6 +76,7 @@ fun ConfigTab(
 
     var shuffleKeyboard by remember { mutableStateOf(SecurityManager.isShuffleKeyboardEnabled(context)) }
     var blockTorrents by remember { mutableStateOf(SecurityManager.isBlockTorrentsEnabled(context)) }
+    var allowApkUpdates by remember { mutableStateOf(ApkUpdateInstaller.isEnabled(context)) }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
 
@@ -222,6 +225,28 @@ fun ConfigTab(
                             recoveryGate.run {
                                 blockTorrents = checked
                                 SecurityManager.setBlockTorrentsEnabled(context, checked)
+                            }
+                        })
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.allow_apk_updates)) },
+                    supportingContent = { Text(stringResource(R.string.allow_apk_updates_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.SystemUpdate, "") },
+                    trailingContent = {
+                        Switch(allowApkUpdates, onCheckedChange = { checked ->
+                            if (checked && !viewModel.isDeviceOwner()) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(ownerPrivilegesFirstMsg)
+                                }
+                                return@Switch
+                            }
+                            recoveryGate.run {
+                                allowApkUpdates = checked
+                                ApkUpdateInstaller.setEnabled(context, checked)
                             }
                         })
                     }
