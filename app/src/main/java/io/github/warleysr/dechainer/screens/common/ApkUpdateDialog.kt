@@ -1,18 +1,18 @@
-package io.github.warleysr.dechainer.activities
+package io.github.warleysr.dechainer.screens.common
 
 import android.net.Uri
-import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,31 +32,13 @@ import androidx.core.graphics.drawable.toBitmap
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.data.ApkUpdateInstaller.Inspection
-import io.github.warleysr.dechainer.ui.theme.DechainerTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class ApkUpdateActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        val uri = intent.data
-        if (uri == null) {
-            finish()
-            return
-        }
-
-        setContent {
-            DechainerTheme {
-                ApkUpdateDialog(uri = uri, onFinish = { finish() })
-            }
-        }
-    }
-}
-
+/** Checks the APK at [uri] and, when it updates an installed app, asks before installing it. */
 @Composable
-private fun ApkUpdateDialog(uri: Uri, onFinish: () -> Unit) {
+fun ApkUpdateDialog(uri: Uri, onFinish: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var inspection by remember { mutableStateOf<Inspection?>(null) }
@@ -146,6 +128,23 @@ private fun ApkUpdateDialog(uri: Uri, onFinish: () -> Unit) {
             }) {
                 Text(stringResource(R.string.cancel))
             }
+        }
+    )
+}
+
+/** Explains what updating through an APK does before the file picker opens. */
+@Composable
+fun ApkUpdateIntroDialog(onSelect: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.SystemUpdate, contentDescription = null) },
+        title = { Text(stringResource(R.string.apk_update_intro_title)) },
+        text = { Text(stringResource(R.string.apk_update_intro_text)) },
+        confirmButton = {
+            TextButton(onClick = onSelect) { Text(stringResource(R.string.apk_update_select)) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         }
     )
 }

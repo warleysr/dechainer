@@ -166,9 +166,10 @@
     <string name="browser_restrictions_desc">Gerenciar permissões de navegadores e sites bloqueados</string>
     <string name="block_torrents">Bloquear apps de Torrent</string>
     <string name="block_torrents_desc">Bloqueia automaticamente novos apps de Torrent instalados</string>
-    <string name="allow_apk_updates">Permitir atualizações por APK</string>
-    <string name="allow_apk_updates_desc">Atualize apps já instalados abrindo o APK com o Déchaîner. Apps novos continuam bloqueados</string>
-    <string name="apk_update_label">Atualizador Déchaîner</string>
+    <string name="apk_update_button">Atualizar apps</string>
+    <string name="apk_update_intro_title">Atualizar apps via APK</string>
+    <string name="apk_update_intro_text">Escolha o arquivo APK de um app que já está instalado neste celular para atualizá-lo.\n\nSomente atualizações são permitidas: APKs de apps novos continuam bloqueados.</string>
+    <string name="apk_update_select">Escolher APK</string>
     <string name="apk_update_title">Atualização de app</string>
     <string name="apk_update_checking">Verificando APK…</string>
     <string name="apk_update_installing">Instalando…</string>
@@ -309,7 +310,7 @@
     <string name="impulse_lock_desc">Desafio para acessar o app e o que o botão de pânico faz</string>
     <string name="having_impulses">Estou tendo impulsos</string>
     <string name="having_impulses_subtitle">Trancar tudo agora</string>
-    <string name="access_app">Acessar app</string>
+    <string name="access_app">Acessar Déchaîner</string>
     <string name="access_app_subtitle">Requer autenticação</string>
     <string name="view_usage_limits">Ver limites</string>
     <string name="view_usage_limits_subtitle">Uso de hoje dos apps e grupos</string>

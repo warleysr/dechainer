@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.data.UsageWarningSettings
 import io.github.warleysr.dechainer.screens.setup.SetupDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.setup.SetupRecovery
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         if (SecurityManager.consumeDebugAutoStartSession(this)) authenticated.value = true
         SecurityManager.consumeDebugRestoreUnknownSourcesRestriction(this)
+        ApkUpdateInstaller.restoreUnknownSourcesRestrictionsIfIdle(this)
         enableEdgeToEdge()
         setContent {
             DechainerTheme {

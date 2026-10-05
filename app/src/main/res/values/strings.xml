@@ -166,9 +166,10 @@
     <string name="browser_restrictions_desc">Manage browser permissions and blocked sites</string>
     <string name="block_torrents">Block Torrent apps</string>
     <string name="block_torrents_desc">Automatically blocks newly installed Torrent apps</string>
-    <string name="allow_apk_updates">Allow updates via APK</string>
-    <string name="allow_apk_updates_desc">Update apps that are already installed by opening the APK with Déchaîner. New apps stay blocked</string>
-    <string name="apk_update_label">Déchaîner updater</string>
+    <string name="apk_update_button">Update apps</string>
+    <string name="apk_update_intro_title">Update apps via APK</string>
+    <string name="apk_update_intro_text">Pick the APK file of an app that is already installed on this phone to update it.\n\nOnly updates are allowed: APKs of new apps stay blocked.</string>
+    <string name="apk_update_select">Choose APK</string>
     <string name="apk_update_title">App update</string>
     <string name="apk_update_checking">Checking APK…</string>
     <string name="apk_update_installing">Installing…</string>
@@ -309,7 +310,7 @@
     <string name="impulse_lock_desc">Challenge to access the app, and what the panic button does</string>
     <string name="having_impulses">I\'m having impulses</string>
     <string name="having_impulses_subtitle">Lock everything right now</string>
-    <string name="access_app">Access app</string>
+    <string name="access_app">Open Déchaîner</string>
     <string name="access_app_subtitle">Requires authentication</string>
     <string name="view_usage_limits">View limits</string>
     <string name="view_usage_limits_subtitle">Today\'s usage of apps and groups</string>

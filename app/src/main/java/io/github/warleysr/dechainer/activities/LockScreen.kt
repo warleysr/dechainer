@@ -1,6 +1,9 @@
 package io.github.warleysr.dechainer.activities
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.biometric.AuthenticationRequest
 import androidx.biometric.AuthenticationResult
 import androidx.biometric.AuthenticationResultCallback
@@ -8,6 +11,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.compose.rememberAuthenticationLauncher
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.LockOpen
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.data.FocusMode
 import io.github.warleysr.dechainer.screens.challenges.ChallengeScaffold
@@ -37,6 +43,8 @@ import io.github.warleysr.dechainer.screens.challenges.MathChallenge
 import io.github.warleysr.dechainer.screens.challenges.ReadingChallenge
 import io.github.warleysr.dechainer.screens.challenges.TetrisChallenge
 import io.github.warleysr.dechainer.screens.challenges.WordChallenge
+import io.github.warleysr.dechainer.screens.common.ApkUpdateDialog
+import io.github.warleysr.dechainer.screens.common.ApkUpdateIntroDialog
 import io.github.warleysr.dechainer.screens.common.UsageLimitsOverview
 import io.github.warleysr.dechainer.screens.common.FocusSessionCard
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
@@ -62,6 +70,15 @@ fun LockScreen(onAuthenticated: () -> Unit) {
     val context = LocalContext.current
     var focusStatus by remember { mutableStateOf(FocusMode.getStatus(context)) }
     val recoveryGate = rememberRecoveryGate()
+
+    // Updating apps needs no authentication: only APKs of apps that are already installed go through.
+    // Without the unknown sources restriction APKs install normally, so the updater is not offered.
+    val apkUpdatesAvailable = remember { ApkUpdateInstaller.isUnknownSourcesRestricted(context) }
+    var showingApkIntro by remember { mutableStateOf(false) }
+    var pickedApk by remember { mutableStateOf<Uri?>(null) }
+    val apkPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        pickedApk = uri
+    }
 
     fun proceedAfterAuthentication() {
         authError = null
@@ -167,26 +184,32 @@ fun LockScreen(onAuthenticated: () -> Unit) {
         }
 
         val secondaryButtons: @Composable (showAccess: Boolean) -> Unit = { showAccess ->
-            val showLimits = DeviceOwnerRepository.isDeviceOwner()
-            if (showAccess || showLimits) {
+            val isOwner = DeviceOwnerRepository.isDeviceOwner()
+            if (showAccess) {
+                SmallActionButton(
+                    icon = Icons.Outlined.LockOpen,
+                    title = stringResource(R.string.access_app),
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    onClick = { launchAuthentication() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            // Occasional actions, kept low-key so they don't compete with the colored ones above.
+            if (isOwner) {
+                if (showAccess) Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    if (showAccess) {
-                        SmallActionButton(
-                            icon = Icons.Outlined.LockOpen,
-                            title = stringResource(R.string.access_app),
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            onClick = { launchAuthentication() },
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    if (showLimits) {
-                        SmallActionButton(
-                            icon = Icons.Outlined.HourglassBottom,
-                            title = stringResource(R.string.view_usage_limits),
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            onClick = { showingLimits = true },
+                    QuietActionButton(
+                        icon = Icons.Outlined.HourglassBottom,
+                        title = stringResource(R.string.view_usage_limits),
+                        onClick = { showingLimits = true },
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (apkUpdatesAvailable) {
+                        QuietActionButton(
+                            icon = Icons.Outlined.SystemUpdate,
+                            title = stringResource(R.string.apk_update_button),
+                            onClick = { showingApkIntro = true },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -265,6 +288,20 @@ fun LockScreen(onAuthenticated: () -> Unit) {
         }
         }
 
+        if (showingApkIntro) {
+            ApkUpdateIntroDialog(
+                onSelect = {
+                    showingApkIntro = false
+                    apkPicker.launch(arrayOf("application/vnd.android.package-archive"))
+                },
+                onDismiss = { showingApkIntro = false }
+            )
+        }
+
+        pickedApk?.let { uri ->
+            key(uri) { ApkUpdateDialog(uri = uri, onFinish = { pickedApk = null }) }
+        }
+
         RecoveryGateDialog(recoveryGate)
     }
 }
@@ -292,8 +329,36 @@ private fun SmallActionButton(
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             title,
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun QuietActionButton(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(24.dp),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+        modifier = modifier.height(56.dp)
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            title,
+            style = MaterialTheme.typography.labelLarge,
             maxLines = 2,
             textAlign = TextAlign.Center
         )

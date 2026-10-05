@@ -1,23 +1,32 @@
 package io.github.warleysr.dechainer.data
 
 import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.net.Uri
-import io.github.warleysr.dechainer.activities.ApkUpdateActivity
+import android.os.UserManager
+import androidx.core.content.edit
 import io.github.warleysr.dechainer.notifications.ApkUpdateResultReceiver
 import java.io.File
 
 /**
- * Lets an APK opened with Dechainer replace an app that is already installed, while new apps stay
- * blocked by the unknown sources restriction. Device owner sessions skip that restriction.
+ * Lets an APK picked from the lock screen replace an app that is already installed, while new apps
+ * stay blocked. The unknown sources restrictions are lifted only for the duration of the install
+ * and put back once its result arrives.
  */
 object ApkUpdateInstaller {
     const val EXTRA_PACKAGE = "io.github.warleysr.dechainer.extra.APK_UPDATE_PACKAGE"
+
+    private const val PREFS_NAME = "security_prefs"
+    private const val KEY_RESTORE_RESTRICTIONS = "apk_update_restore_restrictions"
+
+    private val unknownSourcesRestrictions = listOf(
+        UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES,
+        UserManager.DISALLOW_INSTALL_UNKNOWN_SOURCES_GLOBALLY
+    )
 
     sealed interface Inspection {
         data class Update(
@@ -34,18 +43,21 @@ object ApkUpdateInstaller {
         data object Invalid : Inspection
     }
 
-    private fun component(context: Context) = ComponentName(context, ApkUpdateActivity::class.java)
+    /**
+     * Whether installing APKs is blocked, which is the only case where this updater is useful.
+     * Restrictions lifted by an update still in progress count as active.
+     */
+    fun isUnknownSourcesRestricted(context: Context): Boolean {
+        val dpm = DeviceAdmin.policyManager
+        val admin = DeviceAdmin.component
+        if (!dpm.isAdminActive(admin)) return false
 
-    fun isEnabled(context: Context): Boolean =
-        context.packageManager.getComponentEnabledSetting(component(context)) ==
-                PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        val pending = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getStringSet(KEY_RESTORE_RESTRICTIONS, null)
+        if (!pending.isNullOrEmpty()) return true
 
-    fun setEnabled(context: Context, enabled: Boolean) {
-        val state = if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-        context.packageManager.setComponentEnabledSetting(
-            component(context), state, PackageManager.DONT_KILL_APP
-        )
+        val active = dpm.getUserRestrictions(admin)
+        return unknownSourcesRestrictions.any { active.getBoolean(it) }
     }
 
     fun inspect(context: Context, uri: Uri): Inspection {
@@ -96,14 +108,40 @@ object ApkUpdateInstaller {
                     session.abandon()
                     return false
                 }
+                liftUnknownSourcesRestrictions(context)
                 session.commit(resultSender(context, sessionId, update.packageName))
             }
             true
         } catch (_: Exception) {
             runCatching { installer.abandonSession(sessionId) }
+            restoreUnknownSourcesRestrictionsIfIdle(context, sessionId)
             false
         } finally {
             update.file.delete()
+        }
+    }
+
+    /** Puts back the restrictions lifted by [install]; a no-op when none are pending. */
+    private fun restoreUnknownSourcesRestrictions(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val keys = prefs.getStringSet(KEY_RESTORE_RESTRICTIONS, null) ?: return
+
+        val dpm = DeviceAdmin.policyManager
+        val admin = DeviceAdmin.component
+        if (dpm.isAdminActive(admin)) {
+            keys.forEach { dpm.addUserRestriction(admin, it) }
+        }
+        prefs.edit { remove(KEY_RESTORE_RESTRICTIONS) }
+    }
+
+    /**
+     * Restores the restrictions unless another update is still running. [finishedSessionId] is the
+     * session whose result is being handled, which may not have been cleaned up yet.
+     */
+    fun restoreUnknownSourcesRestrictionsIfIdle(context: Context, finishedSessionId: Int? = null) {
+        val sessions = context.packageManager.packageInstaller.mySessions
+        if (sessions.all { it.sessionId == finishedSessionId }) {
+            restoreUnknownSourcesRestrictions(context)
         }
     }
 
@@ -119,6 +157,22 @@ object ApkUpdateInstaller {
             context, packageName.hashCode(), intent, PendingIntent.FLAG_IMMUTABLE
         )
         context.packageManager.packageInstaller.uninstall(packageName, pendingIntent.intentSender)
+    }
+
+    private fun liftUnknownSourcesRestrictions(context: Context) {
+        val dpm = DeviceAdmin.policyManager
+        val admin = DeviceAdmin.component
+        if (!dpm.isAdminActive(admin)) return
+
+        val active = dpm.getUserRestrictions(admin)
+        val lifted = unknownSourcesRestrictions.filter { active.getBoolean(it) }
+        if (lifted.isEmpty()) return
+
+        // Saved before clearing, so a crash in between still leaves a way to put them back.
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val pending = prefs.getStringSet(KEY_RESTORE_RESTRICTIONS, null).orEmpty()
+        prefs.edit(commit = true) { putStringSet(KEY_RESTORE_RESTRICTIONS, pending + lifted) }
+        lifted.forEach { dpm.clearUserRestriction(admin, it) }
     }
 
     private fun installedInfo(context: Context, packageName: String) = try {
