@@ -2,6 +2,4 @@
 <resources>
 
     <style name="Theme.Dechainer" parent="android:Theme.Material.Light.NoActionBar" />
-
-    <style name="Theme.Dechainer.Translucent" parent="android:Theme.Translucent.NoTitleBar" />
 </resources>

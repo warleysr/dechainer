@@ -35,6 +35,7 @@ import io.github.warleysr.dechainer.activities.NsfwContentBlockedActivity
 import io.github.warleysr.dechainer.activities.OutsideTimeWindowActivity
 import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
 import io.github.warleysr.dechainer.activities.TimeUpActivity
+import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.data.AppGroupRepository
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.data.AppTimeLimits
@@ -512,6 +513,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (dpm.isAdminActive(admin)) {
             dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
         }
+        ApkUpdateInstaller.restoreUnknownSourcesRestrictionsIfIdle(applicationContext)
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)

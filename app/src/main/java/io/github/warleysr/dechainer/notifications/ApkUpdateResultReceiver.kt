@@ -16,9 +16,17 @@ class ApkUpdateResultReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_INSTALL_RESULT) return
-        val packageName = intent.getStringExtra(ApkUpdateInstaller.EXTRA_PACKAGE) ?: return
+        val sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1)
+        val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
 
-        val message = when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
+        // Nobody is going to confirm it, so the session would otherwise stay open forever.
+        if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+            runCatching { context.packageManager.packageInstaller.abandonSession(sessionId) }
+        }
+        ApkUpdateInstaller.restoreUnknownSourcesRestrictionsIfIdle(context, sessionId)
+
+        val packageName = intent.getStringExtra(ApkUpdateInstaller.EXTRA_PACKAGE) ?: return
+        val message = when (status) {
             PackageInstaller.STATUS_SUCCESS -> {
                 if (ApkUpdateInstaller.isFreshInstall(context, packageName)) {
                     ApkUpdateInstaller.uninstall(context, packageName)
