@@ -46,6 +46,15 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
     val sessionActive = recoveryGate.isSessionActive
     val isDeviceOwner = remember { DeviceOwnerRepository.isDeviceOwner() }
 
+    LaunchedEffect(sessionActive) {
+        if (!sessionActive) {
+            showAppSelectionDialog = false
+            showRestrictionsDialog = false
+            showScheduleDialog = false
+            scheduleToEdit = null
+        }
+    }
+
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
             Text(
@@ -83,7 +92,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 range = FocusMode.FOCUS_MIN_MINUTES..FocusMode.FOCUS_MAX_MINUTES,
                 step = 5,
                 enabled = sessionActive,
-                onChange = { viewModel.updateFocusMinutes(it) }
+                onChange = { if (sessionActive) viewModel.updateFocusMinutes(it) }
             )
             MinutesSlider(
                 title = stringResource(R.string.focus_short_break_duration),
@@ -91,7 +100,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 range = FocusMode.SHORT_BREAK_MIN_MINUTES..FocusMode.SHORT_BREAK_MAX_MINUTES,
                 step = 1,
                 enabled = sessionActive,
-                onChange = { viewModel.updateShortBreakMinutes(it) }
+                onChange = { if (sessionActive) viewModel.updateShortBreakMinutes(it) }
             )
             MinutesSlider(
                 title = stringResource(R.string.focus_long_break_duration),
@@ -99,7 +108,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 range = FocusMode.LONG_BREAK_MIN_MINUTES..FocusMode.LONG_BREAK_MAX_MINUTES,
                 step = 5,
                 enabled = sessionActive,
-                onChange = { viewModel.updateLongBreakMinutes(it) }
+                onChange = { if (sessionActive) viewModel.updateLongBreakMinutes(it) }
             )
             SettingSlider(
                 title = stringResource(R.string.focus_cycles),
@@ -110,7 +119,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 enabled = sessionActive,
                 minLabel = FocusMode.CYCLES_MIN.toString(),
                 maxLabel = FocusMode.CYCLES_MAX.toString(),
-                onChange = { viewModel.updateCyclesBeforeLongBreak(it) }
+                onChange = { if (sessionActive) viewModel.updateCyclesBeforeLongBreak(it) }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
@@ -123,7 +132,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                     Switch(
                         checked = viewModel.autoStartFocus,
                         enabled = sessionActive,
-                        onCheckedChange = { viewModel.updateAutoStartFocus(it) }
+                        onCheckedChange = { if (sessionActive) viewModel.updateAutoStartFocus(it) }
                     )
                 }
             )
@@ -134,7 +143,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                     Switch(
                         checked = viewModel.soundEnabled,
                         enabled = sessionActive,
-                        onCheckedChange = { viewModel.updateSoundEnabled(it) }
+                        onCheckedChange = { if (sessionActive) viewModel.updateSoundEnabled(it) }
                     )
                 }
             )
@@ -145,7 +154,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                     Switch(
                         checked = viewModel.vibrationEnabled,
                         enabled = sessionActive,
-                        onCheckedChange = { viewModel.updateVibrationEnabled(it) }
+                        onCheckedChange = { if (sessionActive) viewModel.updateVibrationEnabled(it) }
                     )
                 }
             )
@@ -164,7 +173,10 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 },
                 leadingContent = { Icon(Icons.Outlined.Apps, null) },
                 trailingContent = {
-                    Button(enabled = sessionActive && isDeviceOwner, onClick = { showAppSelectionDialog = true }) {
+                    Button(
+                        enabled = sessionActive && isDeviceOwner,
+                        onClick = { if (sessionActive && isDeviceOwner) showAppSelectionDialog = true }
+                    ) {
                         Text(stringResource(R.string.select_apps))
                     }
                 }
@@ -192,7 +204,10 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 },
                 leadingContent = { Icon(Icons.Outlined.Security, null) },
                 trailingContent = {
-                    Button(enabled = sessionActive && isDeviceOwner, onClick = { showRestrictionsDialog = true }) {
+                    Button(
+                        enabled = sessionActive && isDeviceOwner,
+                        onClick = { if (sessionActive && isDeviceOwner) showRestrictionsDialog = true }
+                    ) {
                         Text(stringResource(R.string.focus_select_restrictions))
                     }
                 }
@@ -216,8 +231,10 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                     Button(
                         enabled = sessionActive,
                         onClick = {
-                            scheduleToEdit = null
-                            showScheduleDialog = true
+                            if (sessionActive) {
+                                scheduleToEdit = null
+                                showScheduleDialog = true
+                            }
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -267,11 +284,15 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                             Switch(
                                 checked = schedule.enabled,
                                 enabled = sessionActive,
-                                onCheckedChange = { viewModel.toggleSchedule(schedule.id, it) }
+                                onCheckedChange = {
+                                    if (sessionActive) viewModel.toggleSchedule(schedule.id, it)
+                                }
                             )
                             IconButton(
                                 enabled = sessionActive,
-                                onClick = { viewModel.deleteSchedule(schedule.id) }
+                                onClick = {
+                                    if (sessionActive) viewModel.deleteSchedule(schedule.id)
+                                }
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Delete,
@@ -281,8 +302,10 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                         }
                     },
                     modifier = Modifier.clickable(enabled = sessionActive) {
-                        scheduleToEdit = schedule
-                        showScheduleDialog = true
+                        if (sessionActive) {
+                            scheduleToEdit = schedule
+                            showScheduleDialog = true
+                        }
                     }
                 )
             }
@@ -291,29 +314,31 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
         item { Spacer(Modifier.height(24.dp)) }
     }
 
-    if (showAppSelectionDialog && isDeviceOwner) {
+    if (showAppSelectionDialog && sessionActive && isDeviceOwner) {
         AppPickerDialog(
             apps = viewModel.apps,
             isLoading = viewModel.isLoadingApps,
             isSelected = { viewModel.suspendedApps.contains(it) },
-            onToggle = { viewModel.toggleAppSelection(it) },
+            onToggle = { if (sessionActive) viewModel.toggleAppSelection(it) },
             onDismiss = { showAppSelectionDialog = false }
         )
     }
 
-    if (showRestrictionsDialog && isDeviceOwner) {
+    if (showRestrictionsDialog && sessionActive && isDeviceOwner) {
         FocusRestrictionsDialog(
             selectedRestrictions = viewModel.focusRestrictions,
-            onToggle = { viewModel.toggleRestrictionSelection(it) },
+            onToggle = { if (sessionActive) viewModel.toggleRestrictionSelection(it) },
             onDismiss = { showRestrictionsDialog = false }
         )
     }
 
-    if (showScheduleDialog) {
+    if (showScheduleDialog && sessionActive) {
         FocusScheduleDialog(
             initialSchedule = scheduleToEdit,
             onSave = {
-                viewModel.addOrUpdateSchedule(it)
+                if (sessionActive) {
+                    viewModel.addOrUpdateSchedule(it)
+                }
                 showScheduleDialog = false
             },
             onDismiss = { showScheduleDialog = false }
