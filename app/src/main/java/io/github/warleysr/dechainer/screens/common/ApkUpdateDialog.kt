@@ -70,7 +70,6 @@ fun ApkUpdateDialog(uri: Uri, onFinish: () -> Unit) {
     if (current !is Inspection.Update) {
         val message = when (current) {
             Inspection.NewApp -> R.string.apk_update_new_app
-            Inspection.Downgrade -> R.string.apk_update_downgrade
             else -> R.string.apk_update_invalid
         }
         AlertDialog(

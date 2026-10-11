@@ -39,7 +39,6 @@ object ApkUpdateInstaller {
         ) : Inspection
 
         data object NewApp : Inspection
-        data object Downgrade : Inspection
         data object Invalid : Inspection
     }
 
@@ -75,9 +74,6 @@ object ApkUpdateInstaller {
             ?: return Inspection.Invalid.also { file.delete() }
         val installed = installedInfo(context, archive.packageName)
             ?: return Inspection.NewApp.also { file.delete() }
-        if (archive.longVersionCode < installed.longVersionCode) {
-            return Inspection.Downgrade.also { file.delete() }
-        }
 
         val appInfo = installed.applicationInfo
         return Inspection.Update(
@@ -93,7 +89,10 @@ object ApkUpdateInstaller {
     fun install(context: Context, update: Inspection.Update): Boolean {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-            .apply { setAppPackageName(update.packageName) }
+            .apply {
+                setAppPackageName(update.packageName)
+                requestDowngrade(this)
+            }
         val sessionId = installer.createSession(params)
 
         return try {
@@ -118,6 +117,15 @@ object ApkUpdateInstaller {
             false
         } finally {
             update.file.delete()
+        }
+    }
+
+    /** Lets the session install an older version; the setter is hidden, so it is best effort. */
+    private fun requestDowngrade(params: PackageInstaller.SessionParams) {
+        runCatching {
+            PackageInstaller.SessionParams::class.java
+                .getMethod("setRequestDowngrade", Boolean::class.javaPrimitiveType)
+                .invoke(params, true)
         }
     }
 

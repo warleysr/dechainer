@@ -178,7 +178,6 @@
     <string name="apk_update_new_version">Nova versão: %1$s</string>
     <string name="apk_update_confirm">Atualizar</string>
     <string name="apk_update_new_app">Este APK instala um app novo. Apenas atualizações de apps instalados são permitidas.</string>
-    <string name="apk_update_downgrade">Este APK é mais antigo que a versão instalada.</string>
     <string name="apk_update_invalid">Não foi possível ler o APK.</string>
     <string name="apk_update_success">App atualizado</string>
     <string name="apk_update_signature_mismatch">A assinatura do APK não corresponde à do app instalado</string>
