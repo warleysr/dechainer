@@ -510,4 +510,32 @@
     <string name="focus_apps_section">Apps a suspender durante o foco</string>
     <string name="focus_requires_device_owner">Selecionar apps requer privilégios de proprietário do dispositivo — sem eles o modo foco funciona apenas como timer</string>
     <string name="focus_channel_timer">Timer do modo foco</string>
+    <string name="save">Salvar</string>
+
+    <string name="focus_restrictions_section">Restrições de sistema durante o foco</string>
+    <string name="focus_restrictions_selected">%1$d restrições selecionadas</string>
+    <string name="focus_no_restrictions">Nenhuma restrição selecionada</string>
+    <string name="focus_select_restrictions">Selecionar restrições</string>
+    <string name="focus_restrictions_dialog_title">Selecionar restrições de sistema</string>
+    <string name="focus_restrictions_explanation">As restrições selecionadas serão aplicadas via DPC durante o foco e restauradas ao estado original ao fim do período.</string>
+
+    <string name="focus_schedules_section">Períodos de foco agendados</string>
+    <string name="focus_add_schedule">Adicionar horário</string>
+    <string name="focus_edit_schedule">Editar horário</string>
+    <string name="focus_no_schedules">Nenhum horário de foco agendado</string>
+    <string name="focus_schedule_days_weekdays">Seg-Sex</string>
+    <string name="focus_schedule_days_weekend">Fim de semana</string>
+    <string name="focus_schedule_days_all">Todos os dias</string>
+    <string name="focus_schedule_dialog_title">Agendar período de foco</string>
+    <string name="focus_schedule_time">Horário</string>
+    <string name="focus_schedule_days">Dias da semana</string>
+    <string name="focus_schedule_select_days_warning">Selecione ao menos um dia</string>
+    <string name="focus_schedule_channel">Lembretes de foco agendado</string>
+    <string name="delete">Excluir</string>
+
+    <string name="focus_reminder_title">Hora de focar!</string>
+    <string name="focus_reminder_desc">Seu horário de foco agendado chegou. Inicie o período de foco para manter a produtividade.</string>
+    <string name="focus_reminder_start">Iniciar</string>
+    <string name="focus_reminder_snooze">Me lembre em 5 min</string>
+    <string name="focus_reminder_cannot_start">Não posso iniciar agora</string>
 </resources>

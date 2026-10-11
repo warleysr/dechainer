@@ -68,6 +68,7 @@ object FocusMode {
     private const val KEY_SOUND_ENABLED = "sound_enabled"
     private const val KEY_VIBRATION_ENABLED = "vibration_enabled"
     private const val KEY_APPS = "suspended_apps"
+    private const val KEY_RESTRICTIONS = "focus_restrictions"
 
     private const val KEY_PHASE = "phase"
     private const val KEY_PHASE_START_RTC = "phase_start_rtc"
@@ -78,6 +79,7 @@ object FocusMode {
     private const val KEY_PAUSE_RELEASES = "pause_releases"
     private const val KEY_COMPLETED_FOCUS = "completed_focus"
     private const val KEY_ACTIVE_SUSPENSION = "active_suspension"
+    private const val KEY_ACTIVE_RESTRICTIONS = "active_restrictions"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -138,6 +140,19 @@ object FocusMode {
             FocusNotifier.showStatus(context)
         }
     }
+
+    fun getFocusRestrictions(context: Context): Set<String> =
+        prefs(context).getStringSet(KEY_RESTRICTIONS, emptySet()) ?: emptySet()
+
+    fun setFocusRestrictions(context: Context, restrictions: Set<String>) {
+        prefs(context).edit { putStringSet(KEY_RESTRICTIONS, restrictions) }
+        if (isEnforcing(context)) {
+            applyRestrictions(context, enforce = true)
+        }
+    }
+
+    fun getActiveRestrictions(context: Context): Set<String> =
+        prefs(context).getStringSet(KEY_ACTIVE_RESTRICTIONS, emptySet()) ?: emptySet()
 
     fun isActive(context: Context) = currentPhase(context) != null
 
@@ -233,6 +248,7 @@ object FocusMode {
             remove(KEY_COMPLETED_FOCUS)
         }
         releaseSuspension(context)
+        releaseRestrictions(context)
         cancelAlarm(context)
         FocusNotifier.cancel(context)
     }
@@ -242,6 +258,7 @@ object FocusMode {
         val ctx = context.applicationContext
         var phase = currentPhase(ctx) ?: run {
             if (getActiveSuspension(ctx).isNotEmpty()) releaseSuspension(ctx)
+            if (getActiveRestrictions(ctx).isNotEmpty()) releaseRestrictions(ctx)
             return
         }
 
@@ -268,6 +285,7 @@ object FocusMode {
 
     private fun applyState(context: Context) {
         applySuspension(context, enforce = isEnforcing(context))
+        applyRestrictions(context, enforce = isEnforcing(context))
         scheduleAlarm(context)
         FocusNotifier.showStatus(context)
     }
@@ -356,6 +374,63 @@ object FocusMode {
         val claimed = getActiveSuspension(context)
         prefs(context).edit { remove(KEY_ACTIVE_SUSPENSION) }
         if (claimed.isNotEmpty()) release(context, claimed)
+    }
+
+    private fun applyRestrictions(context: Context, enforce: Boolean) {
+        if (!enforce) {
+            releaseRestrictions(context)
+            return
+        }
+
+        val dpm = DeviceAdmin.policyManager
+        val admin = DeviceAdmin.component
+        if (!dpm.isDeviceOwnerApp(admin.packageName)) return
+
+        val configured = getFocusRestrictions(context)
+        val claimed = getActiveRestrictions(context)
+
+        // Clear restrictions that were deselected while the session was running
+        val dropped = claimed - configured
+        if (dropped.isNotEmpty()) {
+            dropped.forEach { key ->
+                runCatching { dpm.clearUserRestriction(admin, key) }
+            }
+        }
+
+        val currentDpmRestrictions = dpm.getUserRestrictions(admin)
+        val newlyClaimed = mutableSetOf<String>()
+
+        configured.forEach { key ->
+            if (key in claimed) {
+                // Already managed by our active session
+            } else if (!currentDpmRestrictions.containsKey(key)) {
+                // Not previously set in system -> apply and claim it so we can revert it later
+                try {
+                    dpm.addUserRestriction(admin, key)
+                    newlyClaimed.add(key)
+                } catch (e: Exception) {
+                    Timber.w(e, "Focus mode: could not add user restriction $key")
+                }
+            }
+        }
+
+        val nowClaimed = (claimed - dropped) + newlyClaimed
+        prefs(context).edit { putStringSet(KEY_ACTIVE_RESTRICTIONS, nowClaimed) }
+    }
+
+    private fun releaseRestrictions(context: Context) {
+        val claimed = getActiveRestrictions(context)
+        prefs(context).edit { remove(KEY_ACTIVE_RESTRICTIONS) }
+        if (claimed.isEmpty()) return
+
+        val dpm = DeviceAdmin.policyManager
+        val admin = DeviceAdmin.component
+        if (!dpm.isDeviceOwnerApp(admin.packageName)) return
+
+        claimed.forEach { key ->
+            runCatching { dpm.clearUserRestriction(admin, key) }
+                .onFailure { Timber.w(it, "Focus mode: could not clear user restriction $key") }
+        }
     }
 
     // Leaves out what an impulse block or visual blocking still holds; their own timers lift those.

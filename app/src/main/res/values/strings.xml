@@ -509,4 +509,32 @@
     <string name="focus_apps_section">Apps to suspend during focus</string>
     <string name="focus_requires_device_owner">Selecting apps requires device owner privileges — without them focus mode works only as a timer</string>
     <string name="focus_channel_timer">Focus mode timer</string>
+    <string name="save">Save</string>
+
+    <string name="focus_restrictions_section">System restrictions during focus</string>
+    <string name="focus_restrictions_selected">%1$d restrictions selected</string>
+    <string name="focus_no_restrictions">No restrictions selected</string>
+    <string name="focus_select_restrictions">Select restrictions</string>
+    <string name="focus_restrictions_dialog_title">Select system restrictions</string>
+    <string name="focus_restrictions_explanation">The selected restrictions will be applied using DPC during focus and restored when the session ends.</string>
+
+    <string name="focus_schedules_section">Scheduled focus periods</string>
+    <string name="focus_add_schedule">Add schedule</string>
+    <string name="focus_edit_schedule">Edit schedule</string>
+    <string name="focus_no_schedules">No scheduled focus periods</string>
+    <string name="focus_schedule_days_weekdays">Mon-Fri</string>
+    <string name="focus_schedule_days_weekend">Weekend</string>
+    <string name="focus_schedule_days_all">Every day</string>
+    <string name="focus_schedule_dialog_title">Schedule focus period</string>
+    <string name="focus_schedule_time">Time</string>
+    <string name="focus_schedule_days">Days of week</string>
+    <string name="focus_schedule_select_days_warning">Select at least one day</string>
+    <string name="focus_schedule_channel">Scheduled focus reminders</string>
+    <string name="delete">Delete</string>
+
+    <string name="focus_reminder_title">Time to focus!</string>
+    <string name="focus_reminder_desc">Your scheduled focus period has arrived. Start focus mode now to stay productive.</string>
+    <string name="focus_reminder_start">Start</string>
+    <string name="focus_reminder_snooze">Remind me in 5 min</string>
+    <string name="focus_reminder_cannot_start">I can\'t start now</string>
 </resources>

@@ -9,7 +9,9 @@ import androidx.lifecycle.viewModelScope
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.data.FocusMode
+import io.github.warleysr.dechainer.data.FocusScheduleStorage
 import io.github.warleysr.dechainer.models.AppItem
+import io.github.warleysr.dechainer.models.FocusSchedule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,6 +40,12 @@ class FocusModeViewModel : ViewModel() {
         private set
 
     var suspendedApps by mutableStateOf(FocusMode.getApps(context))
+        private set
+
+    var focusRestrictions by mutableStateOf(FocusMode.getFocusRestrictions(context))
+        private set
+
+    var schedules by mutableStateOf(FocusScheduleStorage.getSchedules(context))
         private set
 
     var status by mutableStateOf(FocusMode.getStatus(context))
@@ -102,6 +110,32 @@ class FocusModeViewModel : ViewModel() {
         suspendedApps = newSet
         FocusMode.setApps(context, newSet)
         refreshStatus()
+    }
+
+    fun toggleRestrictionSelection(key: String) {
+        val newSet = focusRestrictions.toMutableSet()
+        if (!newSet.remove(key)) newSet.add(key)
+        focusRestrictions = newSet
+        FocusMode.setFocusRestrictions(context, newSet)
+    }
+
+    fun addOrUpdateSchedule(schedule: FocusSchedule) {
+        FocusScheduleStorage.addOrUpdateSchedule(context, schedule)
+        refreshSchedules()
+    }
+
+    fun deleteSchedule(id: String) {
+        FocusScheduleStorage.deleteSchedule(context, id)
+        refreshSchedules()
+    }
+
+    fun toggleSchedule(id: String, enabled: Boolean) {
+        FocusScheduleStorage.toggleSchedule(context, id, enabled)
+        refreshSchedules()
+    }
+
+    fun refreshSchedules() {
+        schedules = FocusScheduleStorage.getSchedules(context)
     }
 
     fun refreshStatus() {

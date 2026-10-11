@@ -4,12 +4,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -17,16 +22,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.data.FocusMode
+import io.github.warleysr.dechainer.models.FocusSchedule
 import io.github.warleysr.dechainer.screens.common.AppPickerDialog
+import io.github.warleysr.dechainer.screens.common.FocusRestrictionsDialog
+import io.github.warleysr.dechainer.screens.common.FocusScheduleDialog
 import io.github.warleysr.dechainer.screens.common.FocusSessionCard
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.FocusModeViewModel
+import java.time.DayOfWeek
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlin.math.roundToInt
 
 @Composable
 fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
+    var showRestrictionsDialog by remember { mutableStateOf(false) }
+    var showScheduleDialog by remember { mutableStateOf(false) }
+    var scheduleToEdit by remember { mutableStateOf<FocusSchedule?>(null) }
     val recoveryGate = rememberRecoveryGate()
 
     val sessionActive = recoveryGate.isSessionActive
@@ -163,6 +177,115 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
             }
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        }
+
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.focus_restrictions_section)) },
+                supportingContent = {
+                    val count = viewModel.focusRestrictions.size
+                    Text(
+                        if (count == 0) stringResource(R.string.focus_no_restrictions)
+                        else stringResource(R.string.focus_restrictions_selected, count)
+                    )
+                },
+                leadingContent = { Icon(Icons.Outlined.Security, null) },
+                trailingContent = {
+                    Button(enabled = sessionActive && isDeviceOwner, onClick = { showRestrictionsDialog = true }) {
+                        Text(stringResource(R.string.focus_select_restrictions))
+                    }
+                }
+            )
+            if (!isDeviceOwner) {
+                Text(
+                    stringResource(R.string.focus_requires_device_owner),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        }
+
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.focus_schedules_section)) },
+                leadingContent = { Icon(Icons.Outlined.Schedule, null) },
+                trailingContent = {
+                    Button(
+                        enabled = sessionActive,
+                        onClick = {
+                            scheduleToEdit = null
+                            showScheduleDialog = true
+                        }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(stringResource(R.string.focus_add_schedule))
+                        }
+                    }
+                }
+            )
+        }
+
+        if (viewModel.schedules.isEmpty()) {
+            item {
+                Text(
+                    text = stringResource(R.string.focus_no_schedules),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+        } else {
+            items(viewModel.schedules.size, key = { viewModel.schedules[it].id }) { index ->
+                val schedule = viewModel.schedules[index]
+                val context = LocalContext.current
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            text = schedule.formattedTime(),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = formatDaysSummary(context, schedule.daysOfWeek),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    trailingContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = schedule.enabled,
+                                enabled = sessionActive,
+                                onCheckedChange = { viewModel.toggleSchedule(schedule.id, it) }
+                            )
+                            IconButton(
+                                enabled = sessionActive,
+                                onClick = { viewModel.deleteSchedule(schedule.id) }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Delete,
+                                    contentDescription = stringResource(R.string.delete)
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier.clickable(enabled = sessionActive) {
+                        scheduleToEdit = schedule
+                        showScheduleDialog = true
+                    }
+                )
+            }
         }
 
         item { Spacer(Modifier.height(24.dp)) }
@@ -178,7 +301,37 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
         )
     }
 
+    if (showRestrictionsDialog && isDeviceOwner) {
+        FocusRestrictionsDialog(
+            selectedRestrictions = viewModel.focusRestrictions,
+            onToggle = { viewModel.toggleRestrictionSelection(it) },
+            onDismiss = { showRestrictionsDialog = false }
+        )
+    }
+
+    if (showScheduleDialog) {
+        FocusScheduleDialog(
+            initialSchedule = scheduleToEdit,
+            onSave = {
+                viewModel.addOrUpdateSchedule(it)
+                showScheduleDialog = false
+            },
+            onDismiss = { showScheduleDialog = false }
+        )
+    }
+
     RecoveryGateDialog(recoveryGate)
+}
+
+private fun formatDaysSummary(context: android.content.Context, days: Set<Int>): String {
+    if (days.size == 7) return context.getString(R.string.focus_schedule_days_all)
+    if (days == setOf(1, 2, 3, 4, 5)) return context.getString(R.string.focus_schedule_days_weekdays)
+    if (days == setOf(6, 7)) return context.getString(R.string.focus_schedule_days_weekend)
+    val locale = Locale.getDefault()
+    return (1..7)
+        .filter { it in days }
+        .map { DayOfWeek.of(it).getDisplayName(TextStyle.SHORT, locale).trimEnd('.') }
+        .joinToString(", ")
 }
 
 @Composable
