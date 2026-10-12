@@ -43,18 +43,14 @@ fun ChallengeScaffold(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             content()
         }
-        Button(
+        TextButton(
             onClick = onGiveUp,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error,
-                contentColor = MaterialTheme.colorScheme.onError
+            colors = ButtonDefaults.textButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
             ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .height(56.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         ) {
-            Text(stringResource(R.string.challenge_give_up), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.challenge_give_up), style = MaterialTheme.typography.labelLarge)
         }
     }
 }
