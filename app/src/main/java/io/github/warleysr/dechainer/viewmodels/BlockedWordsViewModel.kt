@@ -96,6 +96,13 @@ class BlockedWordsViewModel : ViewModel() {
         }
     }
 
+    fun updateTargetPackages(packages: Set<String>) {
+        targetPackages = packages
+        prefs.edit {
+            putStringSet("target_packages", targetPackages)
+        }
+    }
+
     fun loadApps() {
         viewModelScope.launch {
             isLoadingApps = true

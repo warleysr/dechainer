@@ -306,7 +306,7 @@
     <string name="unsuspend">Retirar suspensão</string>
 
     <string name="impulse_lock">Bloqueio de impulsos</string>
-    <string name="impulse_lock_desc">Desafio para acessar o app e o que o botão de pânico faz</string>
+    <string name="impulse_lock_desc">Desafios para afrouxar restrições e o que o botão de pânico faz</string>
     <string name="having_impulses">Estou tendo impulsos</string>
     <string name="having_impulses_subtitle">Trancar tudo agora</string>
     <string name="access_app">Acessar Déchaîner</string>
@@ -322,8 +322,8 @@
     <string name="usage_limits_reached">Limite atingido</string>
     <string name="impulse_timer_active">Bloqueio de impulsos ativo</string>
     <string name="impulse_lock_explanation">O botão de pânico tranca o próprio Dechainer pelo tempo definido aqui, e não há como desfazer antes do timer acabar. Você também pode fazer com que ele suspenda uma lista de apps pelo mesmo período — eles voltam automaticamente no final.</string>
-    <string name="impulse_lock_challenge_section">Desafio para acessar</string>
-    <string name="impulse_lock_challenge_desc">Feitos após a autenticação, toda vez que você abre o Dechainer. Selecione quantos quiser — eles são feitos um após o outro. Sem nenhum selecionado, desbloqueia imediatamente</string>
+    <string name="impulse_lock_challenge_section">Desafios para afrouxar restrições</string>
+    <string name="impulse_lock_challenge_desc">Exigidos após digitar o código de recuperação para afrouxar restrições. Selecione quantos quiser — eles são feitos um após o outro. Sem nenhum selecionado, digitar o código já libera imediatamente</string>
     <string name="impulse_action_section">O que o botão de pânico faz</string>
     <string name="impulse_action_desc">As duas opções iniciam o timer que tranca o Dechainer</string>
     <string name="impulse_action_timer_only">Somente o timer</string>
@@ -345,7 +345,7 @@
     <string name="challenge_option_tetris_desc">Jogue por um tempo definido. Quebra-cabeças visuais competem com as imagens mentais que alimentam a vontade, fazendo ela passar mais rápido</string>
     <string name="tetris_duration">Tempo de jogo</string>
     <string name="challenge_step">Desafio %1$d de %2$d</string>
-    <string name="challenge_give_up">Não quero mais abrir</string>
+    <string name="challenge_give_up">Desistir</string>
     <string name="challenge_gave_up_message">Boa escolha. A vontade passa em alguns minutos — vá fazer outra coisa.</string>
     <string name="tetris_lines">Linhas: %1$d</string>
     <string name="tetris_paused">Pausado — toque no tabuleiro ou em um botão para jogar. O tempo só conta enquanto você joga.</string>

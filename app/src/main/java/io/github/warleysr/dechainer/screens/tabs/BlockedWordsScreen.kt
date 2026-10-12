@@ -61,7 +61,7 @@ fun BlockedWordsScreen(
                         },
                         trailingContent = {
                             Button(onClick = {
-                                recoveryGate.run { showAppSelectionDialog = true }
+                                showAppSelectionDialog = true
                             }) {
                                 Text(stringResource(R.string.select_apps))
                             }
@@ -160,10 +160,25 @@ fun BlockedWordsScreen(
     }
 
     if (showAppSelectionDialog) {
+        var selectedPackages by remember { mutableStateOf(viewModel.targetPackages) }
         AppSelectionDialog(
             viewModel = viewModel,
+            selectedPackages = selectedPackages,
             onDismiss = { showAppSelectionDialog = false },
-            onAppClick = { pkg -> viewModel.toggleAppSelection(pkg) },
+            onConfirm = {
+                val loosening = !selectedPackages.containsAll(viewModel.targetPackages)
+                recoveryGate.change(loosening) {
+                    viewModel.updateTargetPackages(selectedPackages)
+                }
+                showAppSelectionDialog = false
+            },
+            onAppClick = { pkg ->
+                selectedPackages = if (selectedPackages.contains(pkg)) {
+                    selectedPackages - pkg
+                } else {
+                    selectedPackages + pkg
+                }
+            },
             multiSelect = true
         )
     }
@@ -302,7 +317,9 @@ fun SectionHeader(
 @Composable
 fun AppSelectionDialog(
     viewModel: BlockedWordsViewModel,
+    selectedPackages: Set<String> = viewModel.targetPackages,
     onDismiss: () -> Unit,
+    onConfirm: (() -> Unit)? = null,
     onAppClick: (String) -> Unit,
     multiSelect: Boolean
 ) {
@@ -389,7 +406,7 @@ fun AppSelectionDialog(
                                 }
                                 if (multiSelect) {
                                     Checkbox(
-                                        checked = viewModel.targetPackages.contains(app.packageName),
+                                        checked = selectedPackages.contains(app.packageName),
                                         onCheckedChange = { onAppClick(app.packageName) }
                                     )
                                 }
@@ -401,7 +418,9 @@ fun AppSelectionDialog(
         },
         confirmButton = {
             if (multiSelect) {
-                Button(onClick = onDismiss) {
+                Button(onClick = {
+                    onConfirm?.invoke() ?: onDismiss()
+                }) {
                     Text(stringResource(R.string.confirm))
                 }
             }
