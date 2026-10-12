@@ -103,7 +103,7 @@ fun ActivityBlockerScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (activityName.isNotBlank()) {
-                        recoveryGate.run { viewModel.addBlockedActivity(activityName) }
+                        recoveryGate.change(loosening = false) { viewModel.addBlockedActivity(activityName) }
                     }
                     showAddDialog = false
                 }) { Text(stringResource(R.string.confirm)) }

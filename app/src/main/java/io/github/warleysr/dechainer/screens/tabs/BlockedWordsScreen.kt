@@ -31,6 +31,7 @@ fun BlockedWordsScreen(
     var showAppSelectionDialog by remember { mutableStateOf(false) }
     var showPassiveAppSelectionDialog by remember { mutableStateOf(false) }
     var passiveAppToEdit by remember { mutableStateOf<String?>(null) }
+    var showActiveEdit by remember { mutableStateOf(false) }
 
     var activeExpanded by remember { mutableStateOf(true) }
     var passiveExpanded by remember { mutableStateOf(true) }
@@ -74,9 +75,8 @@ fun BlockedWordsScreen(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                         TextButton(
-                            onClick = { recoveryGate.run {} },
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            enabled = !recoveryGate.isSessionActive
+                            onClick = { showActiveEdit = true },
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         ) {
                             Icon(Icons.Outlined.Edit, null, modifier = Modifier.size(18.dp))
                         }
@@ -84,16 +84,14 @@ fun BlockedWordsScreen(
 
                     OutlinedTextField(
                         value = viewModel.blockedWordsText,
-                        onValueChange = {
-                            viewModel.updateWords(it)
-                        },
+                        onValueChange = {},
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 256.dp, max = 256.dp)
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         placeholder = { Text(stringResource(R.string.word_hint)) },
                         supportingText = { Text(stringResource(R.string.one_word_per_line)) },
-                        enabled = recoveryGate.isSessionActive
+                        readOnly = true
                     )
                 }
             }
@@ -133,7 +131,7 @@ fun BlockedWordsScreen(
                             trailingContent = {
                                 Row {
                                     IconButton(onClick = {
-                                        recoveryGate.run { passiveAppToEdit = pkg }
+                                        passiveAppToEdit = pkg
                                     }) {
                                         Icon(Icons.Outlined.Edit, null)
                                     }
@@ -149,7 +147,7 @@ fun BlockedWordsScreen(
 
                     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                         TextButton(onClick = {
-                            recoveryGate.run { showPassiveAppSelectionDialog = true }
+                            showPassiveAppSelectionDialog = true
                         }) {
                             Icon(Icons.Default.Add, null)
                             Spacer(Modifier.width(8.dp))
@@ -182,6 +180,37 @@ fun BlockedWordsScreen(
         )
     }
 
+    if (showActiveEdit) {
+        var words by remember { mutableStateOf(viewModel.blockedWordsText) }
+        AlertDialog(
+            onDismissRequest = { showActiveEdit = false },
+            title = { Text(stringResource(R.string.blocked_words_list)) },
+            text = {
+                OutlinedTextField(
+                    value = words,
+                    onValueChange = { words = it },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
+                    placeholder = { Text(stringResource(R.string.word_hint)) },
+                    supportingText = { Text(stringResource(R.string.one_word_per_line)) }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val loosening = !wordSet(words).containsAll(wordSet(viewModel.blockedWordsText))
+                    recoveryGate.change(loosening) { viewModel.updateWords(words) }
+                    showActiveEdit = false
+                }) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showActiveEdit = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     if (passiveAppToEdit != null) {
         val pkg = passiveAppToEdit!!
         val app = viewModel.apps.find { it.packageName == pkg }
@@ -201,7 +230,8 @@ fun BlockedWordsScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.updatePassiveWords(pkg, words)
+                    val loosening = !wordSet(words).containsAll(wordSet(viewModel.passiveWordsMap[pkg] ?: ""))
+                    recoveryGate.change(loosening) { viewModel.updatePassiveWords(pkg, words) }
                     passiveAppToEdit = null
                 }) {
                     Text(stringResource(R.string.confirm))
@@ -378,3 +408,5 @@ fun AppSelectionDialog(
         }
     )
 }
+
+private fun wordSet(text: String) = text.lines().map { it.trim() }.filter { it.isNotBlank() }.toSet()

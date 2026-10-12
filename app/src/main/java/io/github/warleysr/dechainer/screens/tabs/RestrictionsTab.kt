@@ -70,7 +70,9 @@ fun RestrictionsTab(
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { recoveryGate.run { restrictionsViewModel.applyChanges() } },
+                onClick = {
+                    recoveryGate.change(restrictionsViewModel.isLoosening()) { restrictionsViewModel.applyChanges() }
+                },
                 enabled = restrictionsViewModel.hasPendingChanges(),
                 shape = RoundedCornerShape(16.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),

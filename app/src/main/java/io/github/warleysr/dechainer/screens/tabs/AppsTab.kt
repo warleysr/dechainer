@@ -24,6 +24,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.isLooserLimit
+import io.github.warleysr.dechainer.screens.common.isLooserRestrictions
+import io.github.warleysr.dechainer.screens.common.isLooserWindows
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.models.AppGroup
 import io.github.warleysr.dechainer.models.AppItem
@@ -203,15 +206,15 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             app = app,
             onDismiss = { selectedApp = null },
             onBlock = {
-                recoveryGate.run { viewModel.blockApp(app.packageName, !app.isHidden) }
+                recoveryGate.change(loosening = app.isHidden) { viewModel.blockApp(app.packageName, !app.isHidden) }
                 selectedApp = null
             },
             onToggleUninstall = {
-                recoveryGate.run { viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked) }
+                recoveryGate.change(loosening = app.isUninstallBlocked) { viewModel.setUninstallBlocked(app.packageName, !app.isUninstallBlocked) }
                 selectedApp = null
             },
             onSuspend = {
-                recoveryGate.run { viewModel.suspendApp(app.packageName, !app.isSuspended) }
+                recoveryGate.change(loosening = app.isSuspended) { viewModel.suspendApp(app.packageName, !app.isSuspended) }
                 selectedApp = null
             },
             onSetTimeLimit = {
@@ -235,7 +238,7 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             app = app,
             onDismiss = { showTimeLimitDialog = null },
             onConfirm = { limit, reopeningSeconds ->
-                recoveryGate.run {
+                recoveryGate.change(isLooserLimit(app.timeLimit, limit) || reopeningSeconds < app.reopeningSeconds) {
                     viewModel.setAppTimeLimit(app.packageName, limit)
                     viewModel.setAppReopenTime(app.packageName, reopeningSeconds)
                 }
@@ -250,7 +253,7 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             initialWindows = app.timeWindows,
             onDismiss = { showTimeWindowsDialog = null },
             onConfirm = { windows ->
-                recoveryGate.run {
+                recoveryGate.change(isLooserWindows(app.timeWindows, windows)) {
                     viewModel.setAppTimeWindows(app.packageName, windows)
                 }
                 showTimeWindowsDialog = null
@@ -264,7 +267,8 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             viewModel = deviceOwnerViewModel,
             onDismiss = { showRestrictionsDialog = null },
             onSave = { restrictions ->
-                recoveryGate.run {
+                val current = deviceOwnerViewModel.getApplicationRestrictions(app.packageName)
+                recoveryGate.change(isLooserRestrictions(current, restrictions)) {
                     deviceOwnerViewModel.setApplicationRestrictions(app.packageName, restrictions)
                 }
                 showRestrictionsDialog = null
@@ -279,7 +283,9 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             currentGroupId = viewModel.groupFor(app.packageName)?.id,
             onDismiss = { showGroupPickerDialog = null },
             onSelect = { groupId ->
-                recoveryGate.run { viewModel.setPackageGroup(app.packageName, groupId) }
+                // Leaving a group (to none or to another) takes its restrictions away.
+                val leaving = viewModel.groupFor(app.packageName)?.id.let { it != null && it != groupId }
+                recoveryGate.change(leaving) { viewModel.setPackageGroup(app.packageName, groupId) }
                 showGroupPickerDialog = null
             },
             onCreateNew = {
@@ -308,7 +314,8 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
         CreateGroupDialog(
             onDismiss = { showCreateGroupDialog = false },
             onConfirm = { name ->
-                recoveryGate.run { viewModel.createGroup(name) }
+                // An empty group restricts nothing, so creating one needs no session.
+                viewModel.createGroup(name)
                 showCreateGroupDialog = false
             }
         )
@@ -320,7 +327,10 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
             allApps = viewModel.apps,
             onDismiss = { showEditGroupDialog = null },
             onSave = { name, limit, windows, packageNames ->
-                recoveryGate.run {
+                val loosening = isLooserLimit(group.timeLimit, limit) ||
+                    isLooserWindows(group.timeWindows, windows) ||
+                    !packageNames.containsAll(group.packageNames)
+                recoveryGate.change(loosening) {
                     if (name != group.name) viewModel.renameGroup(group.id, name)
                     viewModel.setGroupTimeLimit(group.id, limit)
                     viewModel.setGroupTimeWindows(group.id, windows)

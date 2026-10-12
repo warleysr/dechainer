@@ -537,4 +537,6 @@
     <string name="focus_reminder_start">Iniciar</string>
     <string name="focus_reminder_snooze">Me lembre em 5 min</string>
     <string name="focus_reminder_cannot_start">Não posso iniciar agora</string>
+    <string name="restriction_pending">A restrição será aplicada em 5 segundos</string>
+    <string name="undo">Desfazer</string>
 </resources>

@@ -36,6 +36,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.data.UsageWarningSettings
+import io.github.warleysr.dechainer.screens.common.PendingChange
 import io.github.warleysr.dechainer.screens.setup.SetupDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.setup.SetupRecovery
 import io.github.warleysr.dechainer.screens.tabs.*
@@ -134,6 +135,7 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     },
+                    snackbarHost = { SnackbarHost(PendingChange.snackbarHost) },
                     bottomBar = {
                         if (!SecurityManager.isRecoveryCodeSet(this) || !authenticated.value) return@Scaffold
 

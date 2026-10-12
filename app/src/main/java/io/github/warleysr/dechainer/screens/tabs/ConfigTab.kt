@@ -146,7 +146,7 @@ fun ConfigTab(
                                 }
                                 return@Switch
                             }
-                            recoveryGate.run {
+                            recoveryGate.change(loosening = !checked) {
                                 DechainerAccessibilityService.prepareServiceDisable()
                                 viewModel.changeAccessibilityPermission(checked)
                             }
@@ -219,7 +219,7 @@ fun ConfigTab(
                                 }
                                 return@Switch
                             }
-                            recoveryGate.run {
+                            recoveryGate.change(loosening = !checked) {
                                 blockTorrents = checked
                                 SecurityManager.setBlockTorrentsEnabled(context, checked)
                             }
@@ -476,11 +476,13 @@ fun ConfigTab(
             currentShuffle = shuffleKeyboard,
             onDismiss = { showKeyboardDialog = false },
             onApply = { isShuffle ->
-                recoveryGate.run {
+                val loosening = shuffleKeyboard && !isShuffle
+                recoveryGate.change(loosening) {
                     shuffleKeyboard = isShuffle
                     SecurityManager.setShuffleKeyboardEnabled(context, isShuffle)
                     showKeyboardDialog = false
                 }
+                if (!loosening) showKeyboardDialog = false
             }
         )
     }

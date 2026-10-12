@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.isLooserRestrictions
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.models.AppItem
 import io.github.warleysr.dechainer.models.BlockedList
@@ -93,7 +94,8 @@ fun BrowserRestrictionsScreen(
                                         onCheckedChange = { checked ->
                                             val wasSuspended = browser.isSuspended
                                             viewModel.browsers[index] = browser.copy(isSuspended = !checked)
-                                            recoveryGate.run(
+                                            recoveryGate.change(
+                                                loosening = checked,
                                                 onCancel = {
                                                     viewModel.browsers[index] = browser.copy(isSuspended = wasSuspended)
                                                 }
@@ -159,7 +161,8 @@ fun BrowserRestrictionsScreen(
             viewModel = deviceOwnerViewModel,
             onDismiss = { showRestrictionsDialog = null },
             onSave = { restrictions ->
-                recoveryGate.run {
+                val current = deviceOwnerViewModel.getApplicationRestrictions(browser.packageName)
+                recoveryGate.change(isLooserRestrictions(current, restrictions)) {
                     deviceOwnerViewModel.setApplicationRestrictions(browser.packageName, restrictions)
                 }
                 showRestrictionsDialog = null
@@ -202,7 +205,8 @@ fun BrowserRestrictionsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (title.isNotBlank()) {
-                        recoveryGate.run {
+                        val newSites = sites.lines().filter { it.isNotBlank() }.map { it.trim() }
+                        recoveryGate.change(!isCreatingNew && !newSites.containsAll(currentList.sites)) {
                             viewModel.saveOrUpdateList(
                                 if (isCreatingNew) null else currentList.id,
                                 title,

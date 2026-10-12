@@ -60,7 +60,7 @@ class SecurityManager {
 
         fun isSessionActive(): Boolean = System.currentTimeMillis() < sessionEndTime
 
-        private fun startSession() {
+        fun startSession() {
             sessionEndTime = System.currentTimeMillis() + (10 * 60 * 1000) // 10 minutes
         }
 
@@ -356,12 +356,7 @@ class SecurityManager {
         fun validateRecoveryCode(userInput: String, storedKey: String): Boolean {
             if (isSessionActive()) return true
 
-            val success =  userInput == storedKey
-
-            if (success)
-                startSession()
-
-            return success
+            return userInput == storedKey
         }
 
         fun startForcedRemoval(context: Context) {

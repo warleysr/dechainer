@@ -55,7 +55,7 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
 
     val saveCoverage: (ColorFilterMode, ColorFilterScope.Coverage) -> Unit = { mode, newCoverage ->
         val save = { if (!viewModel.updateCoverage(mode, newCoverage)) showLocked() }
-        if (viewModel.isLoosening(mode, newCoverage)) recoveryGate.run { save() } else save()
+        recoveryGate.change(viewModel.isLoosening(mode, newCoverage)) { save() }
     }
 
     LaunchedEffect(Unit) {
@@ -156,7 +156,7 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
                     selected = selected,
                     onSelectedChange = { checked ->
                         if (checked) {
-                            viewModel.updateMode(mode, true)
+                            recoveryGate.change(loosening = false) { viewModel.updateMode(mode, true) }
                         } else {
                             recoveryGate.run {
                                 if (!viewModel.updateMode(mode, false)) showLocked()
@@ -234,7 +234,7 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
                 val save = {
                     if (!viewModel.updateWindows(mode, newWindows)) showLocked()
                 }
-                if (viewModel.isOnlyAdding(mode, newWindows)) save() else recoveryGate.run { save() }
+                recoveryGate.change(!viewModel.isOnlyAdding(mode, newWindows)) { save() }
             }
         )
     }
