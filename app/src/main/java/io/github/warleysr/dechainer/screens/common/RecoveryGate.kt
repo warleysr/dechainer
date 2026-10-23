@@ -57,6 +57,7 @@ class RecoveryGate(private val context: Context) {
     /** Loosening needs a session; anything stricter is applied after an undo window instead. [onCancel] runs on dismissed dialog or Undo. */
     fun change(loosening: Boolean, onCancel: (() -> Unit)? = null, action: () -> Unit) {
         if (loosening) run(onCancel, action)
+        else if (SecurityManager.isSessionActive()) action()
         else PendingChange.schedule(
             context.getString(R.string.restriction_pending),
             context.getString(R.string.undo),

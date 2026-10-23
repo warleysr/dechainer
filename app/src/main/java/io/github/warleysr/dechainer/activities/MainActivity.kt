@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.filled.AppBlocking
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.LockClock
@@ -135,7 +136,26 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     },
-                    snackbarHost = { SnackbarHost(PendingChange.snackbarHost) },
+                    snackbarHost = {
+                        SnackbarHost(PendingChange.snackbarHost) { data ->
+                            Snackbar(
+                                modifier = Modifier.padding(16.dp),
+                                action = {
+                                    data.visuals.actionLabel?.let { actionLabel ->
+                                        IconButton(onClick = { data.performAction() }) {
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Outlined.Undo,
+                                                contentDescription = actionLabel,
+                                                tint = SnackbarDefaults.actionColor
+                                            )
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text(data.visuals.message)
+                            }
+                        }
+                    },
                     bottomBar = {
                         if (!SecurityManager.isRecoveryCodeSet(this) || !authenticated.value) return@Scaffold
 
