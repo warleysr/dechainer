@@ -220,8 +220,13 @@ object ApkUpdateInstaller {
         }
     }
 
+    private val isBuildDebuggable: Boolean
+        get() = runCatching {
+            Build::class.java.getField("IS_DEBUGGABLE").getBoolean(null)
+        }.getOrDefault(Build.TYPE == "userdebug" || Build.TYPE == "eng")
+
     /**
-     * Production Android (`!Build.IS_DEBUGGABLE`) blocks in-place downgrades of non-debuggable
+     * Production Android (`!isBuildDebuggable`) blocks in-place downgrades of non-debuggable
      * packages even when `INSTALL_REQUEST_DOWNGRADE` is set, requiring the current version to be
      * uninstalled before the older APK session is committed.
      */
@@ -247,7 +252,7 @@ object ApkUpdateInstaller {
             if (systemVersion != null && archiveVersion < systemVersion) return false
         }
         val isAppDebuggable = (flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        return !Build.IS_DEBUGGABLE && !isAppDebuggable
+        return !isBuildDebuggable && !isAppDebuggable
     }
 
     @Suppress("DEPRECATION")
