@@ -20,6 +20,7 @@ import rikka.shizuku.Shizuku
 fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
     var shizukuInstalled by remember { mutableStateOf(viewModel.isShizukuInstalled()) }
     var shizukuRunning by remember { mutableStateOf(Shizuku.pingBinder()) }
+    var commandResult by remember { mutableStateOf<String?>(null) }
     val recoveryGate = rememberRecoveryGate()
 
     LaunchedEffect(Unit) {
@@ -48,8 +49,18 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
             !shizukuInstalled -> ShizukuNotInstalledCard(viewModel)
             !shizukuRunning -> ShizukuNotRunningCard(viewModel)
             !viewModel.isShizukuPermissionGranted() -> ShizukuNoPermissionCard()
-            else -> DeviceOwnerGrantContent(viewModel)
+            else -> DeviceOwnerGrantContent(
+                viewModel = viewModel,
+                onResult = { result -> commandResult = result }
+            )
         }
+    }
+
+    commandResult?.let { result ->
+        CommandResultDialog(
+            result = result,
+            onDismiss = { commandResult = null }
+        )
     }
 
     RecoveryGateDialog(recoveryGate)
@@ -86,13 +97,17 @@ private fun ShizukuNoPermissionCard() {
 }
 
 @Composable
-private fun DeviceOwnerGrantContent(viewModel: DeviceOwnerViewModel) {
+private fun DeviceOwnerGrantContent(
+    viewModel: DeviceOwnerViewModel,
+    onResult: (String) -> Unit
+) {
     val accounts = remember { mutableStateListOf<Pair<String, String>>() }
     LaunchedEffect(Unit) {
         accounts.addAll(viewModel.getAllAccountsViaShizuku())
     }
 
     val extraUsers = remember { viewModel.getExtraUsersInfo() }
+    var isLoading by remember { mutableStateOf(false) }
 
     when {
         accounts.isNotEmpty() -> {
@@ -123,7 +138,16 @@ private fun DeviceOwnerGrantContent(viewModel: DeviceOwnerViewModel) {
                     text = stringResource(R.string.privileges_description),
                     buttonText = stringResource(R.string.get_owner_privileges),
                     buttonIcon = Icons.Outlined.Adb,
-                    onClick = { viewModel.processDeviceOwnerPrivileges() }
+                    loading = isLoading,
+                    onClick = {
+                        isLoading = true
+                        viewModel.processDeviceOwnerPrivileges { output ->
+                            isLoading = false
+                            if (output.isNotBlank()) {
+                                onResult(output)
+                            }
+                        }
+                    }
                 )
             }
         }

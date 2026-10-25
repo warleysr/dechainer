@@ -53,6 +53,7 @@
     <string name="already_owner">There is already another app with owner privileges on this device. Only one app can have this privilege, confirm that you want to remove the privilege from the app below:</string>
     <string name="confirm_remove_owner">Confirm privilege removal</string>
     <string name="get_owner_privileges">Grant privileges</string>
+    <string name="command_result">Command Output</string>
     <string name="privileges_description">All set! To finish, click the button below to grant device owner privileges.</string>
     <string name="remove_privileges_description">Privileges granted! To remove, click the button below.</string>
     <string name="remove_privileges">Remove privileges</string>
@@ -538,4 +539,18 @@
     <string name="focus_reminder_cannot_start">I can\'t start now</string>
     <string name="restriction_pending">Restriction will be applied in 5 seconds</string>
     <string name="undo">Undo</string>
+    <!-- Suspension Logs -->
+    <string name="suspension_logs">Suspension logs</string>
+    <string name="suspension_logs_desc">History of apps suspended automatically or manually</string>
+    <string name="no_suspension_logs">No suspension logs recorded</string>
+    <string name="clear_suspension_logs">Clear logs</string>
+    <string name="clear_suspension_logs_confirm">Are you sure you want to clear all suspension logs?</string>
+    <string name="suspension_reason_browser_unsupported">Browser does not support restrictions</string>
+    <string name="suspension_reason_torrent">Torrent / P2P application</string>
+    <string name="suspension_reason_18_plus">Rated 18+ / Explicit content</string>
+    <string name="suspension_reason_visual_blocking">Visual blocking (NSFW content)</string>
+    <string name="suspension_reason_impulse">Impulse lock active</string>
+    <string name="suspension_reason_focus">Focus mode active</string>
+    <string name="suspension_reason_accessibility_disabled">Accessibility service was disabled</string>
+    <string name="suspension_reason_manual">Manual suspension</string>
 </resources>

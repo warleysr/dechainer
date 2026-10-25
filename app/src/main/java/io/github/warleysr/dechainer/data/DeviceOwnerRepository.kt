@@ -58,26 +58,37 @@ object DeviceOwnerRepository {
         return Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
     }
 
-    /** Removes device-owner status, or requests it via Shizuku's `dpm set-device-owner` — returns the resulting state. */
-    fun processDeviceOwnerPrivileges(remove: Boolean = false): Boolean {
+    /** Removes device-owner status, or requests it via Shizuku's `dpm set-device-owner` — returns the command output. */
+    fun processDeviceOwnerPrivileges(remove: Boolean = false): String {
         if (remove && dpm.isAdminActive(adminName)) {
             dpm.clearDeviceOwnerApp(packageName)
-            return false
+            return ""
         }
 
+        var commandOutput = ""
         ShizukuRunner.command(
             command = "dpm set-device-owner $packageName/.DechainerDeviceAdminReceiver",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
                     println("Output: $output Done: $done")
+                    if (output.isNotBlank()) {
+                        commandOutput = output.trim()
+                    }
                 }
                 override fun onCommandError(error: String) {
                     Log.e("Shizuku", error)
+                    if (error.isNotBlank()) {
+                        commandOutput = if (commandOutput.isNotBlank()) {
+                            "$commandOutput\n${error.trim()}"
+                        } else {
+                            error.trim()
+                        }
+                    }
                 }
             })
         val granted = dpm.isDeviceOwnerApp(packageName)
         if (granted) ColorFilterController.grantPermissionViaShizuku(context)
-        return granted
+        return commandOutput
     }
 
     fun setPrivateDNS(host: String): Int {

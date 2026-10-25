@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.core.content.edit
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.models.AppItem
+import io.github.warleysr.dechainer.models.SuspensionReason
 import io.github.warleysr.dechainer.models.TimeLimit
 import io.github.warleysr.dechainer.models.TimeWindow
 import java.util.concurrent.TimeUnit
@@ -143,9 +144,16 @@ object AppRepository {
         }
     }
 
+    fun getApp(packageName: String): AppItem? {
+        return getApps().firstOrNull { it.packageName == packageName }
+    }
+
     fun setAppSuspended(packageName: String, suspended: Boolean) {
         dpm.setPackagesSuspended(adminName, arrayOf(packageName), suspended)
         updateCachedApp(packageName) { it.copy(isSuspended = suspended) }
+        if (suspended) {
+            SuspensionLogRepository.log(context, packageName, SuspensionReason.MANUAL)
+        }
     }
 
     fun setUninstallBlocked(packageName: String, block: Boolean) {

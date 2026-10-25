@@ -6,6 +6,10 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import rikka.shizuku.Shizuku
@@ -43,8 +47,18 @@ class DeviceOwnerViewModel : ViewModel() {
 
     fun removeDeviceOwner() = processDeviceOwnerPrivileges(remove = true)
 
-    fun processDeviceOwnerPrivileges(remove: Boolean = false) {
-        isDeviceOwner.value = DeviceOwnerRepository.processDeviceOwnerPrivileges(remove)
+    fun processDeviceOwnerPrivileges(
+        remove: Boolean = false,
+        onComplete: ((String) -> Unit)? = null
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val output = DeviceOwnerRepository.processDeviceOwnerPrivileges(remove)
+            val granted = DeviceOwnerRepository.isDeviceOwner()
+            withContext(Dispatchers.Main) {
+                isDeviceOwner.value = granted
+                onComplete?.invoke(output)
+            }
+        }
     }
 
     fun setPrivateDNS(host: String): Int = DeviceOwnerRepository.setPrivateDNS(host)

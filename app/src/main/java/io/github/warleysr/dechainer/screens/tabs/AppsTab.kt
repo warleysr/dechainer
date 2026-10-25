@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Schedule
@@ -74,12 +75,16 @@ fun AppsTab(
     if (!deviceOwnerViewModel.isDeviceOwner()) {
         NoDeviceOwnerPrivileges(navViewModel)
     } else {
-        AppsScreen(appsViewModel, deviceOwnerViewModel)
+        AppsScreen(appsViewModel, deviceOwnerViewModel, navViewModel)
     }
 }
 
 @Composable
-fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewModel) {
+fun AppsScreen(
+    viewModel: AppsViewModel,
+    deviceOwnerViewModel: DeviceOwnerViewModel,
+    navViewModel: NavigationViewModel = viewModel()
+) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedApp by remember { mutableStateOf<AppItem?>(null) }
     var showTimeLimitDialog by remember { mutableStateOf<AppItem?>(null) }
@@ -132,6 +137,9 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
                         leadingIcon = { Icon(Icons.Default.Search, null) },
                         singleLine = true
                     )
+                    IconButton(onClick = { navViewModel.navigateTo("suspension_logs") }) {
+                        Icon(Icons.Default.History, contentDescription = stringResource(R.string.suspension_logs))
+                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, null)
@@ -156,6 +164,14 @@ fun AppsScreen(viewModel: AppsViewModel, deviceOwnerViewModel: DeviceOwnerViewMo
                                 onClick = {
                                     showGroupsManagementDialog = true
                                     showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.suspension_logs)) },
+                                leadingIcon = { Icon(Icons.Default.History, null) },
+                                onClick = {
+                                    showMenu = false
+                                    navViewModel.navigateTo("suspension_logs")
                                 }
                             )
                         }

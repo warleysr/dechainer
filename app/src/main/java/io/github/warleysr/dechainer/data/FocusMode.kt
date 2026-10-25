@@ -16,6 +16,8 @@ import io.github.warleysr.dechainer.notifications.FocusNotifier
 import io.github.warleysr.dechainer.notifications.FocusReceiver
 import io.github.warleysr.dechainer.security.SecurityManager
 import timber.log.Timber
+import io.github.warleysr.dechainer.models.SuspensionReason
+import io.github.warleysr.dechainer.data.SuspensionLogRepository
 
 /**
  * Pomodoro-style focus mode. Every entry point (alarm, reboot, notification action, process start)
@@ -366,6 +368,9 @@ object FocusMode {
         else dpm.setPackagesSuspended(admin, toClaim.toTypedArray(), true)
 
         val nowClaimed = toClaim.toSet() - failed.toSet()
+        nowClaimed.forEach { pkg ->
+            SuspensionLogRepository.log(context, pkg, SuspensionReason.FOCUS_MODE)
+        }
         prefs(context).edit { putStringSet(KEY_ACTIVE_SUSPENSION, nowClaimed) }
         if (failed.isNotEmpty()) Timber.w("Focus mode: could not suspend ${failed.joinToString()}")
     }

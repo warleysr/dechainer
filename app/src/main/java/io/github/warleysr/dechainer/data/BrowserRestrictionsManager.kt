@@ -17,21 +17,44 @@ class BrowserRestrictionsManager(private val context: Context) {
         val resolvedPackages = mutableSetOf<String>()
         val results = mutableListOf<ResolveInfo>()
 
+        // 1. Apps explicitly declared as browsers via CATEGORY_APP_BROWSER
         val browserCategoryIntent = Intent(Intent.ACTION_MAIN).apply {
             addCategory(Intent.CATEGORY_APP_BROWSER)
         }
+        pm.queryIntentActivities(browserCategoryIntent, PackageManager.MATCH_ALL).forEach { resolveInfo ->
+            val packageName = resolveInfo.activityInfo?.packageName ?: return@forEach
+            if (packageName != context.packageName && resolvedPackages.add(packageName)) {
+                results.add(resolveInfo)
+            }
+        }
 
-        val httpIntent = Intent(Intent.ACTION_VIEW, "http://www.example.com".toUri())
-        val httpsIntent = Intent(Intent.ACTION_VIEW, "https://www.example.com".toUri())
+        // 2. Apps handling generic HTTP/HTTPS with CATEGORY_BROWSABLE
+        // Must exclude apps that only handle specific domain hosts (App Links / deep links)
+        val httpIntent = Intent(Intent.ACTION_VIEW, "http://www.google.com".toUri()).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+        }
+        val httpsIntent = Intent(Intent.ACTION_VIEW, "https://www.google.com".toUri()).apply {
+            addCategory(Intent.CATEGORY_BROWSABLE)
+        }
 
-        val flags =
-            PackageManager.MATCH_ALL
+        listOf(httpIntent, httpsIntent).forEach { intent ->
+            pm.queryIntentActivities(
+                intent,
+                PackageManager.MATCH_ALL or PackageManager.GET_RESOLVED_FILTER
+            ).forEach { resolveInfo ->
+                val packageName = resolveInfo.activityInfo?.packageName ?: return@forEach
+                if (packageName == context.packageName || resolvedPackages.contains(packageName)) return@forEach
 
-        listOf(browserCategoryIntent, httpIntent, httpsIntent).forEach { intent ->
-            pm.queryIntentActivities(intent, flags).forEach { resolveInfo ->
-                val packageName = resolveInfo.activityInfo.packageName
+                val filter = resolveInfo.filter
+                // Check if this intent filter is restricted to specific domains (like itau.com.br)
+                // A genuine web browser does NOT restrict data authorities to specific domains.
+                val isDeepLinkOnly = filter != null && filter.countDataAuthorities() > 0 &&
+                        (0 until filter.countDataAuthorities()).none { i ->
+                            val host = filter.getDataAuthority(i)?.host
+                            host == null || host == "*" || host.isEmpty()
+                        }
 
-                if (packageName != context.packageName && resolvedPackages.add(packageName)) {
+                if (!isDeepLinkOnly && resolvedPackages.add(packageName)) {
                     results.add(resolveInfo)
                 }
             }
@@ -41,23 +64,47 @@ class BrowserRestrictionsManager(private val context: Context) {
     }
 
     fun isBrowser(packageName: String): Boolean {
-        return getPossibleBrowsers().any { it.activityInfo.packageName == packageName }
+        return getPossibleBrowsers().any { it.activityInfo?.packageName == packageName }
     }
 
     fun getPossibleTorrentApps(): Set<String> {
         val pm = context.packageManager
 
+        // 1. Magnet links: magnet scheme is uniquely used by torrent clients
         val magnetIntent = Intent(Intent.ACTION_VIEW, "magnet:?xt=urn:btih:1234567890ABCDEF".toUri())
-        val magnetHandlers = pm.queryIntentActivities(magnetIntent, PackageManager.MATCH_DEFAULT_ONLY)
+        val magnetHandlers = pm.queryIntentActivities(
+            magnetIntent,
+            PackageManager.MATCH_ALL or PackageManager.GET_RESOLVED_FILTER
+        ).mapNotNull { it.activityInfo?.packageName }
 
+        // 2. Torrent files: must specifically handle "application/x-bittorrent" or ".torrent" extension
+        // Excludes generic file handlers that merely declare wildcards (*/* or application/*)
         val torrentIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(Uri.EMPTY, "application/x-bittorrent")
+            setDataAndType(Uri.parse("content://dummy/file.torrent"), "application/x-bittorrent")
         }
-        val torrentHandlers = pm.queryIntentActivities(torrentIntent, PackageManager.MATCH_DEFAULT_ONLY)
+        val torrentHandlers = pm.queryIntentActivities(
+            torrentIntent,
+            PackageManager.MATCH_ALL or PackageManager.GET_RESOLVED_FILTER
+        ).filter { resolveInfo ->
+            val filter = resolveInfo.filter ?: return@filter false
 
-        val suspiciousPackages = (magnetHandlers + torrentHandlers).map { it.activityInfo.packageName }.toSet()
+            // Explicit MIME type application/x-bittorrent (not */* or application/*)
+            val hasExplicitMime = filter.typesIterator()?.asSequence()?.any { type ->
+                type.equals("application/x-bittorrent", ignoreCase = true)
+            } == true
 
-        return suspiciousPackages
+            // Explicit .torrent file extension in data path
+            val hasTorrentPath = (0 until filter.countDataPaths()).any { i ->
+                val path = filter.getDataPath(i)
+                path.path.endsWith(".torrent", ignoreCase = true)
+            }
+
+            val hasMagnetScheme = filter.hasDataScheme("magnet")
+
+            hasExplicitMime || hasTorrentPath || hasMagnetScheme
+        }.mapNotNull { it.activityInfo?.packageName }
+
+        return (magnetHandlers + torrentHandlers).toSet()
     }
 
     fun isTorrentApp(packageName: String): Boolean {

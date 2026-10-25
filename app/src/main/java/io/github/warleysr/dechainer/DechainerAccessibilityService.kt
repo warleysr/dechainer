@@ -44,6 +44,8 @@ import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.ColorFilterSettings
 import io.github.warleysr.dechainer.data.FocusMode
+import io.github.warleysr.dechainer.data.SuspensionLogRepository
+import io.github.warleysr.dechainer.models.SuspensionReason
 import io.github.warleysr.dechainer.data.PlayStoreRatingFetcher
 import io.github.warleysr.dechainer.data.UsageWarningSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSettings
@@ -172,12 +174,12 @@ class DechainerAccessibilityService : AccessibilityService() {
                     return
                 }
 
-                suspendPackage(packageName)
+                suspendPackage(packageName, reason = SuspensionReason.UNSUPPORTED_BROWSER)
             }
             else {
                 val isTorrentApp = manager.isTorrentApp(packageName)
                 if (isTorrentApp && SecurityManager.isBlockTorrentsEnabled(applicationContext))
-                    suspendPackage(packageName)
+                    suspendPackage(packageName, reason = SuspensionReason.TORRENT_APP)
             }
 
             if (!isUpdate) {
@@ -185,10 +187,9 @@ class DechainerAccessibilityService : AccessibilityService() {
                     try {
                         val info = PlayStoreRatingFetcher.fetch(packageName)
 
-
                         if (info.hasExplicitContent && info.contentRating == "Rated 18+")
                             withContext(Dispatchers.Main) {
-                                suspendPackage(packageName)
+                                suspendPackage(packageName, reason = SuspensionReason.RATED_18_PLUS)
                             }
 
                         ratingPrefs.edit { putBoolean(packageName, info.hasExplicitContent) }
@@ -199,6 +200,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
+                        ratingPrefs.edit { putBoolean(packageName, false) }
                     }
                 }
             }
@@ -589,7 +591,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         if (!disablingService) {
             val blockedPackages = getControlledPackages()
-            suspendPackages(blockedPackages)
+            suspendPackages(blockedPackages, reason = SuspensionReason.ACCESSIBILITY_DISABLED)
 
             val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
@@ -680,7 +682,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
                         if (info.hasExplicitContent && info.contentRating == "Rated 18+")
                             withContext(Dispatchers.Main) {
-                                suspendPackage(pkg)
+                                suspendPackage(pkg, reason = SuspensionReason.RATED_18_PLUS)
                             }
 
                         ratingPrefs.edit { putBoolean(pkg, info.hasExplicitContent) }
@@ -691,6 +693,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
+                        ratingPrefs.edit { putBoolean(pkg, false) }
                     } finally {
                         checkingRating = false
                     }
@@ -982,7 +985,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             )
             if (shouldSuspend) {
                 val until = nsfwSuspensionTracker.startSuspension(pkg, nsfwSuspendDurationMinutes)
-                suspendPackage(pkg)
+                suspendPackage(pkg, reason = SuspensionReason.VISUAL_BLOCKING)
                 scheduleNsfwSuspensionRelease(pkg, until)
                 Timber.d("NSFW scan: $pkg suspended for $nsfwSuspendDurationMinutes min (until $until)")
                 showNsfwBlockedActivity(nsfwSuspendDurationMinutes)
@@ -1026,7 +1029,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 nsfwSuspensionTracker.endSuspension(pkg)
                 if (!isHeldByOtherBlock(pkg)) suspendPackage(pkg, suspend = false)
             } else {
-                suspendPackage(pkg)
+                suspendPackage(pkg, reason = SuspensionReason.VISUAL_BLOCKING)
                 scheduleNsfwSuspensionRelease(pkg, until)
             }
         }
@@ -1066,7 +1069,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         val dropped = (alreadySuspended - targets).filterNot { FocusMode.isHolding(ctx, it) }
         if (dropped.isNotEmpty()) suspendPackages(dropped.toTypedArray(), false)
 
-        suspendPackages(targets.toTypedArray(), true)
+        suspendPackages(targets.toTypedArray(), true, reason = SuspensionReason.IMPULSE_LOCK)
         SecurityManager.setActiveImpulseSuspension(ctx, targets)
 
         impulseReleaseRunnable?.let { handler.removeCallbacks(it) }
@@ -1146,16 +1149,31 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (modes != colorFilterAppliedModes) syncColorFilters()
     }
 
-    private fun suspendPackages(packages: Array<String>, suspend: Boolean = true) {
+    private fun suspendPackages(
+        packages: Array<String>,
+        suspend: Boolean = true,
+        reason: SuspensionReason? = null,
+        details: String? = null
+    ) {
         val dpm =
             applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
         if (!dpm.isAdminActive(admin)) return
         dpm.setPackagesSuspended(admin, packages, suspend)
+        if (suspend && reason != null) {
+            packages.forEach { pkg ->
+                SuspensionLogRepository.log(applicationContext, pkg, reason, details)
+            }
+        }
     }
 
-    private fun suspendPackage(packageName: String, suspend: Boolean = true) = suspendPackages(
-        arrayOf(packageName), suspend
+    private fun suspendPackage(
+        packageName: String,
+        suspend: Boolean = true,
+        reason: SuspensionReason? = null,
+        details: String? = null
+    ) = suspendPackages(
+        arrayOf(packageName), suspend, reason, details
     )
 
     private fun getControlledPackages(): Array<String> {

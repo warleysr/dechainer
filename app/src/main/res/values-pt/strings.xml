@@ -53,6 +53,7 @@
     <string name="already_owner">Já existe um outro app com privilégios de dono neste dispositivo. Somente um app pode ter este privilégio, confirme que deseja remover o privilégio do app abaixo:</string>
     <string name="confirm_remove_owner">Confirmar remoção de privilégios</string>
     <string name="get_owner_privileges">Conceder privilégios</string>
+    <string name="command_result">Resultado do comando</string>
     <string name="privileges_description">Tudo certo! Para finalizar clique no botçao abaixo para conceder privilégios de dono do dispositivo.</string>
     <string name="remove_privileges_description">Privilégios concedidos! Para remover clique no botão abaixo.</string>
     <string name="remove_privileges">Remover privilégios</string>
@@ -539,4 +540,18 @@
     <string name="focus_reminder_cannot_start">Não posso iniciar agora</string>
     <string name="restriction_pending">A restrição será aplicada em 5 segundos</string>
     <string name="undo">Desfazer</string>
+    <!-- Suspension Logs -->
+    <string name="suspension_logs">Logs de suspensão</string>
+    <string name="suspension_logs_desc">Histórico de aplicativos suspensos automaticamente ou manualmente</string>
+    <string name="no_suspension_logs">Nenhum registro de suspensão encontrado</string>
+    <string name="clear_suspension_logs">Limpar logs</string>
+    <string name="clear_suspension_logs_confirm">Tem certeza de que deseja limpar todos os registros de suspensão?</string>
+    <string name="suspension_reason_browser_unsupported">Navegador não suporta restrições</string>
+    <string name="suspension_reason_torrent">Aplicativo de torrent / P2P</string>
+    <string name="suspension_reason_18_plus">Classificação 18+ / Conteúdo explícito</string>
+    <string name="suspension_reason_visual_blocking">Bloqueio visual (conteúdo impróprio)</string>
+    <string name="suspension_reason_impulse">Bloqueio de impulsos ativo</string>
+    <string name="suspension_reason_focus">Modo foco ativo</string>
+    <string name="suspension_reason_accessibility_disabled">Serviço de acessibilidade foi desativado</string>
+    <string name="suspension_reason_manual">Suspensão manual</string>
 </resources>

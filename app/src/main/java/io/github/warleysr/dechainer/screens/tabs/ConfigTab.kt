@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -270,6 +271,15 @@ fun ConfigTab(
                     supportingContent = { Text(stringResource(R.string.color_filter_settings_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Palette, "") },
                     modifier = Modifier.clickable { navViewModel.navigateTo("color_filters") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.suspension_logs)) },
+                    supportingContent = { Text(stringResource(R.string.suspension_logs_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.History, "") },
+                    modifier = Modifier.clickable { navViewModel.navigateTo("suspension_logs") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }

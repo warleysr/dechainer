@@ -4,6 +4,9 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,7 +25,8 @@ fun SetupStepCard(
     text: String,
     buttonText: String,
     buttonIcon: ImageVector,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    loading: Boolean = false
 ) {
     ElevatedCard(Modifier.padding(8.dp)) {
         Column(
@@ -34,15 +38,57 @@ fun SetupStepCard(
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            TextButton(onClick = onClick) {
+            TextButton(
+                onClick = onClick,
+                enabled = !loading
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(buttonIcon, null)
+                    if (loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(buttonIcon, null)
+                    }
                     Spacer(Modifier.width(8.dp))
                     Text(buttonText)
                 }
             }
         }
     }
+}
+
+@Composable
+fun CommandResultDialog(
+    result: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.close))
+            }
+        },
+        title = {
+            Text(stringResource(R.string.command_result))
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                SelectionContainer {
+                    Text(
+                        text = result,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+    )
 }
 
 @Composable

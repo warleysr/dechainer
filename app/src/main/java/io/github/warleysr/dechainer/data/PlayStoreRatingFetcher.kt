@@ -49,6 +49,16 @@ object PlayStoreRatingFetcher {
             }
         }
 
+        if (contentRating == null) {
+            contentRating = doc.select("span[itemprop=contentRating]").firstOrNull()?.text()
+        }
+        if (contentRating == null) {
+            val img = doc.select("img[itemprop=image][alt=Content rating]")
+                .firstOrNull { it.nextElementSibling()?.tagName() == "div" }
+            val box = img?.nextElementSibling()
+            contentRating = box?.children()?.firstOrNull()?.text()
+        }
+
         val descriptors = extractContentRatingDescriptors(doc)
         val hasExplicitContent = descriptors.any { desc ->
             BLOCKED_CONTENTS.any { desc.contains(it, ignoreCase = true) }
