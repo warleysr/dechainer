@@ -101,7 +101,15 @@ object AppRepository {
     }
 
     fun setAppHidden(packageName: String, hidden: Boolean) {
-        val success = dpm.setApplicationHidden(adminName, packageName, hidden)
+        var success = dpm.setApplicationHidden(adminName, packageName, hidden)
+        if (!success && hidden) {
+            // In Android 14+, DevicePolicyEngine may retain an old 'true' entry if the app
+            // was uninstalled while hidden. Toggling false -> true forces the engine
+            // to re-apply the policy to PackageManagerService.
+            dpm.setApplicationHidden(adminName, packageName, false)
+            success = dpm.setApplicationHidden(adminName, packageName, true)
+            Log.d("DechainerPolicyUpdate", "setApplicationHidden retry after reset: package=$packageName accepted=$success")
+        }
         // `success` reflects the real PackageManager state at the time of the call
         // (DevicePolicyManagerService double-checks isApplicationHidden() before
         // returning). Only persist the new state locally when it's true - otherwise
@@ -129,13 +137,34 @@ object AppRepository {
         }
     }
 
+    fun onPackageUninstalled(packageName: String) {
+        val wasHidden = hiddenAppsPrefs.getStringSet(KEY_HIDDEN_PACKAGES, emptySet())
+            ?.contains(packageName) == true
+        if (wasHidden) {
+            try {
+                // Clear the policy in DevicePolicyEngine so that upon reinstallation
+                // setting it to true will trigger a clean state transition.
+                // We keep it in hiddenAppsPrefs so reapplyHiddenIfNeeded can re-apply it.
+                val success = dpm.setApplicationHidden(adminName, packageName, false)
+                Log.d("DechainerPolicyUpdate", "onPackageUninstalled: reset DPC hidden policy for $packageName accepted=$success")
+            } catch (e: Exception) {
+                Log.e("DechainerPolicyUpdate", "onPackageUninstalled: failed to reset DPC hidden policy for $packageName", e)
+            }
+        }
+    }
+
     fun reapplyHiddenIfNeeded(packageName: String) {
         val wasHidden = hiddenAppsPrefs.getStringSet(KEY_HIDDEN_PACKAGES, emptySet())
             ?.contains(packageName) == true
         Log.d("DechainerPolicyUpdate", "reapplyHiddenIfNeeded: package=$packageName wasHidden=$wasHidden")
         if (!wasHidden) return
 
-        val success = dpm.setApplicationHidden(adminName, packageName, true)
+        var success = dpm.setApplicationHidden(adminName, packageName, true)
+        if (!success) {
+            Log.d("DechainerPolicyUpdate", "reapplyHiddenIfNeeded: retrying with DPC reset false -> true for $packageName")
+            dpm.setApplicationHidden(adminName, packageName, false)
+            success = dpm.setApplicationHidden(adminName, packageName, true)
+        }
         Log.d("DechainerPolicyUpdate", "reapplyHiddenIfNeeded request: package=$packageName accepted=$success")
         if (success) {
             updateCachedApp(packageName) { it.copy(isHidden = true) }

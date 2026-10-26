@@ -156,10 +156,17 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != Intent.ACTION_PACKAGE_ADDED) return
+            val action = intent?.action ?: return
             val packageName = intent.data?.encodedSchemeSpecificPart ?: return
-
             val isUpdate = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
+
+            if ((action == Intent.ACTION_PACKAGE_REMOVED || action == Intent.ACTION_PACKAGE_FULLY_REMOVED) && !isUpdate) {
+                AppRepository.onPackageUninstalled(packageName)
+                return
+            }
+
+            if (action != Intent.ACTION_PACKAGE_ADDED) return
+
             if (!isUpdate) {
                 AppRepository.reapplyHiddenIfNeeded(packageName)
             }
@@ -519,6 +526,8 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         val packageFilter = IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_FULLY_REMOVED)
             addDataScheme("package")
         }
         registerReceiver(packageReceiver, packageFilter)
