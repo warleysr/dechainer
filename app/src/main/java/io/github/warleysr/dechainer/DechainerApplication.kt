@@ -30,14 +30,6 @@ class DechainerApplication : Application() {
 
     private val packageChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val packageName = intent?.data?.encodedSchemeSpecificPart
-            val isReplacing = intent?.getBooleanExtra(Intent.EXTRA_REPLACING, false) ?: false
-
-            if ((intent?.action == Intent.ACTION_PACKAGE_REMOVED || intent?.action == Intent.ACTION_PACKAGE_FULLY_REMOVED)
-                && !isReplacing && packageName != null) {
-                AppRepository.onPackageUninstalled(packageName)
-            }
-
             AppRepository.invalidateCache()
             applicationScope.launch { AppRepository.getApps() }
         }

@@ -137,22 +137,6 @@ object AppRepository {
         }
     }
 
-    fun onPackageUninstalled(packageName: String) {
-        val wasHidden = hiddenAppsPrefs.getStringSet(KEY_HIDDEN_PACKAGES, emptySet())
-            ?.contains(packageName) == true
-        if (wasHidden) {
-            try {
-                // Clear the policy in DevicePolicyEngine so that upon reinstallation
-                // setting it to true will trigger a clean state transition.
-                // We keep it in hiddenAppsPrefs so reapplyHiddenIfNeeded can re-apply it.
-                val success = dpm.setApplicationHidden(adminName, packageName, false)
-                Log.d("DechainerPolicyUpdate", "onPackageUninstalled: reset DPC hidden policy for $packageName accepted=$success")
-            } catch (e: Exception) {
-                Log.e("DechainerPolicyUpdate", "onPackageUninstalled: failed to reset DPC hidden policy for $packageName", e)
-            }
-        }
-    }
-
     fun reapplyHiddenIfNeeded(packageName: String) {
         val wasHidden = hiddenAppsPrefs.getStringSet(KEY_HIDDEN_PACKAGES, emptySet())
             ?.contains(packageName) == true
