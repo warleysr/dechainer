@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material3.*
@@ -24,10 +24,12 @@ import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.data.FocusMode
 import io.github.warleysr.dechainer.models.FocusSchedule
 import io.github.warleysr.dechainer.screens.common.AppPickerDialog
+import io.github.warleysr.dechainer.screens.common.FocusGroupPickerDialog
 import io.github.warleysr.dechainer.screens.common.FocusRestrictionsDialog
 import io.github.warleysr.dechainer.screens.common.FocusScheduleDialog
 import io.github.warleysr.dechainer.screens.common.FocusSessionCard
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
+import io.github.warleysr.dechainer.screens.common.isLooserSet
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.FocusModeViewModel
 import java.time.DayOfWeek
@@ -38,22 +40,13 @@ import kotlin.math.roundToInt
 @Composable
 fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
+    var showGroupSelectionDialog by remember { mutableStateOf(false) }
     var showRestrictionsDialog by remember { mutableStateOf(false) }
     var showScheduleDialog by remember { mutableStateOf(false) }
     var scheduleToEdit by remember { mutableStateOf<FocusSchedule?>(null) }
     val recoveryGate = rememberRecoveryGate()
 
-    val sessionActive = recoveryGate.isSessionActive
     val isDeviceOwner = remember { DeviceOwnerRepository.isDeviceOwner() }
-
-    LaunchedEffect(sessionActive) {
-        if (!sessionActive) {
-            showAppSelectionDialog = false
-            showRestrictionsDialog = false
-            showScheduleDialog = false
-            scheduleToEdit = null
-        }
-    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -74,52 +67,56 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
 
-        if (!sessionActive) {
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.visual_blocking_locked)) },
-                    leadingContent = { Icon(Icons.Outlined.Lock, null) },
-                    modifier = Modifier.clickable { recoveryGate.run {} }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
-        }
-
         item {
             MinutesSlider(
                 title = stringResource(R.string.focus_duration),
                 value = viewModel.focusMinutes,
                 range = FocusMode.FOCUS_MIN_MINUTES..FocusMode.FOCUS_MAX_MINUTES,
                 step = 5,
-                enabled = sessionActive,
-                onChange = { if (sessionActive) viewModel.updateFocusMinutes(it) }
+                onChange = { newValue, onCancel ->
+                    val loosening = newValue < viewModel.focusMinutes
+                    recoveryGate.change(loosening, onCancel) {
+                        viewModel.updateFocusMinutes(newValue)
+                    }
+                }
             )
             MinutesSlider(
                 title = stringResource(R.string.focus_short_break_duration),
                 value = viewModel.shortBreakMinutes,
                 range = FocusMode.SHORT_BREAK_MIN_MINUTES..FocusMode.SHORT_BREAK_MAX_MINUTES,
                 step = 1,
-                enabled = sessionActive,
-                onChange = { if (sessionActive) viewModel.updateShortBreakMinutes(it) }
+                onChange = { newValue, onCancel ->
+                    val loosening = newValue > viewModel.shortBreakMinutes
+                    recoveryGate.change(loosening, onCancel) {
+                        viewModel.updateShortBreakMinutes(newValue)
+                    }
+                }
             )
             MinutesSlider(
                 title = stringResource(R.string.focus_long_break_duration),
                 value = viewModel.longBreakMinutes,
                 range = FocusMode.LONG_BREAK_MIN_MINUTES..FocusMode.LONG_BREAK_MAX_MINUTES,
                 step = 5,
-                enabled = sessionActive,
-                onChange = { if (sessionActive) viewModel.updateLongBreakMinutes(it) }
+                onChange = { newValue, onCancel ->
+                    val loosening = newValue > viewModel.longBreakMinutes
+                    recoveryGate.change(loosening, onCancel) {
+                        viewModel.updateLongBreakMinutes(newValue)
+                    }
+                }
             )
             SettingSlider(
                 title = stringResource(R.string.focus_cycles),
-                valueText = viewModel.cyclesBeforeLongBreak.toString(),
                 value = viewModel.cyclesBeforeLongBreak,
                 range = FocusMode.CYCLES_MIN..FocusMode.CYCLES_MAX,
                 step = 1,
-                enabled = sessionActive,
                 minLabel = FocusMode.CYCLES_MIN.toString(),
                 maxLabel = FocusMode.CYCLES_MAX.toString(),
-                onChange = { if (sessionActive) viewModel.updateCyclesBeforeLongBreak(it) }
+                onChange = { newValue, onCancel ->
+                    val loosening = newValue < viewModel.cyclesBeforeLongBreak
+                    recoveryGate.change(loosening, onCancel) {
+                        viewModel.updateCyclesBeforeLongBreak(newValue)
+                    }
+                }
             )
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
         }
@@ -131,8 +128,11 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 trailingContent = {
                     Switch(
                         checked = viewModel.autoStartFocus,
-                        enabled = sessionActive,
-                        onCheckedChange = { if (sessionActive) viewModel.updateAutoStartFocus(it) }
+                        onCheckedChange = { checked ->
+                            recoveryGate.change(loosening = !checked) {
+                                viewModel.updateAutoStartFocus(checked)
+                            }
+                        }
                     )
                 }
             )
@@ -142,8 +142,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 trailingContent = {
                     Switch(
                         checked = viewModel.soundEnabled,
-                        enabled = sessionActive,
-                        onCheckedChange = { if (sessionActive) viewModel.updateSoundEnabled(it) }
+                        onCheckedChange = { viewModel.updateSoundEnabled(it) }
                     )
                 }
             )
@@ -153,8 +152,7 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 trailingContent = {
                     Switch(
                         checked = viewModel.vibrationEnabled,
-                        enabled = sessionActive,
-                        onCheckedChange = { if (sessionActive) viewModel.updateVibrationEnabled(it) }
+                        onCheckedChange = { viewModel.updateVibrationEnabled(it) }
                     )
                 }
             )
@@ -174,10 +172,34 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 leadingContent = { Icon(Icons.Outlined.Apps, null) },
                 trailingContent = {
                     Button(
-                        enabled = sessionActive && isDeviceOwner,
-                        onClick = { if (sessionActive && isDeviceOwner) showAppSelectionDialog = true }
+                        enabled = isDeviceOwner,
+                        onClick = { if (isDeviceOwner) showAppSelectionDialog = true }
                     ) {
                         Text(stringResource(R.string.select_apps))
+                    }
+                }
+            )
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.focus_groups_section)) },
+                supportingContent = {
+                    val count = viewModel.selectedGroupIds.size
+                    Text(
+                        if (count == 0) stringResource(R.string.no_groups_selected)
+                        else stringResource(R.string.focus_groups_selected, count)
+                    )
+                },
+                leadingContent = { Icon(Icons.Filled.Group, null) },
+                trailingContent = {
+                    Button(
+                        enabled = isDeviceOwner,
+                        onClick = {
+                            if (isDeviceOwner) {
+                                viewModel.refreshGroups()
+                                showGroupSelectionDialog = true
+                            }
+                        }
+                    ) {
+                        Text(stringResource(R.string.select_groups))
                     }
                 }
             )
@@ -205,8 +227,8 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 leadingContent = { Icon(Icons.Outlined.Security, null) },
                 trailingContent = {
                     Button(
-                        enabled = sessionActive && isDeviceOwner,
-                        onClick = { if (sessionActive && isDeviceOwner) showRestrictionsDialog = true }
+                        enabled = isDeviceOwner,
+                        onClick = { if (isDeviceOwner) showRestrictionsDialog = true }
                     ) {
                         Text(stringResource(R.string.focus_select_restrictions))
                     }
@@ -229,12 +251,9 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                 leadingContent = { Icon(Icons.Outlined.Schedule, null) },
                 trailingContent = {
                     Button(
-                        enabled = sessionActive,
                         onClick = {
-                            if (sessionActive) {
-                                scheduleToEdit = null
-                                showScheduleDialog = true
-                            }
+                            scheduleToEdit = null
+                            showScheduleDialog = true
                         }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -283,15 +302,17 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
                                 checked = schedule.enabled,
-                                enabled = sessionActive,
-                                onCheckedChange = {
-                                    if (sessionActive) viewModel.toggleSchedule(schedule.id, it)
+                                onCheckedChange = { checked ->
+                                    recoveryGate.change(loosening = !checked) {
+                                        viewModel.toggleSchedule(schedule.id, checked)
+                                    }
                                 }
                             )
                             IconButton(
-                                enabled = sessionActive,
                                 onClick = {
-                                    if (sessionActive) viewModel.deleteSchedule(schedule.id)
+                                    recoveryGate.change(loosening = true) {
+                                        viewModel.deleteSchedule(schedule.id)
+                                    }
                                 }
                             ) {
                                 Icon(
@@ -301,11 +322,9 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
                             }
                         }
                     },
-                    modifier = Modifier.clickable(enabled = sessionActive) {
-                        if (sessionActive) {
-                            scheduleToEdit = schedule
-                            showScheduleDialog = true
-                        }
+                    modifier = Modifier.clickable {
+                        scheduleToEdit = schedule
+                        showScheduleDialog = true
                     }
                 )
             }
@@ -314,30 +333,77 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
         item { Spacer(Modifier.height(24.dp)) }
     }
 
-    if (showAppSelectionDialog && sessionActive && isDeviceOwner) {
+    if (showAppSelectionDialog && isDeviceOwner) {
+        var draftApps by remember { mutableStateOf(viewModel.suspendedApps) }
         AppPickerDialog(
             apps = viewModel.apps,
             isLoading = viewModel.isLoadingApps,
-            isSelected = { viewModel.suspendedApps.contains(it) },
-            onToggle = { if (sessionActive) viewModel.toggleAppSelection(it) },
-            onDismiss = { showAppSelectionDialog = false }
+            isSelected = { it in draftApps },
+            onToggle = { pkg ->
+                draftApps = if (pkg in draftApps) draftApps - pkg else draftApps + pkg
+            },
+            onDismiss = { showAppSelectionDialog = false },
+            onConfirm = {
+                if (draftApps != viewModel.suspendedApps) {
+                    val loosening = isLooserSet(viewModel.suspendedApps, draftApps)
+                    recoveryGate.change(loosening) {
+                        viewModel.updateSuspendedApps(draftApps)
+                    }
+                }
+                showAppSelectionDialog = false
+            }
         )
     }
 
-    if (showRestrictionsDialog && sessionActive && isDeviceOwner) {
+    if (showGroupSelectionDialog && isDeviceOwner) {
+        FocusGroupPickerDialog(
+            groups = viewModel.groups,
+            selectedGroupIds = viewModel.selectedGroupIds,
+            onDismiss = { showGroupSelectionDialog = false },
+            onConfirm = { newGroupIds ->
+                if (newGroupIds != viewModel.selectedGroupIds) {
+                    val loosening = isLooserSet(viewModel.selectedGroupIds, newGroupIds)
+                    recoveryGate.change(loosening) {
+                        viewModel.updateSelectedGroupIds(newGroupIds)
+                    }
+                }
+                showGroupSelectionDialog = false
+            }
+        )
+    }
+
+    if (showRestrictionsDialog && isDeviceOwner) {
         FocusRestrictionsDialog(
             selectedRestrictions = viewModel.focusRestrictions,
-            onToggle = { if (sessionActive) viewModel.toggleRestrictionSelection(it) },
-            onDismiss = { showRestrictionsDialog = false }
+            onDismiss = { showRestrictionsDialog = false },
+            onConfirm = { newRestrictions ->
+                if (newRestrictions != viewModel.focusRestrictions) {
+                    val loosening = isLooserSet(viewModel.focusRestrictions, newRestrictions)
+                    recoveryGate.change(loosening) {
+                        viewModel.updateFocusRestrictions(newRestrictions)
+                    }
+                }
+                showRestrictionsDialog = false
+            }
         )
     }
 
-    if (showScheduleDialog && sessionActive) {
+    if (showScheduleDialog) {
         FocusScheduleDialog(
             initialSchedule = scheduleToEdit,
-            onSave = {
-                if (sessionActive) {
-                    viewModel.addOrUpdateSchedule(it)
+            onSave = { schedule ->
+                val existing = viewModel.schedules.firstOrNull { it.id == schedule.id }
+                if (existing == null) {
+                    recoveryGate.change(loosening = false) {
+                        viewModel.addOrUpdateSchedule(schedule)
+                    }
+                } else {
+                    val daysRemoved = !schedule.daysOfWeek.containsAll(existing.daysOfWeek)
+                    val disabled = existing.enabled && !schedule.enabled
+                    val loosening = daysRemoved || disabled
+                    recoveryGate.change(loosening) {
+                        viewModel.addOrUpdateSchedule(schedule)
+                    }
                 }
                 showScheduleDialog = false
             },
@@ -365,18 +431,16 @@ private fun MinutesSlider(
     value: Int,
     range: IntRange,
     step: Int,
-    enabled: Boolean,
-    onChange: (Int) -> Unit
+    onChange: (newValue: Int, onCancel: () -> Unit) -> Unit
 ) {
     SettingSlider(
         title = title,
-        valueText = formatMinutes(value),
         value = value,
         range = range,
         step = step,
-        enabled = enabled,
         minLabel = formatMinutes(range.first),
         maxLabel = formatMinutes(range.last),
+        formatValue = { formatMinutes(it) },
         onChange = onChange
     )
 }
@@ -384,15 +448,19 @@ private fun MinutesSlider(
 @Composable
 private fun SettingSlider(
     title: String,
-    valueText: String,
     value: Int,
     range: IntRange,
     step: Int,
-    enabled: Boolean,
     minLabel: String,
     maxLabel: String,
-    onChange: (Int) -> Unit
+    formatValue: @Composable (Int) -> String = { it.toString() },
+    onChange: (newValue: Int, onCancel: () -> Unit) -> Unit
 ) {
+    var draft by remember(value) { mutableIntStateOf(value) }
+    LaunchedEffect(value) {
+        draft = value
+    }
+
     Text(
         title,
         style = MaterialTheme.typography.titleMedium,
@@ -400,15 +468,22 @@ private fun SettingSlider(
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp)
     )
     Text(
-        valueText,
+        formatValue(draft),
         style = MaterialTheme.typography.headlineSmall,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
     )
     Slider(
-        value = value.toFloat(),
-        enabled = enabled,
-        onValueChange = { onChange(it.roundToInt()) },
+        value = draft.toFloat(),
+        onValueChange = { draft = it.roundToInt() },
+        onValueChangeFinished = {
+            val rounded = draft
+            if (rounded != value) {
+                onChange(rounded) {
+                    draft = value
+                }
+            }
+        },
         valueRange = range.first.toFloat()..range.last.toFloat(),
         steps = (range.last - range.first) / step - 1,
         modifier = Modifier.padding(horizontal = 16.dp)
@@ -434,4 +509,3 @@ private fun formatMinutes(minutes: Int): String {
         else -> stringResource(R.string.time_hours_minutes, hours, remaining)
     }
 }
-

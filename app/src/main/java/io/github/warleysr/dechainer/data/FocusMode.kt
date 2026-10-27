@@ -17,6 +17,7 @@ import io.github.warleysr.dechainer.notifications.FocusReceiver
 import io.github.warleysr.dechainer.security.SecurityManager
 import timber.log.Timber
 import io.github.warleysr.dechainer.models.SuspensionReason
+import io.github.warleysr.dechainer.data.AppGroupRepository
 import io.github.warleysr.dechainer.data.SuspensionLogRepository
 
 /**
@@ -70,6 +71,7 @@ object FocusMode {
     private const val KEY_SOUND_ENABLED = "sound_enabled"
     private const val KEY_VIBRATION_ENABLED = "vibration_enabled"
     private const val KEY_APPS = "suspended_apps"
+    private const val KEY_GROUPS = "suspended_groups"
     private const val KEY_RESTRICTIONS = "focus_restrictions"
 
     private const val KEY_PHASE = "phase"
@@ -141,6 +143,26 @@ object FocusMode {
             applySuspension(context, enforce = true)
             FocusNotifier.showStatus(context)
         }
+    }
+
+    fun getGroupIds(context: Context): Set<String> =
+        prefs(context).getStringSet(KEY_GROUPS, emptySet()) ?: emptySet()
+
+    fun setGroupIds(context: Context, groupIds: Set<String>) {
+        prefs(context).edit { putStringSet(KEY_GROUPS, groupIds) }
+        if (isEnforcing(context)) {
+            applySuspension(context, enforce = true)
+            FocusNotifier.showStatus(context)
+        }
+    }
+
+    fun getAllTargetApps(context: Context): Set<String> {
+        val individual = getApps(context)
+        val groupIds = getGroupIds(context)
+        val fromGroups = if (groupIds.isEmpty()) emptySet() else {
+            AppGroupRepository.getGroups().filter { it.id in groupIds }.flatMap { it.packageNames }.toSet()
+        }
+        return individual + fromGroups
     }
 
     fun getFocusRestrictions(context: Context): Set<String> =
@@ -355,7 +377,7 @@ object FocusMode {
         val admin = DeviceAdmin.component
         if (!dpm.isAdminActive(admin)) return
 
-        val targets = getApps(context)
+        val targets = getAllTargetApps(context)
         val claimed = getActiveSuspension(context)
 
         val dropped = claimed - targets

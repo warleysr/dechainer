@@ -511,6 +511,12 @@
     <string name="focus_channel_timer">Focus mode timer</string>
     <string name="save">Save</string>
 
+    <string name="focus_groups_section">App groups to suspend during focus</string>
+    <string name="focus_groups_dialog_title">Select app groups</string>
+    <string name="select_groups">Select groups</string>
+    <string name="focus_groups_selected">%1$d groups selected</string>
+    <string name="no_groups_selected">No groups selected</string>
+
     <string name="focus_restrictions_section">System restrictions during focus</string>
     <string name="focus_restrictions_selected">%1$d restrictions selected</string>
     <string name="focus_no_restrictions">No restrictions selected</string>

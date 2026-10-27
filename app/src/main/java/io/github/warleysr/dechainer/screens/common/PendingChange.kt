@@ -48,3 +48,5 @@ fun isLooserWindows(old: List<TimeWindow>, new: List<TimeWindow>): Boolean {
 
 fun isLooserRestrictions(current: android.os.Bundle, new: android.os.Bundle) =
     new.keySet().any { current.getBoolean(it) && !new.getBoolean(it) }
+
+fun isLooserSet(old: Set<String>, new: Set<String>) = !new.containsAll(old)

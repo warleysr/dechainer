@@ -137,9 +137,6 @@ fun AppsScreen(
                         leadingIcon = { Icon(Icons.Default.Search, null) },
                         singleLine = true
                     )
-                    IconButton(onClick = { navViewModel.navigateTo("suspension_logs") }) {
-                        Icon(Icons.Default.History, contentDescription = stringResource(R.string.suspension_logs))
-                    }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
                             Icon(Icons.Default.MoreVert, null)

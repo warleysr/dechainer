@@ -38,7 +38,8 @@ fun AppPickerDialog(
     isLoading: Boolean,
     isSelected: (String) -> Boolean,
     onToggle: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onConfirm: (() -> Unit)? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var showSystemApps by remember { mutableStateOf(false) }
@@ -138,8 +139,15 @@ fun AppPickerDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onDismiss) {
+            Button(onClick = onConfirm ?: onDismiss) {
                 Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = onConfirm?.let {
+            {
+                TextButton(onClick = onDismiss) {
+                    Text(stringResource(R.string.cancel))
+                }
             }
         }
     )

@@ -512,6 +512,12 @@
     <string name="focus_channel_timer">Timer do modo foco</string>
     <string name="save">Salvar</string>
 
+    <string name="focus_groups_section">Grupos de apps a suspender durante o foco</string>
+    <string name="focus_groups_dialog_title">Selecionar grupos de apps</string>
+    <string name="select_groups">Selecionar grupos</string>
+    <string name="focus_groups_selected">%1$d grupos selecionados</string>
+    <string name="no_groups_selected">Nenhum grupo selecionado</string>
+
     <string name="focus_restrictions_section">Restrições de sistema durante o foco</string>
     <string name="focus_restrictions_selected">%1$d restrições selecionadas</string>
     <string name="focus_no_restrictions">Nenhuma restrição selecionada</string>

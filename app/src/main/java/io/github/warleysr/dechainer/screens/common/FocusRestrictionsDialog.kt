@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,11 +37,12 @@ import io.github.warleysr.dechainer.data.SystemRestrictions
 @Composable
 fun FocusRestrictionsDialog(
     selectedRestrictions: Set<String>,
-    onToggle: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onConfirm: (Set<String>) -> Unit
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
+    var draftRestrictions by remember { mutableStateOf(selectedRestrictions) }
 
     val allKeys = SystemRestrictions.allKeys
 
@@ -94,24 +96,28 @@ fun FocusRestrictionsDialog(
                         .heightIn(max = 360.dp)
                 ) {
                     items(filteredKeys, key = { it }) { key ->
-                        val isChecked = key in selectedRestrictions
+                        val isChecked = key in draftRestrictions
                         val label = labelMap[key]?.let { stringResource(it) } ?: key
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onToggle(key) }
+                                .clickable {
+                                    draftRestrictions = if (isChecked) draftRestrictions - key else draftRestrictions + key
+                                }
                                 .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Checkbox(
                                 checked = isChecked,
-                                onCheckedChange = { onToggle(key) }
+                                onCheckedChange = { checked ->
+                                    draftRestrictions = if (checked) draftRestrictions + key else draftRestrictions - key
+                                }
                             )
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
                                     .padding(start = 8.dp)
-                            ) {
+                                ) {
                                 Text(
                                     text = label,
                                     style = MaterialTheme.typography.bodyMedium
@@ -128,8 +134,13 @@ fun FocusRestrictionsDialog(
             }
         },
         confirmButton = {
+            Button(onClick = { onConfirm(draftRestrictions) }) {
+                Text(stringResource(R.string.confirm))
+            }
+        },
+        dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.close))
+                Text(stringResource(R.string.cancel))
             }
         }
     )

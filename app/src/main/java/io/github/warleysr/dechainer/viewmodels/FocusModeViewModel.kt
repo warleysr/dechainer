@@ -7,12 +7,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.warleysr.dechainer.DechainerApplication
+import io.github.warleysr.dechainer.data.AppGroupRepository
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.data.FocusMode
 import io.github.warleysr.dechainer.data.FocusScheduleStorage
+import io.github.warleysr.dechainer.models.AppGroup
 import io.github.warleysr.dechainer.models.AppItem
 import io.github.warleysr.dechainer.models.FocusSchedule
-import io.github.warleysr.dechainer.security.SecurityManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -43,6 +44,9 @@ class FocusModeViewModel : ViewModel() {
     var suspendedApps by mutableStateOf(FocusMode.getApps(context))
         private set
 
+    var selectedGroupIds by mutableStateOf(FocusMode.getGroupIds(context))
+        private set
+
     var focusRestrictions by mutableStateOf(FocusMode.getFocusRestrictions(context))
         private set
 
@@ -53,6 +57,9 @@ class FocusModeViewModel : ViewModel() {
         private set
 
     var apps by mutableStateOf<List<AppItem>>(emptyList())
+        private set
+
+    var groups by mutableStateOf<List<AppGroup>>(emptyList())
         private set
 
     var isLoadingApps by mutableStateOf(false)
@@ -69,83 +76,82 @@ class FocusModeViewModel : ViewModel() {
         }
     }
 
-    private fun isPermitted(): Boolean =
-        SecurityManager.getRecoveryCode(context) == null || SecurityManager.isSessionActive()
-
     fun updateFocusMinutes(value: Int) {
-        if (!isPermitted()) return
         FocusMode.setFocusMinutes(context, value)
         focusMinutes = FocusMode.getFocusMinutes(context)
     }
 
     fun updateShortBreakMinutes(value: Int) {
-        if (!isPermitted()) return
         FocusMode.setShortBreakMinutes(context, value)
         shortBreakMinutes = FocusMode.getShortBreakMinutes(context)
     }
 
     fun updateLongBreakMinutes(value: Int) {
-        if (!isPermitted()) return
         FocusMode.setLongBreakMinutes(context, value)
         longBreakMinutes = FocusMode.getLongBreakMinutes(context)
     }
 
     fun updateCyclesBeforeLongBreak(value: Int) {
-        if (!isPermitted()) return
         FocusMode.setCyclesBeforeLongBreak(context, value)
         cyclesBeforeLongBreak = FocusMode.getCyclesBeforeLongBreak(context)
         refreshStatus()
     }
 
     fun updateAutoStartFocus(value: Boolean) {
-        if (!isPermitted()) return
         FocusMode.setAutoStartFocus(context, value)
         autoStartFocus = value
     }
 
     fun updateVibrationEnabled(value: Boolean) {
-        if (!isPermitted()) return
         FocusMode.setVibrationEnabled(context, value)
         vibrationEnabled = value
     }
 
     fun updateSoundEnabled(value: Boolean) {
-        if (!isPermitted()) return
         FocusMode.setSoundEnabled(context, value)
         soundEnabled = value
     }
 
-    fun toggleAppSelection(packageName: String) {
-        if (!isPermitted()) return
-        val newSet = suspendedApps.toMutableSet()
-        if (!newSet.remove(packageName)) newSet.add(packageName)
-        suspendedApps = newSet
-        FocusMode.setApps(context, newSet)
+    fun updateSuspendedApps(newApps: Set<String>) {
+        suspendedApps = newApps
+        FocusMode.setApps(context, newApps)
         refreshStatus()
     }
 
+    fun updateSelectedGroupIds(newGroupIds: Set<String>) {
+        selectedGroupIds = newGroupIds
+        FocusMode.setGroupIds(context, newGroupIds)
+        refreshStatus()
+    }
+
+    fun toggleAppSelection(packageName: String) {
+        val newSet = suspendedApps.toMutableSet()
+        if (!newSet.remove(packageName)) newSet.add(packageName)
+        updateSuspendedApps(newSet)
+    }
+
+    fun updateFocusRestrictions(newRestrictions: Set<String>) {
+        focusRestrictions = newRestrictions
+        FocusMode.setFocusRestrictions(context, newRestrictions)
+    }
+
     fun toggleRestrictionSelection(key: String) {
-        if (!isPermitted()) return
         val newSet = focusRestrictions.toMutableSet()
         if (!newSet.remove(key)) newSet.add(key)
-        focusRestrictions = newSet
-        FocusMode.setFocusRestrictions(context, newSet)
+        updateFocusRestrictions(newSet)
     }
 
     fun addOrUpdateSchedule(schedule: FocusSchedule) {
-        if (!isPermitted()) return
         FocusScheduleStorage.addOrUpdateSchedule(context, schedule)
         refreshSchedules()
     }
 
     fun deleteSchedule(id: String) {
-        if (!isPermitted()) return
         FocusScheduleStorage.deleteSchedule(context, id)
         refreshSchedules()
     }
 
     fun toggleSchedule(id: String, enabled: Boolean) {
-        if (!isPermitted()) return
         FocusScheduleStorage.toggleSchedule(context, id, enabled)
         refreshSchedules()
     }
@@ -158,10 +164,16 @@ class FocusModeViewModel : ViewModel() {
         status = FocusMode.getStatus(context)
     }
 
-    private fun loadApps() {
+    fun refreshGroups() {
+        groups = AppGroupRepository.getGroups()
+        selectedGroupIds = FocusMode.getGroupIds(context)
+    }
+
+    fun loadApps() {
         viewModelScope.launch {
             isLoadingApps = true
             apps = withContext(Dispatchers.IO) { AppRepository.getApps() }
+            groups = withContext(Dispatchers.IO) { AppGroupRepository.getGroups() }
             isLoadingApps = false
         }
     }
