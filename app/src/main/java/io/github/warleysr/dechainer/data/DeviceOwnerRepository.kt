@@ -70,7 +70,6 @@ object DeviceOwnerRepository {
             command = "dpm set-device-owner $packageName/.DechainerDeviceAdminReceiver",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
                     if (output.isNotBlank()) {
                         commandOutput = output.trim()
                     }
@@ -119,7 +118,6 @@ object DeviceOwnerRepository {
                             }
                         }
 
-                        println("Output: \n$output")
                     }
                     override fun onCommandError(error: String) {
                         Log.e("Shizuku", error)
@@ -159,7 +157,6 @@ object DeviceOwnerRepository {
                 command = "dpm list-owners",
                 listener = object : ShizukuRunner.CommandResultListener {
                     override fun onCommandResult(output: String, done: Boolean) {
-                        println("Output: $output Done: $done")
                         dpmOutput = output
                     }
 
@@ -194,7 +191,6 @@ object DeviceOwnerRepository {
             command = "pm list users",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
 
                     val regex = Regex("""UserInfo\{(\d+):([^:]+):""")
 
@@ -222,7 +218,6 @@ object DeviceOwnerRepository {
             "settings get secure enabled_accessibility_services",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
                     services = output
                 }
 
@@ -254,7 +249,6 @@ object DeviceOwnerRepository {
             "settings put secure enabled_accessibility_services $services",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
                 }
 
                 override fun onCommandError(error: String) {
@@ -266,7 +260,6 @@ object DeviceOwnerRepository {
             "settings put secure accessibility_enabled 1",
             listener = object : ShizukuRunner.CommandResultListener {
                 override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
                 }
 
                 override fun onCommandError(error: String) {

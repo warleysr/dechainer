@@ -17,3 +17,7 @@ local.properties
 app/release/
 brag-output/
 .idea/
+
+# Signing keys must never be committed
+*.jks
+*.keystore
