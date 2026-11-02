@@ -208,14 +208,7 @@ Becoming Device Owner requires a bridge between user space and system space. Fol
 1. **Install [Shizuku](https://shizuku.rikka.app/).** It's used to run the required ADB commands on the device itself.
 2. **Enable Wireless Debugging** in Developer Options and pair it with Shizuku.
 3. **Download and open Déchaîner** from the [latest release](https://github.com/warleysr/dechainer/releases/latest), and grant it access to Shizuku.
-4. **Become Device Owner.** In the Config tab, follow the prompts to register the app as Device Owner. Déchaîner automatically bypasses the setup completion check (Dhizuku method) so there is **no need to remove user accounts** from the device.
-   > [!TIP]
-   > If configuring Device Owner manually via ADB from a computer without removing accounts:
-   > ```bash
-   > adb shell settings put secure user_setup_complete 0
-   > adb shell dpm set-device-owner io.github.warleysr.dechainer/.DechainerDeviceAdminReceiver
-   > adb shell settings put secure user_setup_complete 1
-   > ```
+4. **Become Device Owner.** In the Config tab, follow the prompts to register the app as Device Owner. Déchaîner automatically bypasses the setup completion check so there is **no need to remove user accounts** from the device.
 5. **Enable the Accessibility Service.** Still in the Config tab, turn on *Advanced blocking* (also applied through Shizuku). It's required for word blocking, visual blocking, activity blocking, torrent blocking, time limits and color modes. App installation is blocked while this service is off, so an unrestricted browser can't be installed in the meantime.
 
 ## Recovery and Safety
