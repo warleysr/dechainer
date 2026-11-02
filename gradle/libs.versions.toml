@@ -13,6 +13,7 @@ appcompat = "1.7.0"
 biometric = "1.4.0-alpha07"
 composeBom = "2025.12.01"
 litert = "2.2.0"
+hiddenapibypass = "4.3"
 materialIconsExtended = "1.7.8"
 shizuku = "13.1.5"
 timber = "5.0.1"
@@ -45,6 +46,7 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 litert = { module = "com.google.ai.edge.litert:litert", version.ref = "litert" }
+hiddenapibypass = { module = "org.lsposed.hiddenapibypass:hiddenapibypass", version.ref = "hiddenapibypass" }
 shizuku-api = { module = "dev.rikka.shizuku:api", version.ref = "shizuku" }
 shizuku-provider = { module = "dev.rikka.shizuku:provider", version.ref = "shizuku" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
@@ -58,4 +60,3 @@ androidx-test-core-ktx = { module = "androidx.test:core-ktx", version.ref = "and
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-

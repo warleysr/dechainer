@@ -17,3 +17,4 @@ local.properties
 app/release/
 brag-output/
 .idea/
+*.apk

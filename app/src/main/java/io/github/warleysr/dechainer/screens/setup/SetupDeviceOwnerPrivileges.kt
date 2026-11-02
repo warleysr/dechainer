@@ -8,7 +8,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -110,19 +109,6 @@ private fun DeviceOwnerGrantContent(
     var isLoading by remember { mutableStateOf(false) }
 
     when {
-        accounts.isNotEmpty() -> {
-            AccountWarningDialog(
-                accounts = accounts,
-                onDismiss = { accounts.clear() },
-                getAppName = { type ->
-                    viewModel.getAppNameFromAccountType(
-                        DechainerApplication.getInstance(),
-                        type
-                    )
-                }
-            )
-        }
-
         extraUsers.isNotEmpty() -> {
             UserWarningDialog(extraUsers = extraUsers)
         }
@@ -135,7 +121,11 @@ private fun DeviceOwnerGrantContent(
                 )
             } else {
                 SetupStepCard(
-                    text = stringResource(R.string.privileges_description),
+                    text = if (accounts.isNotEmpty()) {
+                        stringResource(R.string.privileges_description_accounts_detected, accounts.size)
+                    } else {
+                        stringResource(R.string.privileges_description)
+                    },
                     buttonText = stringResource(R.string.get_owner_privileges),
                     buttonIcon = Icons.Outlined.Adb,
                     loading = isLoading,

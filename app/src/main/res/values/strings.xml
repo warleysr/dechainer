@@ -55,6 +55,7 @@
     <string name="get_owner_privileges">Grant privileges</string>
     <string name="command_result">Command Output</string>
     <string name="privileges_description">All set! To finish, click the button below to grant device owner privileges.</string>
+    <string name="privileges_description_accounts_detected">All set! %1$d account(s) detected will be preserved without removal using setup bypass. Click the button below to grant device owner privileges.</string>
     <string name="remove_privileges_description">Privileges granted! To remove, click the button below.</string>
     <string name="remove_privileges">Remove privileges</string>
     <string name="remove_accounts">Remove accounts</string>

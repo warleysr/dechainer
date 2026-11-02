@@ -6,14 +6,17 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.provider.Settings
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.data.ColorFilterController
+import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.data.FocusMode
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import org.lsposed.hiddenapibypass.HiddenApiBypass
 import timber.log.Timber
 
 class DechainerApplication : Application() {
@@ -44,6 +47,14 @@ class DechainerApplication : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                HiddenApiBypass.addHiddenApiExemptions("")
+            } catch (e: Throwable) {
+                Timber.e(e, "Failed to add hidden api exemptions")
+            }
+        }
+
         registerReceiver(packageChangeReceiver, IntentFilter().apply {
             addAction(Intent.ACTION_PACKAGE_ADDED)
             addAction(Intent.ACTION_PACKAGE_REMOVED)
@@ -54,6 +65,10 @@ class DechainerApplication : Application() {
 
         applicationScope.launch {
             AppRepository.getApps()
+        }
+
+        applicationScope.launch {
+            DeviceOwnerRepository.restoreStuckUserSetupComplete()
         }
 
         releaseOrphanedColorFilters()

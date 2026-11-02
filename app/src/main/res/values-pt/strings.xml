@@ -54,7 +54,8 @@
     <string name="confirm_remove_owner">Confirmar remoção de privilégios</string>
     <string name="get_owner_privileges">Conceder privilégios</string>
     <string name="command_result">Resultado do comando</string>
-    <string name="privileges_description">Tudo certo! Para finalizar clique no botçao abaixo para conceder privilégios de dono do dispositivo.</string>
+    <string name="privileges_description">Tudo certo! Para finalizar clique no botão abaixo para conceder privilégios de dono do dispositivo.</string>
+    <string name="privileges_description_accounts_detected">Tudo certo! %1$d conta(s) detectada(s) serão mantidas sem necessidade de remoção através do bypass de configuração. Clique no botão abaixo para conceder privilégios de proprietário.</string>
     <string name="remove_privileges_description">Privilégios concedidos! Para remover clique no botão abaixo.</string>
     <string name="remove_privileges">Remover privilégios</string>
     <string name="remove_accounts">Remover contas</string>

@@ -22,8 +22,8 @@ android {
         applicationId = "io.github.warleysr.dechainer"
         minSdk = 30
         targetSdk = 36
-        versionCode = 20
-        versionName = "1.9.1"
+        versionCode = 21
+        versionName = "1.10.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -113,6 +113,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.shizuku.api)
     implementation(libs.shizuku.provider)
+    implementation(libs.hiddenapibypass)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.timber)

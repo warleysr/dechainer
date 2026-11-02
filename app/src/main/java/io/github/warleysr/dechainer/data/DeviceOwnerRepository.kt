@@ -1,16 +1,23 @@
 package io.github.warleysr.dechainer.data
 
 import android.accounts.AccountManager
+import android.annotation.SuppressLint
 import android.app.admin.DevicePolicyManager
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.IBinder
+import android.os.IInterface
+import android.os.Process
 import android.util.Log
 import androidx.core.net.toUri
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.utils.ShizukuRunner
 import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuBinderWrapper
+import timber.log.Timber
 
 /** Device-owner setup/state: Shizuku shell commands plus the [DevicePolicyManager] calls they unlock. */
 object DeviceOwnerRepository {
@@ -58,34 +65,214 @@ object DeviceOwnerRepository {
         return Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
     }
 
-    /** Removes device-owner status, or requests it via Shizuku's `dpm set-device-owner` — returns the command output. */
+    fun getUserId(): Int = Process.myUid() / 100000
+
+    @SuppressLint("PrivateApi")
+    fun <T> withShizukuDevicePolicyManager(action: (DevicePolicyManager) -> T): T {
+        val manager = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val field = manager.javaClass.getDeclaredField("mService").apply { isAccessible = true }
+        val originalService = field.get(manager) as IInterface
+        val wrappedBinder = ShizukuBinderWrapper(originalService.asBinder())
+        val stubClass = Class.forName("android.app.admin.IDevicePolicyManager\$Stub")
+        val asInterface = stubClass.getMethod("asInterface", IBinder::class.java)
+        val proxiedService = asInterface.invoke(null, wrappedBinder)
+
+        field.set(manager, proxiedService)
+        return try {
+            action(manager)
+        } finally {
+            try {
+                field.set(manager, originalService)
+            } catch (_: Throwable) {
+            }
+        }
+    }
+
+    @SuppressLint("PrivateApi")
+    private fun DevicePolicyManager.forceUpdateUserSetupComplete(userId: Int) {
+        val clazz = this::class.java
+        runCatching {
+            clazz.getDeclaredMethod("forceUpdateUserSetupComplete", Int::class.javaPrimitiveType!!)
+                .also { it.isAccessible = true }.invoke(this, userId)
+        }.onFailure {
+            runCatching {
+                clazz.getDeclaredMethod("forceUpdateUserSetupComplete")
+                    .also { it.isAccessible = true }.invoke(this)
+            }
+        }
+    }
+
+    @SuppressLint("PrivateApi")
+    private fun DevicePolicyManager.setActiveAdminCompat(receiver: ComponentName, refreshing: Boolean, userId: Int) {
+        val clazz = this::class.java
+        val method3 = clazz.methods.firstOrNull {
+            it.name == "setActiveAdmin" && it.parameterTypes.size == 3 &&
+                    it.parameterTypes[0] == ComponentName::class.java &&
+                    it.parameterTypes[1] == java.lang.Boolean.TYPE &&
+                    it.parameterTypes[2] == java.lang.Integer.TYPE
+        } ?: clazz.declaredMethods.firstOrNull {
+            it.name == "setActiveAdmin" && it.parameterTypes.size == 3 &&
+                    it.parameterTypes[0] == ComponentName::class.java &&
+                    it.parameterTypes[1] == java.lang.Boolean.TYPE &&
+                    it.parameterTypes[2] == java.lang.Integer.TYPE
+        }
+
+        if (method3 != null) {
+            method3.isAccessible = true
+            method3.invoke(this, receiver, refreshing, userId)
+        } else {
+            val method2 = clazz.methods.firstOrNull {
+                it.name == "setActiveAdmin" && it.parameterTypes.size == 2 &&
+                        it.parameterTypes[0] == ComponentName::class.java &&
+                        it.parameterTypes[1] == java.lang.Boolean.TYPE
+            } ?: clazz.declaredMethods.firstOrNull {
+                it.name == "setActiveAdmin" && it.parameterTypes.size == 2 &&
+                        it.parameterTypes[0] == ComponentName::class.java &&
+                        it.parameterTypes[1] == java.lang.Boolean.TYPE
+            }
+            method2?.isAccessible = true
+            method2?.invoke(this, receiver, refreshing)
+        }
+    }
+
+    @SuppressLint("PrivateApi")
+    private fun DevicePolicyManager.setDeviceOwnerCompat(who: ComponentName, ownerName: String?, userId: Int): Boolean {
+        val clazz = this::class.java
+
+        val method2 = clazz.methods.firstOrNull {
+            it.name == "setDeviceOwner" && it.parameterTypes.size == 2 &&
+                    it.parameterTypes[0] == ComponentName::class.java &&
+                    it.parameterTypes[1] == java.lang.Integer.TYPE
+        } ?: clazz.declaredMethods.firstOrNull {
+            it.name == "setDeviceOwner" && it.parameterTypes.size == 2 &&
+                    it.parameterTypes[0] == ComponentName::class.java &&
+                    it.parameterTypes[1] == java.lang.Integer.TYPE
+        }
+        if (method2 != null) {
+            method2.isAccessible = true
+            val res = method2.invoke(this, who, userId)
+            return (res as? Boolean) ?: true
+        }
+
+        val method3 = clazz.methods.firstOrNull {
+            it.name == "setDeviceOwner" && it.parameterTypes.size == 3 &&
+                    it.parameterTypes[0] == ComponentName::class.java &&
+                    it.parameterTypes[1] == String::class.java &&
+                    it.parameterTypes[2] == java.lang.Integer.TYPE
+        } ?: clazz.declaredMethods.firstOrNull {
+            it.name == "setDeviceOwner" && it.parameterTypes.size == 3 &&
+                    it.parameterTypes[0] == ComponentName::class.java &&
+                    it.parameterTypes[1] == String::class.java &&
+                    it.parameterTypes[2] == java.lang.Integer.TYPE
+        }
+        if (method3 != null) {
+            method3.isAccessible = true
+            val res = method3.invoke(this, who, ownerName, userId)
+            return (res as? Boolean) ?: true
+        }
+
+        val methodLegacy = clazz.methods.firstOrNull {
+            it.name == "setDeviceOwner" && it.parameterTypes.size == 2 &&
+                    it.parameterTypes[0] == String::class.java &&
+                    it.parameterTypes[1] == String::class.java
+        } ?: clazz.declaredMethods.firstOrNull {
+            it.name == "setDeviceOwner" && it.parameterTypes.size == 2 &&
+                    it.parameterTypes[0] == String::class.java &&
+                    it.parameterTypes[1] == String::class.java
+        }
+        if (methodLegacy != null) {
+            methodLegacy.isAccessible = true
+            val res = methodLegacy.invoke(this, who.packageName, ownerName)
+            return (res as? Boolean) ?: true
+        }
+
+        return false
+    }
+
+    fun bypassUserSetupComplete(userId: Int = getUserId()): Boolean {
+        val current = ShizukuRunner.exec("settings", "--user", "$userId", "get", "secure", "user_setup_complete")
+        if (current?.output?.trim() != "1") return false
+        val put = ShizukuRunner.exec("settings", "--user", "$userId", "put", "secure", "user_setup_complete", "0")
+        if (put == null || put.exitCode != 0) return false
+        refreshUserSetupComplete(userId)
+        return true
+    }
+
+    fun restoreUserSetupComplete(userId: Int = getUserId()) {
+        ShizukuRunner.exec("settings", "--user", "$userId", "put", "secure", "user_setup_complete", "1")
+        refreshUserSetupComplete(userId)
+    }
+
+    fun refreshUserSetupComplete(userId: Int = getUserId()) {
+        runCatching {
+            withShizukuDevicePolicyManager { manager ->
+                manager.forceUpdateUserSetupComplete(userId)
+            }
+        }.onFailure {
+            Timber.w(it, "forceUpdateUserSetupComplete failed (may not be supported on this Android version)")
+        }
+    }
+
+    fun restoreStuckUserSetupComplete() {
+        if (!Shizuku.pingBinder() || !checkShizukuPermission()) return
+        val userId = getUserId()
+        val setup = ShizukuRunner.exec("settings", "--user", "$userId", "get", "secure", "user_setup_complete")?.output?.trim()
+        if (setup != "0") return
+        val provisioned = ShizukuRunner.exec("settings", "--user", "$userId", "get", "global", "device_provisioned")?.output?.trim()
+        if (provisioned != "1") return
+        restoreUserSetupComplete(userId)
+    }
+
+    /** Removes device-owner status, or requests it via Shizuku with setup bypass — returns the command output. */
     fun processDeviceOwnerPrivileges(remove: Boolean = false): String {
         if (remove && dpm.isAdminActive(adminName)) {
             dpm.clearDeviceOwnerApp(packageName)
             return ""
         }
 
+        val userId = getUserId()
+        val bypassed = bypassUserSetupComplete(userId)
         var commandOutput = ""
-        ShizukuRunner.command(
-            command = "dpm set-device-owner $packageName/.DechainerDeviceAdminReceiver",
-            listener = object : ShizukuRunner.CommandResultListener {
-                override fun onCommandResult(output: String, done: Boolean) {
-                    println("Output: $output Done: $done")
-                    if (output.isNotBlank()) {
-                        commandOutput = output.trim()
-                    }
+
+        try {
+            var success = false
+            runCatching {
+                withShizukuDevicePolicyManager { wrappedDpm ->
+                    wrappedDpm.setActiveAdminCompat(adminName, true, userId)
+                    success = wrappedDpm.setDeviceOwnerCompat(adminName, null, userId)
                 }
-                override fun onCommandError(error: String) {
-                    Log.e("Shizuku", error)
-                    if (error.isNotBlank()) {
-                        commandOutput = if (commandOutput.isNotBlank()) {
-                            "$commandOutput\n${error.trim()}"
-                        } else {
-                            error.trim()
+            }.onFailure {
+                Timber.w(it, "Direct binder setDeviceOwner failed, trying shell command")
+            }
+
+            if (!success && !dpm.isDeviceOwnerApp(packageName)) {
+                ShizukuRunner.command(
+                    command = "dpm set-device-owner $packageName/.DechainerDeviceAdminReceiver",
+                    listener = object : ShizukuRunner.CommandResultListener {
+                        override fun onCommandResult(output: String, done: Boolean) {
+                            println("Output: $output Done: $done")
+                            if (output.isNotBlank()) {
+                                commandOutput = output.trim()
+                            }
                         }
-                    }
-                }
-            })
+                        override fun onCommandError(error: String) {
+                            Log.e("Shizuku", error)
+                            if (error.isNotBlank()) {
+                                commandOutput = if (commandOutput.isNotBlank()) {
+                                    "$commandOutput\n${error.trim()}"
+                                } else {
+                                    error.trim()
+                                }
+                            }
+                        }
+                    })
+            }
+        } finally {
+            if (bypassed) {
+                restoreUserSetupComplete(userId)
+            }
+        }
+
         val granted = dpm.isDeviceOwnerApp(packageName)
         if (granted) ColorFilterController.grantPermissionViaShizuku(context)
         return commandOutput

@@ -1,9 +1,5 @@
 package io.github.warleysr.dechainer.utils
 
-/**
- * @author legendsayantan
- */
-import kotlinx.coroutines.CoroutineScope
 import moe.shizuku.server.IShizukuService
 import rikka.shizuku.Shizuku
 import java.io.BufferedReader
@@ -17,7 +13,7 @@ class ShizukuRunner {
         * output: The output of the command
         * done: If the command has finished executing
          */
-        fun onCommandResult(output: String, done: Boolean){}
+        fun onCommandResult(output: String, done: Boolean) {}
 
         /*
         * Runs if the command throws an error.
@@ -26,13 +22,53 @@ class ShizukuRunner {
         fun onCommandError(error: String) {}
     }
 
+    data class ProcessResult(
+        val exitCode: Int,
+        val output: String,
+        val error: String
+    )
+
     companion object {
+        fun exec(vararg command: String): ProcessResult? {
+            val binder = Shizuku.getBinder()
+            if (binder == null || !binder.pingBinder()) return null
+            val cmdArray = if (command.size == 1 && command[0].contains(" ")) {
+                arrayOf("sh", "-c", command[0])
+            } else {
+                command
+            }
+            return try {
+                if (Shizuku.isPreV11()) return null
+                val service = IShizukuService.Stub.asInterface(binder) ?: return null
+                val process = service.newProcess(cmdArray, null, null) ?: return null
+                var error = ""
+                val errorReader = Thread {
+                    error = try {
+                        BufferedReader(InputStreamReader(FileInputStream(process.errorStream.fileDescriptor))).use {
+                            it.readText()
+                        }
+                    } catch (_: Exception) { "" }
+                }
+                errorReader.start()
+                val output = try {
+                    BufferedReader(InputStreamReader(FileInputStream(process.inputStream.fileDescriptor))).use {
+                        it.readText()
+                    }
+                } catch (_: Exception) { "" }
+                errorReader.join()
+                val code = process.waitFor()
+                ProcessResult(code, output.trim(), error.trim())
+            } catch (_: Exception) {
+                null
+            }
+        }
+
         fun command(command: String, listener: CommandResultListener, lineBundle: Int = Integer.MAX_VALUE) {
             println("Command: $command")
 
             try {
                 val process = IShizukuService.Stub.asInterface(Shizuku.getBinder())
-                    .newProcess(arrayOf("sh","-c",command), null, null)
+                    .newProcess(arrayOf("sh", "-c", command), null, null)
 
                 val reader = BufferedReader(
                     InputStreamReader(FileInputStream(process.inputStream.fileDescriptor))
