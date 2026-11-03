@@ -1,0 +1,109 @@
+name: Bug Report
+description: Report an error, crash, or unexpected behavior in Déchaîner
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please complete all mandatory fields below. Issues missing device/ROM details or reproduction steps cannot be resolved and may be closed.
+  - type: input
+    id: device
+    attributes:
+      label: Device Manufacturer and Model
+      description: What device are you using? (e.g., Samsung Galaxy A25, Vivo Y400, Xiaomi Redmi Note 12, Google Pixel 8)
+      placeholder: e.g., Vivo Y400
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: Android & ROM / Custom Skin Version
+      description: Which Android version and custom skin/ROM are you running? (e.g., Android 14 / Funtouch OS 14, One UI 6.1, HyperOS 1.0, LineageOS 21)
+      placeholder: e.g., Android 14 / Funtouch OS 14
+    validations:
+      required: true
+  - type: input
+    id: app_version
+    attributes:
+      label: Déchaîner Version
+      description: What version of Déchaîner are you using? (Check Settings/Config tab or app details, e.g., v1.2.0)
+      placeholder: e.g., v1.2.0
+    validations:
+      required: true
+  - type: dropdown
+    id: installation_method
+    attributes:
+      label: Installation Method
+      description: How did you install Déchaîner?
+      options:
+        - GitHub Release (APK)
+        - Built from source
+        - Other (please specify in additional context)
+    validations:
+      required: true
+  - type: dropdown
+    id: privilege_status
+    attributes:
+      label: Privilege & Setup Status
+      description: What stage of setup was the app in when this occurred?
+      options:
+        - During Device Owner setup (Granting privileges via Shizuku)
+        - Device Owner already granted and active
+        - Shizuku running, but Device Owner not yet granted
+        - Device Owner not granted / Focus mode without privileges
+        - During forced removal / privileges removal
+    validations:
+      required: true
+  - type: textarea
+    id: bug_description
+    attributes:
+      label: Description of the Bug
+      description: A clear and concise description of what the issue is.
+      placeholder: Explain what happened...
+    validations:
+      required: true
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Detailed, step-by-step instructions to reproduce the issue.
+      placeholder: |
+        1. Open Déchaîner
+        2. Go to '...'
+        3. Tap on '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: e.g., Device owner privileges should be granted successfully.
+    validations:
+      required: true
+  - type: textarea
+    id: logs_or_output
+    attributes:
+      label: Relevant Logs / Command Output / Screenshots
+      description: Paste any error dialog messages, logcat output, or drag-and-drop screenshots here.
+      placeholder: e.g., "onCommand block shell" or logcat stack trace...
+    validations:
+      required: false
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (e.g. secondary accounts, guest profiles, dual apps, OEM developer security settings).
+    validations:
+      required: false
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I searched existing issues and confirmed this is not a duplicate.
+          required: true
+        - label: I provided accurate device, OS, and reproduction details above.
+          required: true
