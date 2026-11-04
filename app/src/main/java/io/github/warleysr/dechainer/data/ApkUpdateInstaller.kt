@@ -109,18 +109,6 @@ object ApkUpdateInstaller {
         val uninstallFirst = update.isDowngrade &&
             needsUninstallForDowngrade(context, update.file, update.packageName)
 
-        if (uninstallFirst && !signaturesMatch(context, update.file, update.packageName)) {
-            update.file.delete()
-            context.sendBroadcast(
-                Intent(context, ApkUpdateResultReceiver::class.java)
-                    .setAction(ApkUpdateResultReceiver.ACTION_INSTALL_RESULT)
-                    .putExtra(EXTRA_PACKAGE, update.packageName)
-                    .putExtra(EXTRA_IS_DOWNGRADE, true)
-                    .putExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE_CONFLICT)
-            )
-            return true
-        }
-
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
             .apply {
@@ -253,43 +241,6 @@ object ApkUpdateInstaller {
         }
         val isAppDebuggable = (flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
         return !isBuildDebuggable && !isAppDebuggable
-    }
-
-    @Suppress("DEPRECATION")
-    private fun signaturesMatch(context: Context, archiveFile: File, packageName: String): Boolean {
-        val pm = context.packageManager
-        val flags = PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_SIGNATURES
-        val archive = pm.getPackageArchiveInfo(archiveFile.path, flags) ?: return false
-        val installed = try {
-            pm.getPackageInfo(packageName, flags)
-        } catch (_: PackageManager.NameNotFoundException) {
-            return false
-        }
-        return signaturesMatch(archive, installed)
-    }
-
-    @Suppress("DEPRECATION")
-    internal fun signaturesMatch(archive: PackageInfo, installed: PackageInfo): Boolean {
-        val archiveSigning = archive.signingInfo
-        val installedSigning = installed.signingInfo
-        if (archiveSigning != null && installedSigning != null) {
-            if (archiveSigning.hasMultipleSigners() || installedSigning.hasMultipleSigners()) {
-                val archiveSigners = archiveSigning.apkContentsSigners?.toSet().orEmpty()
-                val installedSigners = installedSigning.apkContentsSigners?.toSet().orEmpty()
-                return archiveSigners.isNotEmpty() && archiveSigners == installedSigners
-            }
-            val archiveCerts = (archiveSigning.signingCertificateHistory ?: archiveSigning.apkContentsSigners)
-                ?.toSet().orEmpty()
-            val installedCerts = (installedSigning.signingCertificateHistory ?: installedSigning.apkContentsSigners)
-                ?.toSet().orEmpty()
-            if (archiveCerts.isNotEmpty() && installedCerts.isNotEmpty()) {
-                return archiveCerts.intersect(installedCerts).isNotEmpty()
-            }
-        }
-
-        val archiveSigs = archive.signatures?.toSet().orEmpty()
-        val installedSigs = installed.signatures?.toSet().orEmpty()
-        return archiveSigs.isNotEmpty() && archiveSigs == installedSigs
     }
 
     private fun savePreDowngradeState(context: Context, packageName: String) {
