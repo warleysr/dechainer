@@ -11,12 +11,14 @@ data class AppRatingInfo(
     val contentRating: String?,
     val descriptorLines: List<String>,
     val descriptorsAvailable: Boolean,
-    val hasExplicitContent: Boolean
+    val hasExplicitContent: Boolean,
+    val hasUnrestrictedInternet: Boolean = false
 )
 
 object PlayStoreRatingFetcher {
 
     private val BLOCKED_CONTENTS = arrayOf("Nudity", "Explicit Sex", "Sexual Content")
+    private val UNRESTRICTED_INTERNET_VARIANTS = arrayOf("Unrestricted Internet",)
 
     private const val USER_AGENT =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -63,6 +65,9 @@ object PlayStoreRatingFetcher {
         val hasExplicitContent = descriptors.any { desc ->
             BLOCKED_CONTENTS.any { desc.contains(it, ignoreCase = true) }
         }
+        val hasUnrestrictedInternet = descriptors.any { desc ->
+            UNRESTRICTED_INTERNET_VARIANTS.any { desc.contains(it, ignoreCase = true) }
+        }
 
         return AppRatingInfo(
             packageName = packageName,
@@ -70,7 +75,8 @@ object PlayStoreRatingFetcher {
             contentRating = contentRating,
             descriptorLines = descriptors,
             descriptorsAvailable = descriptors.isNotEmpty(),
-            hasExplicitContent = hasExplicitContent
+            hasExplicitContent = hasExplicitContent,
+            hasUnrestrictedInternet = hasUnrestrictedInternet
         )
     }
 

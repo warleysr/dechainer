@@ -249,7 +249,7 @@ fun BlockedListAccordion(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(list.title, style = MaterialTheme.typography.titleMedium)
-                    Text("${list.sites.size} sites", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.sites_count, list.sites.size), style = MaterialTheme.typography.labelSmall)
                 }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "")

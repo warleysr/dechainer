@@ -46,7 +46,30 @@ fun isLooserWindows(old: List<TimeWindow>, new: List<TimeWindow>): Boolean {
     return (0 until 1440).any { allowed(new, it) && !allowed(old, it) }
 }
 
-fun isLooserRestrictions(current: android.os.Bundle, new: android.os.Bundle) =
-    new.keySet().any { current.getBoolean(it) && !new.getBoolean(it) }
+fun isLooserRestrictions(current: android.os.Bundle, new: android.os.Bundle): Boolean {
+    for (key in current.keySet()) {
+        val oldVal = current.get(key)
+        val newVal = if (new.containsKey(key)) new.get(key) else null
+        when (oldVal) {
+            is Boolean -> {
+                if (oldVal && newVal != true) return true
+            }
+            is String -> {
+                if (oldVal.isNotEmpty() && (newVal as? String).isNullOrEmpty()) return true
+            }
+            is Number -> {
+                if (oldVal.toLong() != 0L && (newVal == null || (newVal as? Number)?.toLong() == 0L)) return true
+            }
+            is Array<*> -> {
+                val newSet = (newVal as? Array<*>)?.toSet() ?: emptySet()
+                if (!newSet.containsAll(oldVal.toSet())) return true
+            }
+            is android.os.Bundle -> {
+                if (newVal !is android.os.Bundle || isLooserRestrictions(oldVal, newVal)) return true
+            }
+        }
+    }
+    return false
+}
 
 fun isLooserSet(old: Set<String>, new: Set<String>) = !new.containsAll(old)

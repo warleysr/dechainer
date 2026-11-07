@@ -48,9 +48,7 @@ fun FocusRestrictionsDialog(
 
     val labelMap = remember(allKeys) {
         allKeys.associateWith { key ->
-            SystemRestrictions.resourceNameFor(key)
-                ?.let { context.resources.getIdentifier(it, "string", context.packageName) }
-                ?.takeIf { it != 0 }
+            SystemRestrictions.resolveStringRes(context, key)
         }
     }
 
@@ -58,9 +56,11 @@ fun FocusRestrictionsDialog(
         if (searchQuery.isEmpty()) {
             allKeys
         } else {
+            val queryNorm = SystemRestrictions.normalizeForSearch(searchQuery)
             allKeys.filter { key ->
                 val label = labelMap[key]?.let { context.getString(it) } ?: key
-                label.contains(searchQuery, ignoreCase = true) || key.contains(searchQuery, ignoreCase = true)
+                SystemRestrictions.normalizeForSearch(label).contains(queryNorm) ||
+                        SystemRestrictions.normalizeForSearch(key).contains(queryNorm)
             }
         }
     }

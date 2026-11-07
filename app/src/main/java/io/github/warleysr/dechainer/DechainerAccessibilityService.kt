@@ -187,12 +187,26 @@ class DechainerAccessibilityService : AccessibilityService() {
                     try {
                         val info = PlayStoreRatingFetcher.fetch(packageName)
 
+                        if (info.hasUnrestrictedInternet) {
+                            val supportsRestrictions = manager.supportsRestrictions(packageName)
+                            if (supportsRestrictions) {
+                                manager.applyRestrictions(installed = true)
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    suspendPackage(packageName, reason = SuspensionReason.UNSUPPORTED_BROWSER)
+                                }
+                                ratingPrefs.edit { putBoolean(packageName, true) }
+                                return@launch
+                            }
+                        }
+
                         if (info.hasExplicitContent && info.contentRating == "Rated 18+")
                             withContext(Dispatchers.Main) {
                                 suspendPackage(packageName, reason = SuspensionReason.RATED_18_PLUS)
                             }
 
                         ratingPrefs.edit { putBoolean(packageName, info.hasExplicitContent) }
+
                     } catch (e: HttpStatusException) {
                         e.printStackTrace()
                         if (e.statusCode == 404) {
@@ -679,6 +693,20 @@ class DechainerAccessibilityService : AccessibilityService() {
                 serviceScope.launch(Dispatchers.IO) {
                     try {
                         val info = PlayStoreRatingFetcher.fetch(pkg)
+
+                        if (info.hasUnrestrictedInternet) {
+                            val manager = BrowserRestrictionsManager(applicationContext)
+                            val supportsRestrictions = manager.supportsRestrictions(pkg)
+                            if (supportsRestrictions) {
+                                manager.applyRestrictions()
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    suspendPackage(pkg, reason = SuspensionReason.UNSUPPORTED_BROWSER)
+                                }
+                                ratingPrefs.edit { putBoolean(pkg, true) }
+                                return@launch
+                            }
+                        }
 
                         if (info.hasExplicitContent && info.contentRating == "Rated 18+")
                             withContext(Dispatchers.Main) {

@@ -560,4 +560,32 @@
     <string name="suspension_reason_focus">Focus mode active</string>
     <string name="suspension_reason_accessibility_disabled">Accessibility service was disabled</string>
     <string name="suspension_reason_manual">Manual suspension</string>
+    <string name="ensure_verify_apps">Enforce app verification (Play Protect)</string>
+    <string name="add_item">Add item</string>
+    <string name="remove_item">Remove item</string>
+    <string name="item_number">Item %1$d</string>
+    <string name="select_option">Select option</string>
+    <string name="clear">Clear</string>
+    <string name="disallow_task_continuity_handoff">Disallow task continuity handoff</string>
+    <string name="selected_count">%1$d selected</string>
+    <string name="sub_fields_count">%1$d sub-fields</string>
+    <string name="items_configured_count">%1$d items configured</string>
+    <string name="sites_count">%1$d sites</string>
+    <string name="disallow_biometric">Disallow biometric authentication</string>
+    <string name="no_camera">Disallow camera</string>
+    <string name="no_wallpaper">Disallow setting wallpaper</string>
+    <string name="no_add_clone_profile">Disallow adding clone profile</string>
+    <string name="no_config_wifi_private">Disallow configuring private Wi-Fi</string>
+    <string name="no_config_wifi_shared">Disallow configuring shared Wi-Fi</string>
+    <string name="no_non_market_app_by_knox">Disallow non-market apps (Knox)</string>
+    <string name="disallow_camera">Disallow camera</string>
+    <string name="disallow_wallpaper">Disallow setting wallpaper</string>
+    <string name="no_biometric">Disallow biometric authentication</string>
+    <string name="disallow_add_clone_profile">Disallow adding clone profile</string>
+    <string name="disallow_config_wifi_private">Disallow configuring private Wi-Fi</string>
+    <string name="disallow_config_wifi_shared">Disallow configuring shared Wi-Fi</string>
+    <string name="disallow_non_market_app_by_knox">Disallow non-market apps (Knox)</string>
 </resources>
+
+
+

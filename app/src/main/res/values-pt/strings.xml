@@ -561,4 +561,32 @@
     <string name="suspension_reason_focus">Modo foco ativo</string>
     <string name="suspension_reason_accessibility_disabled">Serviço de acessibilidade foi desativado</string>
     <string name="suspension_reason_manual">Suspensão manual</string>
+    <string name="ensure_verify_apps">Forçar verificação de apps (Play Protect)</string>
+    <string name="add_item">Adicionar item</string>
+    <string name="remove_item">Remover item</string>
+    <string name="item_number">Item %1$d</string>
+    <string name="select_option">Selecionar opção</string>
+    <string name="clear">Limpar</string>
+    <string name="disallow_task_continuity_handoff">Desativar continuidade de tarefas (Handoff)</string>
+    <string name="selected_count">%1$d selecionados</string>
+    <string name="sub_fields_count">%1$d sub-campos</string>
+    <string name="items_configured_count">%1$d itens configurados</string>
+    <string name="sites_count">%1$d sites</string>
+    <string name="disallow_biometric">Desativar autenticação biométrica</string>
+    <string name="no_camera">Desativar câmera</string>
+    <string name="no_wallpaper">Desativar alteração de papel de parede</string>
+    <string name="no_add_clone_profile">Desativar criação de perfil clonado</string>
+    <string name="no_config_wifi_private">Desativar configuração de Wi-Fi privado</string>
+    <string name="no_config_wifi_shared">Desativar configuração de Wi-Fi compartilhado</string>
+    <string name="no_non_market_app_by_knox">Desativar apps fora da loja (Knox)</string>
+    <string name="disallow_camera">Desativar câmera</string>
+    <string name="disallow_wallpaper">Desativar alteração de papel de parede</string>
+    <string name="no_biometric">Desativar autenticação biométrica</string>
+    <string name="disallow_add_clone_profile">Desativar criação de perfil clonado</string>
+    <string name="disallow_config_wifi_private">Desativar configuração de Wi-Fi privado</string>
+    <string name="disallow_config_wifi_shared">Desativar configuração de Wi-Fi compartilhado</string>
+    <string name="disallow_non_market_app_by_knox">Desativar apps fora da loja (Knox)</string>
 </resources>
+
+
+

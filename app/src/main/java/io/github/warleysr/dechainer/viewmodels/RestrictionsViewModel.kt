@@ -1,6 +1,5 @@
 package io.github.warleysr.dechainer.viewmodels
 
-import android.os.UserManager
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import io.github.warleysr.dechainer.data.DeviceAdmin
@@ -30,9 +29,16 @@ class RestrictionsViewModel : ViewModel() {
         if (!dpm.isDeviceOwnerApp(adminName.packageName)) return
         val currentRestrictions = dpm.getUserRestrictions(adminName)
         allKeys.forEach { key ->
-            val isEnabled = currentRestrictions.getBoolean(key as String?)
+            val isEnabled = currentRestrictions.getBoolean(key)
             draftRestrictions[key] = isEnabled
             appliedRestrictions[key] = isEnabled
+        }
+        currentRestrictions.keySet().forEach { key ->
+            val isEnabled = currentRestrictions.getBoolean(key)
+            if (!draftRestrictions.containsKey(key)) {
+                draftRestrictions[key] = isEnabled
+                appliedRestrictions[key] = isEnabled
+            }
         }
     }
 
@@ -47,13 +53,14 @@ class RestrictionsViewModel : ViewModel() {
     }
 
     fun applyChanges() {
-        allKeys.forEach { key ->
+        val currentlyAppliedRestrictions = dpm.getUserRestrictions(adminName)
+        val allTrackedKeys = (allKeys + draftRestrictions.keys).distinct()
+        allTrackedKeys.forEach { key ->
             val shouldEnable = draftRestrictions[key] ?: false
-            val currentlyAppliedRestrictions = dpm.getUserRestrictions(adminName)
             if (shouldEnable) {
-                dpm.addUserRestriction(adminName, key as String?)
+                dpm.addUserRestriction(adminName, key)
             } else if (currentlyAppliedRestrictions.containsKey(key)) {
-                dpm.clearUserRestriction(adminName, key as String?)
+                dpm.clearUserRestriction(adminName, key)
             }
         }
         loadRestrictions()
@@ -61,7 +68,13 @@ class RestrictionsViewModel : ViewModel() {
 
     fun isAllDraftsEnabled(keys: List<String>): Boolean = keys.all { draftRestrictions[it] == true }
 
-    fun hasPendingChanges(): Boolean = allKeys.any { draftRestrictions[it] != appliedRestrictions[it] }
+    fun hasPendingChanges(): Boolean {
+        val allTrackedKeys = (allKeys + draftRestrictions.keys).distinct()
+        return allTrackedKeys.any { draftRestrictions[it] != appliedRestrictions[it] }
+    }
 
-    fun isLoosening(): Boolean = allKeys.any { appliedRestrictions[it] == true && draftRestrictions[it] != true }
+    fun isLoosening(): Boolean {
+        val allTrackedKeys = (allKeys + draftRestrictions.keys).distinct()
+        return allTrackedKeys.any { appliedRestrictions[it] == true && draftRestrictions[it] != true }
+    }
 }

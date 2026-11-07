@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.SystemRestrictions
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -113,9 +114,7 @@ private fun RestrictionAccordion(
 
     val labelMap = remember(keys) {
         keys.associateWith { key ->
-            viewModel.resourceNameFor(key)
-                ?.let { context.resources.getIdentifier(it, "string", context.packageName) }
-                ?.takeIf { it != 0 }
+            SystemRestrictions.resolveStringRes(context, key)
         }
     }
 
@@ -123,9 +122,11 @@ private fun RestrictionAccordion(
         if (searchQuery.isEmpty()) {
             keys
         } else {
+            val queryNorm = SystemRestrictions.normalizeForSearch(searchQuery)
             keys.filter { key ->
                 val label = labelMap[key]?.let { context.getString(it) } ?: key
-                label.contains(searchQuery, ignoreCase = true) || key.contains(searchQuery, ignoreCase = true)
+                SystemRestrictions.normalizeForSearch(label).contains(queryNorm) ||
+                        SystemRestrictions.normalizeForSearch(key).contains(queryNorm)
             }
         }
     }
