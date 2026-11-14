@@ -13,7 +13,7 @@ built so that your future self can't simply turn it off.
 ![Kotlin](https://img.shields.io/badge/Kotlin-Jetpack%20Compose-7f52ff?style=flat-square&logo=kotlin&logoColor=white)
 [![License](https://img.shields.io/github/license/warleysr/dechainer?style=flat-square&color=b8860b)](LICENSE)
 
-[**Download the latest APK**](https://github.com/warleysr/dechainer/releases/latest) · [How it works](#how-it-works) · [Features](#features) · [Installation](#installation) · [Recovery](#recovery-and-safety)
+[**Download the latest APK**](https://github.com/warleysr/dechainer/releases/latest) · [**Wiki**](https://github.com/warleysr/dechainer/wiki) · [How it works](#how-it-works) · [Features](#features) · [Installation](#installation) · [Recovery](#recovery-and-safety)
 
 </div>
 
