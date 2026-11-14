@@ -59,6 +59,7 @@ import io.github.warleysr.dechainer.notifications.UsageWarningNotifier
 import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.HomeScreenDetector
 import io.github.warleysr.dechainer.utils.NightLightOverlay
+import io.github.warleysr.dechainer.utils.BlockedWordMatcher
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
 import org.jsoup.HttpStatusException
 import kotlinx.coroutines.CoroutineScope
@@ -357,10 +358,7 @@ class DechainerAccessibilityService : AccessibilityService() {
     private fun updateForbiddenPatterns() {
         val words = blockedWordsPrefs.getStringSet("blocked_words", emptySet()) ?: emptySet()
         forbiddenPatterns = words.associateWith { word ->
-            Regex(
-                "(?<![\p{L}\p{N}_])${Regex.escape(word)}(?![\p{L}\p{N}_])",
-                RegexOption.IGNORE_CASE
-            )
+            BlockedWordMatcher.buildRegex(word)
         }
         targetPackages = blockedWordsPrefs.getStringSet("target_packages", emptySet()) ?: emptySet()
 
@@ -372,10 +370,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 val wordsSet = (value as? Set<*>)?.filterIsInstance<String>()?.toSet() ?: emptySet()
                 if (wordsSet.isNotEmpty()) {
                     passiveMap[pkg] = wordsSet.associateWith { word ->
-                        Regex(
-                "(?<![\p{L}\p{N}_])${Regex.escape(word)}(?![\p{L}\p{N}_])",
-                RegexOption.IGNORE_CASE
-            )
+                        BlockedWordMatcher.buildRegex(word)
                     }
                 }
             }
