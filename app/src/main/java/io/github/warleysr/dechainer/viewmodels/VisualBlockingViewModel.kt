@@ -31,8 +31,9 @@ class VisualBlockingViewModel : ViewModel() {
         private set
 
     var selectedCategories by mutableStateOf(
-        prefs.getStringSet(VisualBlockingSettings.KEY_CATEGORIES, VisualBlockingSettings.DEFAULT_CATEGORIES)
-            ?: VisualBlockingSettings.DEFAULT_CATEGORIES
+        VisualBlockingSettings.sanitizeCategories(
+            prefs.getStringSet(VisualBlockingSettings.KEY_CATEGORIES, VisualBlockingSettings.DEFAULT_CATEGORIES)
+        )
     )
         private set
 
@@ -77,6 +78,10 @@ class VisualBlockingViewModel : ViewModel() {
         private set
 
     init {
+        val rawCategories = prefs.getStringSet(VisualBlockingSettings.KEY_CATEGORIES, null)
+        if (rawCategories != selectedCategories) {
+            prefs.edit { putStringSet(VisualBlockingSettings.KEY_CATEGORIES, selectedCategories) }
+        }
         loadApps()
     }
 

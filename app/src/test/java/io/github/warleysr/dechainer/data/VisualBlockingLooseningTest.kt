@@ -29,15 +29,34 @@ class VisualBlockingLooseningTest {
 
     @Test
     fun `adding category is tightening and unchecking category is loosening`() {
-        val selectedCategories = setOf("hentai", "porn")
+        val selectedCategories = setOf("FEMALE_BREAST_EXPOSED", "FEMALE_GENITALIA_EXPOSED")
 
         // Unchecking an already selected category:
-        val unchecking = "hentai" in selectedCategories
+        val unchecking = "FEMALE_BREAST_EXPOSED" in selectedCategories
         assertTrue(unchecking)
 
         // Checking an unselected category:
-        val checking = "sexy" in selectedCategories
+        val checking = "BUTTOCKS_COVERED" in selectedCategories
         assertFalse(checking)
+    }
+
+    @Test
+    fun `sanitizeCategories migrates legacy categories correctly`() {
+        val legacyExplicit = setOf("porn", "hentai")
+        val migratedExplicit = VisualBlockingSettings.sanitizeCategories(legacyExplicit)
+        assertTrue(migratedExplicit.containsAll(VisualBlockingSettings.DEFAULT_CATEGORIES))
+
+        val legacySexy = setOf("sexy")
+        val migratedSexy = VisualBlockingSettings.sanitizeCategories(legacySexy)
+        assertTrue("FEMALE_BREAST_COVERED" in migratedSexy)
+        assertTrue("BUTTOCKS_COVERED" in migratedSexy)
+
+        val alreadyModern = setOf("ANUS_EXPOSED", "BUTTOCKS_EXPOSED")
+        val sanitizedModern = VisualBlockingSettings.sanitizeCategories(alreadyModern)
+        org.junit.Assert.assertEquals(alreadyModern, sanitizedModern)
+
+        val nullOrEmpty = VisualBlockingSettings.sanitizeCategories(emptySet())
+        org.junit.Assert.assertEquals(VisualBlockingSettings.DEFAULT_CATEGORIES, nullOrEmpty)
     }
 
     @Test

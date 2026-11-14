@@ -434,6 +434,15 @@
     <string name="nsfw_category_hentai">Hentai</string>
     <string name="nsfw_category_porn">Pornografia</string>
     <string name="nsfw_category_sexy">Sensual</string>
+    <string name="nudenet_category_female_genitalia_exposed">Genitália feminina (exposta)</string>
+    <string name="nudenet_category_male_genitalia_exposed">Genitália masculina (exposta)</string>
+    <string name="nudenet_category_anus_exposed">Ânus (exposto)</string>
+    <string name="nudenet_category_female_breast_exposed">Seios femininos (expostos)</string>
+    <string name="nudenet_category_buttocks_exposed">Glúteos (expostos)</string>
+    <string name="nudenet_category_female_breast_covered">Seios cobertos (biquíni / lingerie)</string>
+    <string name="nudenet_category_buttocks_covered">Glúteos cobertos (roupa de banho / lingerie)</string>
+    <string name="nudenet_category_female_genitalia_covered">Genitália coberta (roupa íntima)</string>
+    <string name="nudenet_category_anus_covered">Ânus coberto</string>
 
     <string name="usage_warning_channel_silent">Aviso de uso (silencioso)</string>
     <string name="usage_warning_channel_sound">Aviso de uso (som)</string>

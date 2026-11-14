@@ -346,6 +346,15 @@ private fun NumberSettingField(
 
 @Composable
 private fun categoryLabel(category: String): String = when (category) {
+    "FEMALE_GENITALIA_EXPOSED" -> stringResource(R.string.nudenet_category_female_genitalia_exposed)
+    "MALE_GENITALIA_EXPOSED" -> stringResource(R.string.nudenet_category_male_genitalia_exposed)
+    "ANUS_EXPOSED" -> stringResource(R.string.nudenet_category_anus_exposed)
+    "FEMALE_BREAST_EXPOSED" -> stringResource(R.string.nudenet_category_female_breast_exposed)
+    "BUTTOCKS_EXPOSED" -> stringResource(R.string.nudenet_category_buttocks_exposed)
+    "FEMALE_BREAST_COVERED" -> stringResource(R.string.nudenet_category_female_breast_covered)
+    "BUTTOCKS_COVERED" -> stringResource(R.string.nudenet_category_buttocks_covered)
+    "FEMALE_GENITALIA_COVERED" -> stringResource(R.string.nudenet_category_female_genitalia_covered)
+    "ANUS_COVERED" -> stringResource(R.string.nudenet_category_anus_covered)
     "drawings" -> stringResource(R.string.nsfw_category_drawings)
     "hentai" -> stringResource(R.string.nsfw_category_hentai)
     "porn" -> stringResource(R.string.nsfw_category_porn)

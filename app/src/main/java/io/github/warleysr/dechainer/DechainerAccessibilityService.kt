@@ -155,6 +155,11 @@ class DechainerAccessibilityService : AccessibilityService() {
     @Volatile
     private var nsfwScanInFlight = false
 
+    // Frame-confirmation debouncing: requires 2 consecutive positive scans on the same package
+    // before executing a block, filtering out transient single-frame false alarms.
+    private var pendingNsfwViolationPkg: String? = null
+    private var pendingNsfwViolationTimestamp = 0L
+
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != Intent.ACTION_PACKAGE_ADDED) return
@@ -310,9 +315,11 @@ class DechainerAccessibilityService : AccessibilityService() {
         nsfwTargetPackages = visualBlockingPrefs.getStringSet(
             VisualBlockingSettings.KEY_TARGET_PACKAGES, VisualBlockingSettings.DEFAULT_TARGET_PACKAGES
         ) ?: VisualBlockingSettings.DEFAULT_TARGET_PACKAGES
-        nsfwCategories = visualBlockingPrefs.getStringSet(
-            VisualBlockingSettings.KEY_CATEGORIES, VisualBlockingSettings.DEFAULT_CATEGORIES
-        ) ?: VisualBlockingSettings.DEFAULT_CATEGORIES
+        nsfwCategories = VisualBlockingSettings.sanitizeCategories(
+            visualBlockingPrefs.getStringSet(
+                VisualBlockingSettings.KEY_CATEGORIES, VisualBlockingSettings.DEFAULT_CATEGORIES
+            )
+        )
         nsfwThreshold = visualBlockingPrefs.getFloat(
             VisualBlockingSettings.KEY_THRESHOLD, VisualBlockingSettings.DEFAULT_THRESHOLD
         )
@@ -351,7 +358,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         val words = blockedWordsPrefs.getStringSet("blocked_words", emptySet()) ?: emptySet()
         forbiddenPatterns = words.associateWith { word ->
             Regex(
-                "(?<![\\p{L}\\p{N}_])${Regex.escape(word)}(?![\\p{L}\\p{N}_])",
+                "(?<![\p{L}\p{N}_])${Regex.escape(word)}(?![\p{L}\p{N}_])",
                 RegexOption.IGNORE_CASE
             )
         }
@@ -366,9 +373,9 @@ class DechainerAccessibilityService : AccessibilityService() {
                 if (wordsSet.isNotEmpty()) {
                     passiveMap[pkg] = wordsSet.associateWith { word ->
                         Regex(
-                            "(?<![\\p{L}\\p{N}_])${Regex.escape(word)}(?![\\p{L}\\p{N}_])",
-                            RegexOption.IGNORE_CASE
-                        )
+                "(?<![\p{L}\p{N}_])${Regex.escape(word)}(?![\p{L}\p{N}_])",
+                RegexOption.IGNORE_CASE
+            )
                     }
                 }
             }
@@ -864,11 +871,36 @@ class DechainerAccessibilityService : AccessibilityService() {
                             softwareBitmap.recycle()
 
                             if (maxUnsafeScore > nsfwThreshold) {
-                                Timber.d("NSFW scan: blocking (max unsafe score=${"%.3f".format(maxUnsafeScore)})")
-                                withContext(Dispatchers.Main) {
-                                    if (currentPackage in nsfwTargetPackages) {
-                                        executeNsfwBlocking(pkg)
+                                val nowMs = SystemClock.elapsedRealtime()
+                                val isConfirmed = (pendingNsfwViolationPkg == pkg) && (nowMs - pendingNsfwViolationTimestamp <= 4000L)
+
+                                if (isConfirmed) {
+                                    pendingNsfwViolationPkg = null
+                                    pendingNsfwViolationTimestamp = 0L
+                                    Timber.d("NSFW scan: confirmed violation on $pkg (score=${"%.3f".format(maxUnsafeScore)}), blocking")
+                                    withContext(Dispatchers.Main) {
+                                        if (currentPackage in nsfwTargetPackages) {
+                                            executeNsfwBlocking(pkg)
+                                        }
                                     }
+                                } else {
+                                    pendingNsfwViolationPkg = pkg
+                                    pendingNsfwViolationTimestamp = nowMs
+                                    Timber.d("NSFW scan: suspected violation on $pkg (score=${"%.3f".format(maxUnsafeScore)}), awaiting frame confirmation")
+                                    serviceScope.launch {
+                                        kotlinx.coroutines.delay(500L)
+                                        lastNsfwScanElapsedMs = 0L
+                                        withContext(Dispatchers.Main) {
+                                            if (currentPackage == pkg) {
+                                                maybeScanForNsfwContent(pkg)
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                val nowMs = SystemClock.elapsedRealtime()
+                                if (nowMs - pendingNsfwViolationTimestamp > 2000L) {
+                                    pendingNsfwViolationPkg = null
                                 }
                             }
                         } catch (e: Exception) {
@@ -930,7 +962,9 @@ class DechainerAccessibilityService : AccessibilityService() {
                 )
             val matchesText = NSFW_MEDIA_KEYWORDS.any { text.startsWith(it, ignoreCase = true) }
 
-            if ((matchesClass || matchesDescription || matchesText) && bigEnough && regions.none { it == rect }) {
+            val hasLongText = text.length > 50 || (!matchesClass && description.length > 100)
+
+            if (!hasLongText && (matchesClass || matchesDescription || matchesText) && bigEnough && regions.none { it == rect }) {
                 regions.add(rect)
             } else if (node.childCount == 0 && description.isEmpty() && text.isEmpty() && bigEnough) {
                 val aspect = rect.width().toFloat() / rect.height().toFloat()
