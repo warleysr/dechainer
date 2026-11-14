@@ -63,15 +63,15 @@ As detailed by the project maintainer, Déchaîner uses a tiered defense strateg
 
 ## Wiki Table of Contents
 
-- [**Installation & Setup Guide**](Installation-and-Setup.md): Prerequisites, step-by-step setup with Shizuku, Device Owner provisioning, and granting permissions.
-- [**Recovery Code & Safety Architecture**](Recovery-and-Safety.md): The 16-character physical recovery code, 10-minute security sessions, shuffle keyboard, and the 48-hour forced removal fallback.
-- [**System Restrictions (Device Owner)**](System-Restrictions.md): System-wide `UserManager` policies (VPN, DNS, factory reset, app installs) and per-app managed restrictions.
-- [**Browser & Network Protection**](Browser-and-Network-Protection.md): Enforcing family DNS, applying `URLBlocklist`, disabling Chrome Incognito mode, and handling unsupported browsers.
-- [**App Management & Time Limits**](App-Management-and-Time-Limits.md): Hiding, suspending, blocking uninstallation, daily time quotas, time windows, and reopening cooldowns.
-- [**Keyword & Content Blocking**](Keyword-and-Content-Blocking.md): Active typing erasure vs. passive screen scanning, use cases, and tuning.
-- [**On-Device Visual Blocking**](Visual-Blocking.md): Local TensorFlow Lite classification, category selection, threshold tuning, and suspension escalation.
-- [**Activity Blocker**](Activity-Blocker.md): Inspecting and locking specific Android activities (sub-screens) by class name.
-- [**Focus Mode & Impulse Lock**](Focus-Mode-and-Impulse-Lock.md): Pomodoro study cycles with app suspension, scheduled focus, lock-screen panic button, and mental challenges (Tetris, Scripture, Math, Words).
-- [**Display & Color Modes**](Display-and-Color-Filters.md): Grayscale, night light, extra dim, inversion schedules, and per-app exclusions.
-- [**Device Quirks & FAQ**](Device-Quirks-and-FAQ.md): Manufacturer-specific solutions (Samsung, Vivo, Xiaomi/MIUI, Infinix/XOS), dual apps, Secure Folder, and banking app safety.
-- [**Review & Known Limitations**](Review-and-Known-Limitations.md): Technical areas flagged for developer review, architectural constraints, and open issues.
+- [**Installation & Setup Guide**](Installation-and-Setup): Prerequisites, step-by-step setup with Shizuku, Device Owner provisioning, and granting permissions.
+- [**Recovery Code & Safety Architecture**](Recovery-and-Safety): The 16-character physical recovery code, 10-minute security sessions, shuffle keyboard, and the 48-hour forced removal fallback.
+- [**System Restrictions (Device Owner)**](System-Restrictions): System-wide `UserManager` policies (VPN, DNS, factory reset, app installs) and per-app managed restrictions.
+- [**Browser & Network Protection**](Browser-and-Network-Protection): Enforcing family DNS, applying `URLBlocklist`, disabling Chrome Incognito mode, and handling unsupported browsers.
+- [**App Management & Time Limits**](App-Management-and-Time-Limits): Hiding, suspending, blocking uninstallation, daily time quotas, time windows, and reopening cooldowns.
+- [**Keyword & Content Blocking**](Keyword-and-Content-Blocking): Active typing erasure vs. passive screen scanning, use cases, and tuning.
+- [**On-Device Visual Blocking**](Visual-Blocking): Local TensorFlow Lite classification, category selection, threshold tuning, and suspension escalation.
+- [**Activity Blocker**](Activity-Blocker): Inspecting and locking specific Android activities (sub-screens) by class name.
+- [**Focus Mode & Impulse Lock**](Focus-Mode-and-Impulse-Lock): Pomodoro study cycles with app suspension, scheduled focus, lock-screen panic button, and mental challenges (Tetris, Scripture, Math, Words).
+- [**Display & Color Modes**](Display-and-Color-Filters): Grayscale, night light, extra dim, inversion schedules, and per-app exclusions.
+- [**Device Quirks & FAQ**](Device-Quirks-and-FAQ): Manufacturer-specific solutions (Samsung, Vivo, Xiaomi/MIUI, Infinix/XOS), dual apps, Secure Folder, and banking app safety.
+- [**Review & Known Limitations**](Review-and-Known-Limitations): Technical areas flagged for developer review, architectural constraints, and open issues.
