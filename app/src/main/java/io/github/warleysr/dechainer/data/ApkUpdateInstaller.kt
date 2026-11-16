@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.UserManager
 import androidx.core.content.edit
+import io.github.warleysr.dechainer.models.SuspensionReason
 import io.github.warleysr.dechainer.notifications.ApkUpdateResultReceiver
 import java.io.File
 
@@ -243,7 +244,7 @@ object ApkUpdateInstaller {
         return !isBuildDebuggable && !isAppDebuggable
     }
 
-    private fun savePreDowngradeState(context: Context, packageName: String) {
+    internal fun savePreDowngradeState(context: Context, packageName: String) {
         val dpm = DeviceAdmin.policyManager
         val admin = DeviceAdmin.component
         if (!dpm.isAdminActive(admin)) return
@@ -261,6 +262,11 @@ object ApkUpdateInstaller {
             if (wasSuspended) {
                 val set = prefs.getStringSet(KEY_RESTORE_SUSPENDED, null).orEmpty()
                 putStringSet(KEY_RESTORE_SUSPENDED, set + packageName)
+
+                val previousReason = SuspensionLogRepository.getLogs(context)
+                    .firstOrNull { it.packageName == packageName }
+                    ?.reason ?: SuspensionReason.MANUAL
+                putString("apk_update_restore_reason_$packageName", previousReason.name)
             }
             if (wasHidden) {
                 val set = prefs.getStringSet(KEY_RESTORE_HIDDEN, null).orEmpty()
@@ -273,7 +279,7 @@ object ApkUpdateInstaller {
         }
     }
 
-    private fun restorePreDowngradeState(context: Context, packageName: String) {
+    internal fun restorePreDowngradeState(context: Context, packageName: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val unblockSet = prefs.getStringSet(KEY_RESTORE_UNINSTALL_BLOCKED, null).orEmpty()
         val suspendedSet = prefs.getStringSet(KEY_RESTORE_SUSPENDED, null).orEmpty()
@@ -291,7 +297,20 @@ object ApkUpdateInstaller {
                 runCatching { dpm.setUninstallBlocked(admin, packageName, true) }
             }
             if (restoreSuspended) {
-                runCatching { dpm.setPackagesSuspended(admin, arrayOf(packageName), true) }
+                val success = runCatching {
+                    dpm.setPackagesSuspended(admin, arrayOf(packageName), true)
+                }.isSuccess
+                if (success) {
+                    val reasonName = prefs.getString("apk_update_restore_reason_$packageName", null)
+                    val reason = reasonName?.let {
+                        runCatching { SuspensionReason.valueOf(it) }.getOrNull()
+                    } ?: SuspensionLogRepository.getLogs(context)
+                        .firstOrNull { it.packageName == packageName }
+                        ?.reason
+                        ?: SuspensionReason.MANUAL
+
+                    SuspensionLogRepository.log(context, packageName, reason)
+                }
             }
             if (restoreHidden) {
                 runCatching { dpm.setApplicationHidden(admin, packageName, true) }
@@ -306,6 +325,7 @@ object ApkUpdateInstaller {
             val nextSuspended = suspendedSet - packageName
             if (nextSuspended.isEmpty()) remove(KEY_RESTORE_SUSPENDED)
             else putStringSet(KEY_RESTORE_SUSPENDED, nextSuspended)
+            remove("apk_update_restore_reason_$packageName")
 
             val nextHidden = hiddenSet - packageName
             if (nextHidden.isEmpty()) remove(KEY_RESTORE_HIDDEN)

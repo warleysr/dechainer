@@ -1231,11 +1231,12 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         val eligiblePackages = packages.filter { pkg ->
             if (suspend) {
-                val manuallyUnsuspended = AppRepository.isManuallyUnsuspended(pkg)
-                if (manuallyUnsuspended) {
-                    Timber.d("Skipping automatic suspension of $pkg: manually unsuspended by user")
+                if (AppRepository.shouldBlockSuspension(pkg, reason)) {
+                    Timber.d("Skipping automatic installation block ($reason) for $pkg: manually unsuspended by user")
+                    false
+                } else {
+                    true
                 }
-                !manuallyUnsuspended
             } else {
                 val manuallySuspended = AppRepository.isManuallySuspended(pkg)
                 if (manuallySuspended) {

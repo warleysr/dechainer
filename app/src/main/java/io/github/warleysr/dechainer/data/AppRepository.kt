@@ -199,6 +199,10 @@ object AppRepository {
         return manualSuspensionsPrefs.contains(packageName) && manualSuspensionsPrefs.getBoolean(packageName, false)
     }
 
+    fun shouldBlockSuspension(packageName: String, reason: SuspensionReason?): Boolean {
+        return reason?.isInstallationBlock == true && isManuallyUnsuspended(packageName)
+    }
+
     fun clearManualSuspension(packageName: String) {
         manualSuspensionsPrefs.edit {
             remove(packageName)

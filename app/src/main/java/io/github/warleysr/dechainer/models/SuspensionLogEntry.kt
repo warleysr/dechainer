@@ -10,7 +10,10 @@ enum class SuspensionReason(val titleResId: Int) {
     IMPULSE_LOCK(R.string.suspension_reason_impulse),
     FOCUS_MODE(R.string.suspension_reason_focus),
     ACCESSIBILITY_DISABLED(R.string.suspension_reason_accessibility_disabled),
-    MANUAL(R.string.suspension_reason_manual)
+    MANUAL(R.string.suspension_reason_manual);
+
+    val isInstallationBlock: Boolean
+        get() = this == UNSUPPORTED_BROWSER || this == TORRENT_APP || this == RATED_18_PLUS
 }
 
 data class SuspensionLogEntry(

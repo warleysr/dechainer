@@ -3,6 +3,7 @@ package io.github.warleysr.dechainer.data
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import io.github.warleysr.dechainer.models.SuspensionReason
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -32,6 +33,13 @@ class ManualSuspensionTest {
         assertFalse(AppRepository.isManuallyControlled(pkg))
         assertFalse(AppRepository.isManuallyUnsuspended(pkg))
         assertFalse(AppRepository.isManuallySuspended(pkg))
+
+        // Untouched apps are never blocked from being suspended
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.UNSUPPORTED_BROWSER))
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.TORRENT_APP))
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.RATED_18_PLUS))
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.VISUAL_BLOCKING))
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.ACCESSIBILITY_DISABLED))
     }
 
     @Test
@@ -42,6 +50,23 @@ class ManualSuspensionTest {
         assertTrue(AppRepository.isManuallyControlled(pkg))
         assertTrue(AppRepository.isManuallyUnsuspended(pkg))
         assertFalse(AppRepository.isManuallySuspended(pkg))
+    }
+
+    @Test
+    fun `manually unsuspended app blocks installation blocks but permits runtime safeguards`() {
+        val pkg = "com.telegram.messenger"
+        AppRepository.setManualSuspension(pkg, false)
+
+        // Automatic installation blocks MUST be blocked
+        assertTrue(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.UNSUPPORTED_BROWSER))
+        assertTrue(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.TORRENT_APP))
+        assertTrue(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.RATED_18_PLUS))
+
+        // Runtime safeguards MUST NOT be blocked (they still suspend even if manually unsuspended)
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.VISUAL_BLOCKING))
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.ACCESSIBILITY_DISABLED))
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.IMPULSE_LOCK))
+        assertFalse(AppRepository.shouldBlockSuspension(pkg, SuspensionReason.FOCUS_MODE))
     }
 
     @Test
