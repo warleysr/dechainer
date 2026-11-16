@@ -171,6 +171,11 @@ class DechainerAccessibilityService : AccessibilityService() {
                 AppRepository.reapplyHiddenIfNeeded(packageName)
             }
 
+            if (AppRepository.isManuallyUnsuspended(packageName)) {
+                Timber.d("Package $packageName is manually unsuspended by user, skipping automatic suspension")
+                return
+            }
+
             val manager = BrowserRestrictionsManager(applicationContext)
             val isBrowser = manager.isBrowser(packageName)
 
@@ -695,6 +700,9 @@ class DechainerAccessibilityService : AccessibilityService() {
             }
 
             if (!ratingPrefs.contains(pkg) && !checkingRating) {
+                if (AppRepository.isManuallyUnsuspended(pkg)) {
+                    return
+                }
                 checkingRating = true
                 serviceScope.launch(Dispatchers.IO) {
                     try {
@@ -1220,9 +1228,28 @@ class DechainerAccessibilityService : AccessibilityService() {
             applicationContext.getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(applicationContext, DechainerDeviceAdminReceiver::class.java)
         if (!dpm.isAdminActive(admin)) return
-        dpm.setPackagesSuspended(admin, packages, suspend)
+
+        val eligiblePackages = packages.filter { pkg ->
+            if (suspend) {
+                val manuallyUnsuspended = AppRepository.isManuallyUnsuspended(pkg)
+                if (manuallyUnsuspended) {
+                    Timber.d("Skipping automatic suspension of $pkg: manually unsuspended by user")
+                }
+                !manuallyUnsuspended
+            } else {
+                val manuallySuspended = AppRepository.isManuallySuspended(pkg)
+                if (manuallySuspended) {
+                    Timber.d("Skipping automatic un-suspension of $pkg: manually suspended by user")
+                }
+                !manuallySuspended
+            }
+        }.toTypedArray()
+
+        if (eligiblePackages.isEmpty()) return
+
+        dpm.setPackagesSuspended(admin, eligiblePackages, suspend)
         if (suspend && reason != null) {
-            packages.forEach { pkg ->
+            eligiblePackages.forEach { pkg ->
                 SuspensionLogRepository.log(applicationContext, pkg, reason, details)
             }
         }

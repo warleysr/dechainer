@@ -471,7 +471,8 @@ object FocusMode {
 
     private fun isTrackedElsewhere(context: Context, pkg: String) =
         pkg in SecurityManager.getActiveImpulseSuspension(context) ||
-            VisualBlockingSuspensionTracker(context).isSuspended(pkg)
+            VisualBlockingSuspensionTracker(context).isSuspended(pkg) ||
+            AppRepository.isManuallySuspended(pkg)
 
     private fun isSuspended(dpm: DevicePolicyManager, pkg: String) = try {
         dpm.isPackageSuspended(DeviceAdmin.component, pkg)

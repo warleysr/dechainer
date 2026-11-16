@@ -3,6 +3,7 @@ package io.github.warleysr.dechainer.data
 import android.content.RestrictionsManager
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ResolveInfo
 import android.os.Bundle
 import org.json.JSONArray
@@ -11,6 +12,20 @@ import android.net.Uri
 import androidx.core.net.toUri
 
 class BrowserRestrictionsManager(private val context: Context) {
+
+    private fun isGenericWebFilter(filter: IntentFilter?): Boolean {
+        if (filter == null) return false
+
+        // Check if this intent filter is restricted to specific domains (like itau.com.br)
+        // A genuine web browser does NOT restrict data authorities to specific domains.
+        val hasSpecificAuthority = filter.countDataAuthorities() > 0 &&
+                (0 until filter.countDataAuthorities()).none { i ->
+                    val host = filter.getDataAuthority(i)?.host
+                    host == null || host == "*" || host.isEmpty()
+                }
+
+        return !hasSpecificAuthority
+    }
 
     fun getPossibleBrowsers(): List<ResolveInfo> {
         val pm = context.packageManager
@@ -28,8 +43,10 @@ class BrowserRestrictionsManager(private val context: Context) {
             }
         }
 
-        // 2. Apps handling generic HTTP/HTTPS with CATEGORY_BROWSABLE
-        // Must exclude apps that only handle specific domain hosts (App Links / deep links)
+        // 2. Apps handling generic HTTP AND HTTPS with CATEGORY_BROWSABLE
+        // In accordance with Android standards (AOSP RoleManager.ROLE_BROWSER), a genuine
+        // browser must be able to handle BOTH http and https schemes without domain restrictions.
+        // Apps with malformed filters handling only https (like health rationale screens) are excluded.
         val httpIntent = Intent(Intent.ACTION_VIEW, "http://www.google.com".toUri()).apply {
             addCategory(Intent.CATEGORY_BROWSABLE)
         }
@@ -37,26 +54,32 @@ class BrowserRestrictionsManager(private val context: Context) {
             addCategory(Intent.CATEGORY_BROWSABLE)
         }
 
-        listOf(httpIntent, httpsIntent).forEach { intent ->
-            pm.queryIntentActivities(
-                intent,
-                PackageManager.MATCH_ALL or PackageManager.GET_RESOLVED_FILTER
-            ).forEach { resolveInfo ->
-                val packageName = resolveInfo.activityInfo?.packageName ?: return@forEach
-                if (packageName == context.packageName || resolvedPackages.contains(packageName)) return@forEach
+        val httpPackages = mutableMapOf<String, ResolveInfo>()
+        pm.queryIntentActivities(
+            httpIntent,
+            PackageManager.MATCH_ALL or PackageManager.GET_RESOLVED_FILTER
+        ).forEach { resolveInfo ->
+            val packageName = resolveInfo.activityInfo?.packageName ?: return@forEach
+            if (packageName != context.packageName && isGenericWebFilter(resolveInfo.filter)) {
+                httpPackages[packageName] = resolveInfo
+            }
+        }
 
-                val filter = resolveInfo.filter
-                // Check if this intent filter is restricted to specific domains (like itau.com.br)
-                // A genuine web browser does NOT restrict data authorities to specific domains.
-                val isDeepLinkOnly = filter != null && filter.countDataAuthorities() > 0 &&
-                        (0 until filter.countDataAuthorities()).none { i ->
-                            val host = filter.getDataAuthority(i)?.host
-                            host == null || host == "*" || host.isEmpty()
-                        }
+        val httpsPackages = mutableMapOf<String, ResolveInfo>()
+        pm.queryIntentActivities(
+            httpsIntent,
+            PackageManager.MATCH_ALL or PackageManager.GET_RESOLVED_FILTER
+        ).forEach { resolveInfo ->
+            val packageName = resolveInfo.activityInfo?.packageName ?: return@forEach
+            if (packageName != context.packageName && isGenericWebFilter(resolveInfo.filter)) {
+                httpsPackages[packageName] = resolveInfo
+            }
+        }
 
-                if (!isDeepLinkOnly && resolvedPackages.add(packageName)) {
-                    results.add(resolveInfo)
-                }
+        // Only packages that support both http AND https generically qualify as web browsers
+        httpPackages.keys.intersect(httpsPackages.keys).forEach { packageName ->
+            if (resolvedPackages.add(packageName)) {
+                results.add(httpsPackages[packageName] ?: httpPackages[packageName]!!)
             }
         }
 

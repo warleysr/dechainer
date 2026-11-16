@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit
 object AppRepository {
     private const val HIDDEN_APPS_PREFS = "hidden_apps_prefs"
     private const val KEY_HIDDEN_PACKAGES = "hidden_packages"
+    private const val MANUAL_SUSPENSIONS_PREFS = "manual_suspensions_prefs"
 
     private val context = DechainerApplication.getInstance()
     private val packageManager = context.packageManager
@@ -26,6 +27,9 @@ object AppRepository {
 
     private val hiddenAppsPrefs
         get() = context.getSharedPreferences(HIDDEN_APPS_PREFS, Context.MODE_PRIVATE)
+
+    private val manualSuspensionsPrefs
+        get() = context.getSharedPreferences(MANUAL_SUSPENSIONS_PREFS, Context.MODE_PRIVATE)
 
     private val dailyLimitsPrefs
         get() = context.getSharedPreferences(AppTimeLimits.PREFS_NAME, Context.MODE_PRIVATE)
@@ -168,12 +172,86 @@ object AppRepository {
         return getApps().firstOrNull { it.packageName == packageName }
     }
 
+    @Volatile
+    private var historicalMigrated = false
+
+    fun ensureHistoricalMigrated() {
+        if (historicalMigrated) return
+        synchronized(cacheLock) {
+            if (historicalMigrated) return
+            historicalMigrated = true
+            migrateHistoricalUnsuspensions()
+        }
+    }
+
+    private fun migrateHistoricalUnsuspensions() {
+        try {
+            val logs = SuspensionLogRepository.getLogs(context)
+            val autoSuspendedPackages = logs
+                .filter { it.reason != SuspensionReason.MANUAL }
+                .map { it.packageName }
+                .toSet()
+
+            if (autoSuspendedPackages.isEmpty()) return
+
+            val prefs = manualSuspensionsPrefs
+            prefs.edit {
+                autoSuspendedPackages.forEach { pkg ->
+                    if (!prefs.contains(pkg)) {
+                        val currentlySuspended = try {
+                            dpm.isPackageSuspended(adminName, pkg)
+                        } catch (_: Exception) {
+                            false
+                        }
+                        if (!currentlySuspended) {
+                            putBoolean(pkg, false)
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     fun setAppSuspended(packageName: String, suspended: Boolean) {
+        setManualSuspension(packageName, suspended)
         dpm.setPackagesSuspended(adminName, arrayOf(packageName), suspended)
         updateCachedApp(packageName) { it.copy(isSuspended = suspended) }
         if (suspended) {
             SuspensionLogRepository.log(context, packageName, SuspensionReason.MANUAL)
         }
+    }
+
+    fun setManualSuspension(packageName: String, suspended: Boolean) {
+        manualSuspensionsPrefs.edit {
+            putBoolean(packageName, suspended)
+        }
+    }
+
+    fun isManuallyControlled(packageName: String): Boolean {
+        ensureHistoricalMigrated()
+        return manualSuspensionsPrefs.contains(packageName)
+    }
+
+    fun isManuallyUnsuspended(packageName: String): Boolean {
+        ensureHistoricalMigrated()
+        return manualSuspensionsPrefs.contains(packageName) && !manualSuspensionsPrefs.getBoolean(packageName, false)
+    }
+
+    fun isManuallySuspended(packageName: String): Boolean {
+        ensureHistoricalMigrated()
+        return manualSuspensionsPrefs.contains(packageName) && manualSuspensionsPrefs.getBoolean(packageName, false)
+    }
+
+    fun clearManualSuspension(packageName: String) {
+        manualSuspensionsPrefs.edit {
+            remove(packageName)
+        }
+    }
+
+    fun resetHistoricalMigratedForTesting() {
+        historicalMigrated = false
     }
 
     fun setUninstallBlocked(packageName: String, block: Boolean) {

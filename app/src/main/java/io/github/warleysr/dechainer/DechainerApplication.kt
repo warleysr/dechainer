@@ -33,6 +33,12 @@ class DechainerApplication : Application() {
 
     private val packageChangeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_PACKAGE_FULLY_REMOVED) {
+                val packageName = intent.data?.encodedSchemeSpecificPart
+                if (packageName != null) {
+                    AppRepository.clearManualSuspension(packageName)
+                }
+            }
             AppRepository.invalidateCache()
             applicationScope.launch { AppRepository.getApps() }
         }
