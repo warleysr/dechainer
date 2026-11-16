@@ -25,7 +25,7 @@ Contributors and developers should use this document as a backlog of areas requi
 
 ### 2.1 Manually Unsuspended Apps Being Re-Suspended (Issue #84 - RESOLVED)
 - **Symptom**: A user manually unsuspends an essential work app (such as Telegram or Discord) in the Apps tab, but the app gets automatically re-suspended later, forcing the user to retrieve the recovery key again.
-- **Resolution**: Implemented persistent manual suspension tracking in `AppRepository` (`manual_suspensions_prefs`). Any app whose suspension is manually toggled (suspended or unsuspended) is governed exclusively by user action: automated evaluators (Play Store rating checks, browser restrictions, torrent checks, and accessibility status reconciliations) respect manual exemptions and will never automatically suspend a manually unsuspended app. Historical unsuspensions are also automatically migrated.
+- **Resolution**: Implemented persistent manual suspension tracking in `AppRepository` (`manual_suspensions_prefs`). Any app whose suspension is manually toggled (suspended or unsuspended) is governed exclusively by user action: automated evaluators (Play Store rating checks, browser restrictions, torrent checks, and accessibility status reconciliations) respect manual exemptions and will never automatically suspend a manually unsuspended app.
 
 ### 2.2 Edge Panel / Floating Window Bypasses (Issue #64)
 - **Symptom**: On custom skins with floating windows (such as Samsung Edge Panel, Oppo Smart Sidebar, or Xiaomi Floating Windows), an app blocked by a time window or daily limit can still be launched inside a mini-floating window over the block card.

@@ -172,48 +172,6 @@ object AppRepository {
         return getApps().firstOrNull { it.packageName == packageName }
     }
 
-    @Volatile
-    private var historicalMigrated = false
-
-    fun ensureHistoricalMigrated() {
-        if (historicalMigrated) return
-        synchronized(cacheLock) {
-            if (historicalMigrated) return
-            historicalMigrated = true
-            migrateHistoricalUnsuspensions()
-        }
-    }
-
-    private fun migrateHistoricalUnsuspensions() {
-        try {
-            val logs = SuspensionLogRepository.getLogs(context)
-            val autoSuspendedPackages = logs
-                .filter { it.reason != SuspensionReason.MANUAL }
-                .map { it.packageName }
-                .toSet()
-
-            if (autoSuspendedPackages.isEmpty()) return
-
-            val prefs = manualSuspensionsPrefs
-            prefs.edit {
-                autoSuspendedPackages.forEach { pkg ->
-                    if (!prefs.contains(pkg)) {
-                        val currentlySuspended = try {
-                            dpm.isPackageSuspended(adminName, pkg)
-                        } catch (_: Exception) {
-                            false
-                        }
-                        if (!currentlySuspended) {
-                            putBoolean(pkg, false)
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
     fun setAppSuspended(packageName: String, suspended: Boolean) {
         setManualSuspension(packageName, suspended)
         dpm.setPackagesSuspended(adminName, arrayOf(packageName), suspended)
@@ -230,17 +188,14 @@ object AppRepository {
     }
 
     fun isManuallyControlled(packageName: String): Boolean {
-        ensureHistoricalMigrated()
         return manualSuspensionsPrefs.contains(packageName)
     }
 
     fun isManuallyUnsuspended(packageName: String): Boolean {
-        ensureHistoricalMigrated()
         return manualSuspensionsPrefs.contains(packageName) && !manualSuspensionsPrefs.getBoolean(packageName, false)
     }
 
     fun isManuallySuspended(packageName: String): Boolean {
-        ensureHistoricalMigrated()
         return manualSuspensionsPrefs.contains(packageName) && manualSuspensionsPrefs.getBoolean(packageName, false)
     }
 
@@ -248,10 +203,6 @@ object AppRepository {
         manualSuspensionsPrefs.edit {
             remove(packageName)
         }
-    }
-
-    fun resetHistoricalMigratedForTesting() {
-        historicalMigrated = false
     }
 
     fun setUninstallBlocked(packageName: String, block: Boolean) {

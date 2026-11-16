@@ -1,10 +1,8 @@
 package io.github.warleysr.dechainer.data
 
 import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import io.github.warleysr.dechainer.models.SuspensionReason
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -26,8 +24,6 @@ class ManualSuspensionTest {
         shadowDpm = shadowOf(dpm)
         // Clean up manual suspensions prefs between tests
         context.getSharedPreferences("manual_suspensions_prefs", Context.MODE_PRIVATE).edit().clear().commit()
-        SuspensionLogRepository.clearLogs(context)
-        AppRepository.resetHistoricalMigratedForTesting()
     }
 
     @Test
@@ -67,16 +63,5 @@ class ManualSuspensionTest {
         AppRepository.clearManualSuspension(pkg)
         assertFalse(AppRepository.isManuallyControlled(pkg))
         assertFalse(AppRepository.isManuallyUnsuspended(pkg))
-    }
-
-    @Test
-    fun `historical unsuspension migration marks unsuspended apps that were previously auto-suspended`() {
-        val pkg = "com.telegram.messenger"
-        // Simulate past auto-suspension log
-        SuspensionLogRepository.log(context, pkg, SuspensionReason.RATED_18_PLUS)
-
-        // DPM indicates package is currently not suspended (e.g. user previously unsuspended it)
-        // Trigger migration by checking status
-        assertTrue(AppRepository.isManuallyUnsuspended(pkg))
     }
 }
