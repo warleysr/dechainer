@@ -26,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -48,9 +49,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.max
+import kotlin.math.sin
+import kotlin.random.Random
 
-private const val COLS = 8
+private const val COLS = 10
 private const val ROWS = 20
 private const val EMPTY = -1
 
@@ -67,6 +71,7 @@ private const val TOP_OUT_ANIMATION_MS = 520L
 private const val LOCK_FLASH_MS = 180L
 private const val DROP_TRAIL_MS = 220L
 private const val LEVEL_BANNER_MS = 1_300L
+private const val CLEAR_BANNER_MS = 1_100L
 
 private const val REPEAT_DELAY_MS = 170L
 private const val REPEAT_INTERVAL_MS = 50L
@@ -104,12 +109,23 @@ private sealed interface GameEvent {
     data object Rotate : GameEvent
     data object Lock : GameEvent
     data object HardDrop : GameEvent
-    data class LinesCleared(val count: Int) : GameEvent
+    data class LinesCleared(val count: Int, val combo: Int) : GameEvent
     data class LevelUp(val level: Int) : GameEvent
     data object TopOut : GameEvent
 }
 
 private data class DropTrail(val x: Int, val fromY: Int, val toY: Int, val color: Color)
+
+private data class Particle(
+    val x: Float,
+    val y: Float,
+    val vx: Float,
+    val vy: Float,
+    val color: Color,
+    val size: Float,
+    val spawnTime: Long,
+    val lifetimeMs: Long
+)
 
 private class TetrisGame(private val onEvent: (GameEvent) -> Unit) {
     val board = IntArray(COLS * ROWS) { EMPTY }
@@ -128,6 +144,31 @@ private class TetrisGame(private val onEvent: (GameEvent) -> Unit) {
         private set
     var revision by mutableIntStateOf(0)
         private set
+
+    var combo by mutableIntStateOf(0)
+        private set
+    var lastClearText by mutableStateOf<String?>(null)
+        private set
+    var lastClearAt by mutableLongStateOf(Long.MIN_VALUE / 2)
+        private set
+    var particles: List<Particle> by mutableStateOf(emptyList())
+        private set
+
+    var shakeStartedAt by mutableLongStateOf(Long.MIN_VALUE / 2)
+        private set
+    var shakeDurationMs by mutableLongStateOf(0L)
+        private set
+    var shakeIntensityX by mutableFloatStateOf(0f)
+        private set
+    var shakeIntensityY by mutableFloatStateOf(0f)
+        private set
+
+    fun triggerShake(intensityX: Float, intensityY: Float, durationMs: Long) {
+        shakeStartedAt = clock
+        shakeIntensityX = intensityX
+        shakeIntensityY = intensityY
+        shakeDurationMs = durationMs
+    }
 
     var clearingRows: List<Int> = emptyList()
         private set
@@ -179,6 +220,12 @@ private class TetrisGame(private val onEvent: (GameEvent) -> Unit) {
 
     fun update(delta: Long) {
         clock += delta
+        if (particles.isNotEmpty()) {
+            val remaining = particles.filter { (clock - it.spawnTime) < it.lifetimeMs }
+            if (remaining.size != particles.size) {
+                particles = remaining
+            }
+        }
         if (clearingRows.isNotEmpty()) {
             if (clock - clearStartedAt >= CLEAR_ANIMATION_MS) finishClear()
             return
@@ -253,10 +300,67 @@ private class TetrisGame(private val onEvent: (GameEvent) -> Unit) {
 
         val full = (0 until ROWS).filter { row -> (0 until COLS).all { board[row * COLS + it] != EMPTY } }
         if (full.isNotEmpty()) {
+            combo++
             clearingRows = full
             clearStartedAt = clock
-            onEvent(GameEvent.LinesCleared(full.size))
+            lastClearAt = clock
+
+            val name = when (full.size) {
+                1 -> "SINGLE"
+                2 -> "DOUBLE"
+                3 -> "TRIPLE"
+                else -> "TETRIS"
+            }
+            lastClearText = if (combo > 1) {
+                if (full.size == 4) "TETRIS!\nCOMBO x$combo" else "$name!\nCOMBO x$combo"
+            } else if (full.size == 4) {
+                "TETRIS!"
+            } else {
+                name
+            }
+
+            val shakePower = when (full.size) {
+                1 -> 5f
+                2 -> 9f
+                3 -> 13f
+                else -> 18f
+            }
+            triggerShake(intensityX = shakePower, intensityY = shakePower, durationMs = 180L + full.size * 50L)
+
+            val newParticles = ArrayList<Particle>(full.size * COLS * 4)
+            for (row in full) {
+                for (col in 0 until COLS) {
+                    val typeIndex = board[row * COLS + col]
+                    val cellColor = if (typeIndex in Tetromino.entries.indices) {
+                        Tetromino.entries[typeIndex].color
+                    } else {
+                        Color.White
+                    }
+                    repeat(4) {
+                        val angle = Random.nextFloat() * (2f * Math.PI.toFloat())
+                        val speed = Random.nextFloat() * 4f + 1.5f
+                        newParticles.add(
+                            Particle(
+                                x = col + 0.5f,
+                                y = row + 0.5f,
+                                vx = cos(angle) * speed,
+                                vy = sin(angle) * speed - 2f,
+                                color = cellColor,
+                                size = Random.nextFloat() * 2.5f + 2.5f,
+                                spawnTime = clock,
+                                lifetimeMs = Random.nextLong(320L, 520L)
+                            )
+                        )
+                    }
+                }
+            }
+            particles = newParticles
+            onEvent(GameEvent.LinesCleared(full.size, combo))
         } else {
+            combo = 0
+            if (hardDrop) {
+                triggerShake(intensityX = 0f, intensityY = 7f, durationMs = 120L)
+            }
             onEvent(if (hardDrop) GameEvent.HardDrop else GameEvent.Lock)
             spawnNext()
         }
@@ -288,6 +392,8 @@ private class TetrisGame(private val onEvent: (GameEvent) -> Unit) {
     private fun finishTopOut() {
         board.fill(EMPTY)
         topOutStartedAt = null
+        particles = emptyList()
+        combo = 0
         spawnNext()
     }
 
@@ -302,6 +408,8 @@ private class TetrisGame(private val onEvent: (GameEvent) -> Unit) {
             current = spawned
         } else {
             topOutStartedAt = clock
+            combo = 0
+            triggerShake(intensityX = 12f, intensityY = 12f, durationMs = 400L)
             onEvent(GameEvent.TopOut)
         }
         revision++
@@ -325,18 +433,33 @@ fun TetrisChallenge(minutes: Int, onSuccess: () -> Unit) {
 
     val game = remember {
         TetrisGame { event ->
-            val (sound, haptic) = when (event) {
-                GameEvent.Move -> TetrisSound.MOVE to null
-                GameEvent.Rotate -> TetrisSound.ROTATE to null
-                GameEvent.Lock -> TetrisSound.LOCK to HapticFeedbackType.SegmentTick
-                GameEvent.HardDrop -> TetrisSound.HARD_DROP to HapticFeedbackType.VirtualKey
-                is GameEvent.LinesCleared ->
-                    if (event.count >= 3) TetrisSound.CLEAR_BIG to HapticFeedbackType.LongPress
-                    else TetrisSound.CLEAR to HapticFeedbackType.Confirm
-                is GameEvent.LevelUp -> TetrisSound.LEVEL_UP to HapticFeedbackType.Confirm
-                GameEvent.TopOut -> TetrisSound.TOP_OUT to HapticFeedbackType.Reject
+            val (soundWithRate, haptic) = when (event) {
+                GameEvent.Move -> (TetrisSound.MOVE to 1f) to null
+                GameEvent.Rotate -> (TetrisSound.ROTATE to 1f) to null
+                GameEvent.Lock -> (TetrisSound.LOCK to 1f) to HapticFeedbackType.SegmentTick
+                GameEvent.HardDrop -> (TetrisSound.HARD_DROP to 1f) to HapticFeedbackType.VirtualKey
+                is GameEvent.LinesCleared -> {
+                    val sound = if (event.count >= 4) TetrisSound.CLEAR_BIG else TetrisSound.CLEAR
+                    val haptic = if (event.count >= 3 || event.combo >= 3) {
+                        HapticFeedbackType.LongPress
+                    } else {
+                        HapticFeedbackType.Confirm
+                    }
+                    val linePitch = when (event.count) {
+                        1 -> 1.0f
+                        2 -> 1.122f
+                        3 -> 1.260f
+                        else -> 1.0f
+                    }
+                    val comboMultiplier = 1.0f + ((event.combo - 1).coerceAtLeast(0) * 0.10f)
+                    val rate = (linePitch * comboMultiplier).coerceIn(0.5f, 2.0f)
+                    (sound to rate) to haptic
+                }
+                is GameEvent.LevelUp -> (TetrisSound.LEVEL_UP to 1f) to HapticFeedbackType.Confirm
+                GameEvent.TopOut -> (TetrisSound.TOP_OUT to 1f) to HapticFeedbackType.Reject
             }
-            if (currentSoundOn) sounds.play(sound)
+            val (sound, pitchRate) = soundWithRate
+            if (currentSoundOn) sounds.play(sound, pitchRate)
             haptic?.let { haptics.performHapticFeedback(it) }
         }
     }
@@ -384,18 +507,137 @@ fun TetrisChallenge(minutes: Int, onSuccess: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.Start
+            ) {
+                Text(
+                    stringResource(R.string.tetris_lines, game.lines),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    stringResource(R.string.tetris_level, game.level),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (game.combo > 1) {
+                    Text(
+                        "Combo x${game.combo}",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1.4f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (finished) {
+                    Button(
+                        onClick = { currentOnSuccess() },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(stringResource(R.string.tetris_continue), maxLines = 1, style = MaterialTheme.typography.labelLarge)
+                    }
+                } else {
+                    Text(
+                        "%02d:%02d".format(remainingSeconds / 60, remainingSeconds % 60),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    LinearProgressIndicator(
+                        progress = { (playedMillis.toFloat() / requiredMillis).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth(0.9f)
+                            .height(6.dp),
+                        strokeCap = StrokeCap.Round
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        stringResource(R.string.tetris_next),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Canvas(modifier = Modifier.size(36.dp)) {
+                        game.revision
+                        val next = game.next
+                        val cell = size.width / 4
+                        val offset = (4 - next.boxSize) / 2f
+                        next.cells.forEach { (x, y) ->
+                            drawRoundRect(
+                                next.color,
+                                topLeft = Offset((x + offset) * cell + 0.5f, (y + offset) * cell + 0.5f),
+                                size = Size(cell - 1f, cell - 1f),
+                                cornerRadius = CornerRadius(2.dp.toPx())
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                IconButton(
+                    onClick = {
+                        soundOn = !soundOn
+                        SecurityManager.setTetrisSoundEnabled(context, soundOn)
+                    },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        if (soundOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                        contentDescription = stringResource(if (soundOn) R.string.tetris_sound_on else R.string.tetris_sound_off),
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .weight(1f, fill = false)
                     .fillMaxHeight()
                     .aspectRatio(COLS.toFloat() / ROWS, matchHeightConstraintsFirst = true)
+                    .graphicsLayer {
+                        val elapsed = game.clock - game.shakeStartedAt
+                        if (elapsed in 0..game.shakeDurationMs && game.shakeDurationMs > 0) {
+                            val progress = elapsed.toFloat() / game.shakeDurationMs
+                            val decay = (1f - progress) * (1f - progress)
+                            val angle = 2f * Math.PI.toFloat() * 20f * (elapsed / 1000f)
+                            translationX = sin(angle) * game.shakeIntensityX * decay * density
+                            translationY = cos(angle * 1.3f) * game.shakeIntensityY * decay * density
+                        } else {
+                            translationX = 0f
+                            translationY = 0f
+                        }
+                    }
             ) {
                 Canvas(
                     modifier = Modifier
@@ -432,70 +674,12 @@ fun TetrisChallenge(minutes: Int, onSuccess: () -> Unit) {
                     drawBoard(game, colors)
                 }
                 LevelBanner(game)
+                ClearBanner(game)
                 if (!isPlaying) PausedOverlay()
-            }
-
-            Column(
-                modifier = Modifier
-                    .width(88.dp)
-                    .fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (finished) {
-                    Button(
-                        onClick = { currentOnSuccess() },
-                        contentPadding = PaddingValues(horizontal = 8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(stringResource(R.string.tetris_continue), maxLines = 1)
-                    }
-                } else {
-                    Text(
-                        "%02d:%02d".format(remainingSeconds / 60, remainingSeconds % 60),
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    LinearProgressIndicator(
-                        progress = { (playedMillis.toFloat() / requiredMillis).coerceIn(0f, 1f) },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.tetris_next), style = MaterialTheme.typography.labelLarge)
-                Spacer(modifier = Modifier.height(4.dp))
-                Canvas(modifier = Modifier.size(56.dp)) {
-                    game.revision
-                    val next = game.next
-                    val cell = size.width / 4
-                    val offset = (4 - next.boxSize) / 2f
-                    next.cells.forEach { (x, y) ->
-                        drawRoundRect(
-                            next.color,
-                            topLeft = Offset((x + offset) * cell + 1f, (y + offset) * cell + 1f),
-                            size = Size(cell - 2f, cell - 2f),
-                            cornerRadius = CornerRadius(3.dp.toPx())
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(stringResource(R.string.tetris_lines, game.lines), style = MaterialTheme.typography.bodyMedium)
-                Text(stringResource(R.string.tetris_level, game.level), style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.weight(1f))
-                IconButton(
-                    onClick = {
-                        soundOn = !soundOn
-                        SecurityManager.setTetrisSoundEnabled(context, soundOn)
-                    }
-                ) {
-                    Icon(
-                        if (soundOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                        contentDescription = stringResource(if (soundOn) R.string.tetris_sound_on else R.string.tetris_sound_off)
-                    )
-                }
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -590,6 +774,27 @@ private fun DrawScope.drawBoard(game: TetrisGame, colors: BoardColors) {
         }
     }
 
+    if (game.particles.isNotEmpty()) {
+        for (particle in game.particles) {
+            val elapsed = clock - particle.spawnTime
+            if (elapsed in 0 until particle.lifetimeMs) {
+                val progress = elapsed.toFloat() / particle.lifetimeMs
+                val t = elapsed / 1000f
+                val colPos = particle.x + particle.vx * t
+                val rowPos = particle.y + particle.vy * t + 0.5f * 15f * t * t
+                val px = colPos * cell
+                val py = rowPos * cell
+                val alpha = (1f - progress).coerceIn(0f, 1f)
+                val radius = (particle.size * (1f - progress * 0.4f)).dp.toPx()
+                drawCircle(
+                    color = particle.color.copy(alpha = alpha),
+                    radius = radius,
+                    center = Offset(px, py)
+                )
+            }
+        }
+    }
+
     game.ghost()?.cells()?.forEach { (x, y) -> drawCell(x, y, cell, colors.ghost, outline = true) }
     game.current?.let { piece -> piece.cells().forEach { (x, y) -> drawCell(x, y, cell, piece.type.color) } }
 }
@@ -636,6 +841,49 @@ private fun LevelBanner(game: TetrisGame) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer,
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+        )
+    }
+}
+
+@Composable
+private fun ClearBanner(game: TetrisGame) {
+    val progress = (game.clock - game.lastClearAt).toFloat() / CLEAR_BANNER_MS
+    val text = game.lastClearText ?: return
+    if (progress !in 0f..1f) return
+    val pop = (progress / 0.15f).coerceAtMost(1f)
+    val isTetris = text.contains("TETRIS")
+    val isCombo = text.contains("COMBO")
+
+    val containerColor = when {
+        isTetris -> MaterialTheme.colorScheme.tertiaryContainer
+        isCombo -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.secondaryContainer
+    }
+    val contentColor = when {
+        isTetris -> MaterialTheme.colorScheme.onTertiaryContainer
+        isCombo -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = containerColor,
+        shadowElevation = 6.dp,
+        modifier = Modifier.graphicsLayer {
+            val scale = 1.35f - 0.35f * pop
+            scaleX = scale
+            scaleY = scale
+            alpha = if (progress < 0.7f) 1f else (1f - progress) / 0.3f
+            translationY = -progress * 40.dp.toPx()
+        }
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = contentColor,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
     }
 }

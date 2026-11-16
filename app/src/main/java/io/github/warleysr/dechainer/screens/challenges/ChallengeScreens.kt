@@ -30,14 +30,14 @@ fun ChallengeScaffold(
         modifier = Modifier
             .fillMaxSize()
             .safeDrawingPadding()
-            .padding(bottom = 16.dp),
+            .padding(bottom = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (total > 1) {
             Text(
                 stringResource(R.string.challenge_step, step, total),
                 style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.padding(top = 16.dp)
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
             )
         }
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -48,7 +48,7 @@ fun ChallengeScaffold(
             colors = ButtonDefaults.textButtonColors(
                 contentColor = MaterialTheme.colorScheme.error
             ),
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 2.dp)
         ) {
             Text(stringResource(R.string.challenge_give_up), style = MaterialTheme.typography.labelLarge)
         }

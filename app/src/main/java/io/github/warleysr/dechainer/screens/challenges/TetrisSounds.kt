@@ -40,7 +40,7 @@ internal enum class TetrisSound(val volume: Float) {
 
 internal class TetrisSounds(private val context: Context) {
     private val pool = SoundPool.Builder()
-        .setMaxStreams(4)
+        .setMaxStreams(8)
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_GAME)
@@ -64,10 +64,11 @@ internal class TetrisSounds(private val context: Context) {
         }
     }
 
-    fun play(sound: TetrisSound) {
+    fun play(sound: TetrisSound, pitchRate: Float = 1f) {
         if (released || audioManager?.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
         val id = ids[sound] ?: return
-        pool.play(id, sound.volume, sound.volume, 1, 0, 1f)
+        val rate = pitchRate.coerceIn(0.5f, 2.0f)
+        pool.play(id, sound.volume, sound.volume, 1, 0, rate)
     }
 
     fun release() {
