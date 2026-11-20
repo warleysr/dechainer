@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -19,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.screens.common.AppPickerDialog
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.security.SecurityManager
@@ -29,12 +32,21 @@ import io.github.warleysr.dechainer.viewmodels.ImpulseLockViewModel
 fun ImpulseLockScreen(viewModel: ImpulseLockViewModel = viewModel()) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
     var showAddPassageDialog by remember { mutableStateOf(false) }
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_IMPULSE_LOCK)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_IMPULSE_LOCK)
 
-    val sessionActive = recoveryGate.isSessionActive
+    val sessionActive = recoveryGate.isSessionActive && !isPermanent
     val accessibilityActive = DechainerAccessibilityService.isRunning
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (isPermanent) {
+            item {
+                PermanentRestrictionBanner()
+            }
+        }
         item {
             Text(
                 stringResource(R.string.impulse_lock_explanation),
@@ -44,7 +56,7 @@ fun ImpulseLockScreen(viewModel: ImpulseLockViewModel = viewModel()) {
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
         }
 
-        if (!sessionActive) {
+        if (!isPermanent && !sessionActive) {
             item {
                 ListItem(
                     headlineContent = { Text(stringResource(R.string.visual_blocking_locked)) },

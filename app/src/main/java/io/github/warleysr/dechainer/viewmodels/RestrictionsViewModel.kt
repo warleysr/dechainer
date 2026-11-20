@@ -46,9 +46,13 @@ class RestrictionsViewModel : ViewModel() {
         draftRestrictions[key] = enabled
     }
 
-    fun toggleAllDrafts(keys: List<String>, enabled: Boolean) {
+    fun toggleAllDrafts(keys: List<String>, enabled: Boolean, permanentKeys: Set<String> = emptySet()) {
         keys.forEach { key ->
-            draftRestrictions[key] = enabled
+            if (!enabled && key in permanentKeys) {
+                draftRestrictions[key] = true
+            } else {
+                draftRestrictions[key] = enabled
+            }
         }
     }
 

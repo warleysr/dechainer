@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -24,10 +25,12 @@ import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.ColorFilterSettings
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.models.ColorFilterMode
 import io.github.warleysr.dechainer.models.ColorFilterScope
 import io.github.warleysr.dechainer.models.TimeWindow
 import io.github.warleysr.dechainer.screens.common.AppPickerDialog
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGate
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -42,7 +45,11 @@ import kotlin.time.Duration.Companion.seconds
 fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
     var editingWindowsFor by remember { mutableStateOf<ColorFilterMode?>(null) }
     var pickingAppsFor by remember { mutableStateOf<ColorFilterMode?>(null) }
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_COLOR_FILTER_SETTINGS)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_COLOR_FILTER_SETTINGS)
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -67,6 +74,11 @@ fun ColorFilterScreen(viewModel: ColorFilterViewModel = viewModel()) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
+            if (isPermanent) {
+                item {
+                    PermanentRestrictionBanner()
+                }
+            }
             item {
                 Text(
                     stringResource(R.string.color_filter_explanation),

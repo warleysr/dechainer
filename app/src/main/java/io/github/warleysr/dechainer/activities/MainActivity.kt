@@ -178,7 +178,7 @@ class MainActivity : ComponentActivity() {
                         val selectedBaseTab = when (currentScreen) {
                             "restrictions" -> "restrictions"
                             "apps", "app_restrictions" -> "apps"
-                            "config", "setup_device_owner", "activity_blocker", "browser_restrictions", "blocked_words", "visual_blocking", "impulse_lock", "focus_mode", "usage_warning", "color_filters", "suspension_logs" -> "config"
+                            "config", "setup_device_owner", "activity_blocker", "browser_restrictions", "blocked_words", "visual_blocking", "impulse_lock", "focus_mode", "usage_warning", "color_filters", "suspension_logs", "permanent_restrictions" -> "config"
                             else -> "restrictions"
                         }
 
@@ -230,6 +230,7 @@ class MainActivity : ComponentActivity() {
                                     "usage_warning" -> UsageWarningScreen()
                                     "color_filters" -> ColorFilterScreen()
                                     "suspension_logs" -> SuspensionLogsScreen()
+                                    "permanent_restrictions" -> PermanentRestrictionsScreen()
                                     "app_restrictions" -> {
                                         navViewModel.selectedAppForRestrictions?.let { app ->
                                             AppRestrictionsScreen(

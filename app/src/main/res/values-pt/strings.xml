@@ -617,6 +617,31 @@
     <string name="tile_focus_phase_focus">Foco</string>
     <string name="tile_focus_phase_break">Pausa</string>
     <string name="tile_focus_paused">Pausado</string>
+    <string name="permanent_restrictions">Restrições permanentes</string>
+    <string name="permanent_restrictions_desc">Bloqueie restrições e opções para que não possam ser removidas nem com o código de recuperação</string>
+    <string name="permanent_badge">Permanente</string>
+    <string name="permanent_banner_text">Esta configuração está com restrição permanente ativa. Ela não pode ser afrouxada ou desativada, nem com o código de recuperação. Para editá-la, inicie o modo de edição de 48h em Configurações &gt; Restrições permanentes.</string>
+    <string name="permanent_blocked_snackbar">Bloqueado por restrição permanente. Inicie o modo de edição de 48h em Configurações &gt; Restrições permanentes.</string>
+    <string name="permanent_start_edit">Iniciar edição (48h)</string>
+    <string name="permanent_start_edit_desc">Inicia um prazo de 48h para liberar a remoção de restrições permanentes</string>
+    <string name="permanent_edit_waiting">Liberação em %1$s</string>
+    <string name="permanent_edit_unlocked">Modo de edição liberado</string>
+    <string name="permanent_edit_unlocked_desc">Você já pode desmarcar restrições permanentes. Trave novamente ao concluir.</string>
+    <string name="permanent_lock_again">Concluir e travar novamente</string>
+    <string name="permanent_cancel_edit">Cancelar timer de edição</string>
+    <string name="permanent_cancel_edit_text">Deseja cancelar o timer de 48 horas? As restrições permanentes continuarão bloqueadas.</string>
+    <string name="permanent_start_edit_dialog_title">Iniciar modo de edição de 48h?</string>
+    <string name="permanent_start_edit_dialog_text">Após 48 horas, você poderá desmarcar as restrições permanentes. Este prazo não pode ser acelerado alterando o relógio do celular.</string>
+    <string name="permanent_add_warning_title">Tornar restrição permanente?</string>
+    <string name="permanent_add_warning_text">ATENÇÃO: Você está prestes a tornar \"%1$s\" permanente.\n\n• Se estiver desativada, ela será ativada automaticamente.\n• Você NÃO poderá desativá-la ou afrouxá-la, nem mesmo com o código de recuperação.\n• A única forma de remover este bloqueio é iniciando um timer de edição de 48 horas (resistente à mudança de relógio).</string>
+    <string name="permanent_add_confirm_checkbox">Entendo que isso não poderá ser desfeito sem aguardar 48 horas</string>
+    <string name="permanent_section_app_features">Opções e recursos do app</string>
+    <string name="permanent_section_dpc_restrictions">Restrições de sistema / DPC</string>
+    <string name="permanent_remove_device_owner">Bloquear remoção de Device Owner</string>
+    <string name="permanent_remove_device_owner_desc">Impede remover os privilégios de Device Owner mesmo com o código</string>
+    <string name="permanent_requires_device_owner">Requer privilégios de Device Owner</string>
+    <string name="permanent_dpc_permanent_error">Esta restrição é permanente e não pode ser desativada</string>
+    <string name="permanent_do_removal_blocked">A remoção de Device Owner está bloqueada por uma restrição permanente. Inicie o modo de edição de 48h em Configurações &gt; Restrições permanentes para liberá-la.</string>
 </resources>
 
 

@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -24,8 +25,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.data.VisualBlockingSettings
 import io.github.warleysr.dechainer.screens.common.AppPickerDialog
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.isLooserSet
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -34,11 +37,20 @@ import io.github.warleysr.dechainer.viewmodels.VisualBlockingViewModel
 @Composable
 fun VisualBlockingScreen(viewModel: VisualBlockingViewModel = viewModel()) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_VISUAL_BLOCKING)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_VISUAL_BLOCKING)
 
     val accessibilityActive = DechainerAccessibilityService.isRunning
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (isPermanent) {
+            item {
+                PermanentRestrictionBanner()
+            }
+        }
         item {
             Text(
                 stringResource(R.string.visual_blocking_explanation),

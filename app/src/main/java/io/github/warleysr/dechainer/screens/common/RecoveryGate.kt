@@ -2,7 +2,10 @@ package io.github.warleysr.dechainer.screens.common
 
 import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -11,9 +14,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.security.SecurityManager
 import kotlinx.coroutines.delay
 
@@ -23,11 +28,17 @@ import kotlinx.coroutines.delay
  * Once the code is right, the configured access challenges run and only then does the session start.
  * Replaces the `pendingAction`/`showRecoveryDialog` pair every settings screen used to hand-roll.
  */
-class RecoveryGate(private val context: Context) {
+class RecoveryGate(
+    private val context: Context,
+    private val permanentKey: String? = null
+) {
     private var pendingAction by mutableStateOf<(() -> Unit)?>(null)
     private var pendingCancel: (() -> Unit)? = null
 
     var isChallenging by mutableStateOf(false)
+        private set
+
+    var isPermanentBlockedDialogVisible by mutableStateOf(false)
         private set
 
     val isDialogVisible: Boolean get() = pendingAction != null && !isChallenging
@@ -43,8 +54,30 @@ class RecoveryGate(private val context: Context) {
         }
     }
 
+    fun showPermanentBlockedDialog() {
+        isPermanentBlockedDialogVisible = true
+    }
+
+    fun dismissPermanentBlockedDialog() {
+        isPermanentBlockedDialogVisible = false
+    }
+
+    private fun checkBlocked(key: String?, onCancel: (() -> Unit)?): Boolean {
+        if (key != null && PermanentRestrictionsManager.isPermanent(context, key)) {
+            onCancel?.invoke()
+            isPermanentBlockedDialogVisible = true
+            return true
+        }
+        return false
+    }
+
     /** [onCancel] runs if the user dismisses the dialog instead of confirming — for rolling back optimistic UI updates. */
     fun run(onCancel: (() -> Unit)? = null, action: () -> Unit) {
+        runForFeature(permanentKey, onCancel, action)
+    }
+
+    fun runForFeature(featureKey: String?, onCancel: (() -> Unit)? = null, action: () -> Unit) {
+        if (checkBlocked(featureKey, onCancel)) return
         val storedCode = SecurityManager.getRecoveryCode(context)
         if (storedCode == null || SecurityManager.isSessionActive()) {
             action()
@@ -56,7 +89,12 @@ class RecoveryGate(private val context: Context) {
 
     /** Loosening needs a session; anything stricter is applied after an undo window instead. [onCancel] runs on dismissed dialog or Undo. */
     fun change(loosening: Boolean, onCancel: (() -> Unit)? = null, action: () -> Unit) {
-        if (loosening) run(onCancel, action)
+        changeForFeature(permanentKey, loosening, onCancel, action)
+    }
+
+    fun changeForFeature(featureKey: String?, loosening: Boolean, onCancel: (() -> Unit)? = null, action: () -> Unit) {
+        if (loosening && checkBlocked(featureKey, onCancel)) return
+        if (loosening) runForFeature(null, onCancel, action)
         else if (SecurityManager.isSessionActive()) action()
         else PendingChange.schedule(
             context.getString(R.string.restriction_pending),
@@ -98,9 +136,9 @@ class RecoveryGate(private val context: Context) {
 
 
 @Composable
-fun rememberRecoveryGate(): RecoveryGate {
+fun rememberRecoveryGate(permanentKey: String? = null): RecoveryGate {
     val context = LocalContext.current
-    val gate = remember { RecoveryGate(context) }
+    val gate = remember(permanentKey) { RecoveryGate(context, permanentKey) }
 
     LaunchedEffect(gate, SecurityManager.sessionEndTime) {
         gate.updateSessionActive()
@@ -121,6 +159,18 @@ fun rememberRecoveryGate(): RecoveryGate {
 @Composable
 fun RecoveryGateDialog(gate: RecoveryGate) {
     val context = LocalContext.current
+    if (gate.isPermanentBlockedDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { gate.dismissPermanentBlockedDialog() },
+            title = { Text(stringResource(R.string.permanent_restrictions)) },
+            text = { Text(stringResource(R.string.permanent_banner_text)) },
+            confirmButton = {
+                TextButton(onClick = { gate.dismissPermanentBlockedDialog() }) {
+                    Text(stringResource(R.string.close))
+                }
+            }
+        )
+    }
     if (gate.isDialogVisible) {
         RecoveryConfirmDialog(
             onConfirm = { code -> gate.confirm(code) },

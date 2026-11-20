@@ -21,8 +21,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.data.SystemRestrictions
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
+import io.github.warleysr.dechainer.screens.common.PermanentBadge
+import io.github.warleysr.dechainer.screens.common.RecoveryGate
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
@@ -54,6 +57,7 @@ fun RestrictionsTab(
                     title = stringResource(R.string.recommended_configs),
                     keys = restrictionsViewModel.recommendedKeys,
                     viewModel = restrictionsViewModel,
+                    recoveryGate = recoveryGate,
                     defaultExpanded = true
                 )
 
@@ -63,6 +67,7 @@ fun RestrictionsTab(
                     title = stringResource(R.string.other_restrictions),
                     keys = restrictionsViewModel.otherKeys,
                     viewModel = restrictionsViewModel,
+                    recoveryGate = recoveryGate,
                     defaultExpanded = false,
                     showSearch = true
                 )
@@ -105,12 +110,16 @@ private fun RestrictionAccordion(
     title: String,
     keys: List<String>,
     viewModel: RestrictionsViewModel,
+    recoveryGate: RecoveryGate,
     defaultExpanded: Boolean,
     showSearch: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
     var searchQuery by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val permanentDpcKeys = remember(keys) {
+        keys.filter { PermanentRestrictionsManager.isDpcPermanent(context, it) }.toSet()
+    }
 
     val labelMap = remember(keys) {
         keys.associateWith { key ->
@@ -146,7 +155,12 @@ private fun RestrictionAccordion(
             ) {
                 Checkbox(
                     checked = isAllEnabled,
-                    onCheckedChange = { viewModel.toggleAllDrafts(filteredKeys, it) }
+                    onCheckedChange = { checked ->
+                        viewModel.toggleAllDrafts(filteredKeys, checked, permanentDpcKeys)
+                        if (!checked && filteredKeys.any { it in permanentDpcKeys }) {
+                            recoveryGate.showPermanentBlockedDialog()
+                        }
+                    }
                 )
                 Text(
                     text = title,
@@ -182,12 +196,20 @@ private fun RestrictionAccordion(
                     }
 
                     filteredKeys.forEach { key ->
+                        val isPermanent = key in permanentDpcKeys
                         RestrictionItem(
                             label = labelMap[key]?.let { stringResource(it) } ?: key,
                             value = key,
                             checked = viewModel.draftRestrictions[key] == true,
                             isApplied = viewModel.appliedRestrictions[key] == true,
-                            onCheckedChange = { viewModel.toggleDraft(key, it) }
+                            isPermanent = isPermanent,
+                            onCheckedChange = { checked ->
+                                if (!checked && isPermanent) {
+                                    recoveryGate.showPermanentBlockedDialog()
+                                } else {
+                                    viewModel.toggleDraft(key, checked)
+                                }
+                            }
                         )
                     }
                 }
@@ -202,6 +224,7 @@ fun RestrictionItem(
     value: String,
     checked: Boolean,
     isApplied: Boolean,
+    isPermanent: Boolean = false,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Row(
@@ -226,7 +249,9 @@ fun RestrictionItem(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        if (isApplied) {
+        if (isPermanent) {
+            PermanentBadge(modifier = Modifier.padding(start = 8.dp))
+        } else if (isApplied) {
             Surface(
                 color = MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.extraSmall,

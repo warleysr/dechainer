@@ -24,6 +24,8 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.isLooserRestrictions
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -45,8 +47,11 @@ fun BrowserRestrictionsScreen(
     var showEditDialog by remember { mutableStateOf<BlockedList?>(null) }
     var isCreatingNew by remember { mutableStateOf(false) }
     var showNoRestrictionsDialog by remember { mutableStateOf<String?>(null) }
-    val recoveryGate = rememberRecoveryGate()
     val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_BROWSER_RESTRICTIONS)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_BROWSER_RESTRICTIONS)
 
     Scaffold { padding ->
         LazyColumn(
@@ -54,6 +59,11 @@ fun BrowserRestrictionsScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
+            if (isPermanent) {
+                item {
+                    PermanentRestrictionBanner()
+                }
+            }
             item {
                 Text(
                     stringResource(R.string.allowed_browsers),

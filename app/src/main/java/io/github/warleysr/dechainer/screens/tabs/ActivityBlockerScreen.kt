@@ -14,12 +14,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.ActivityBlockerViewModel
@@ -31,7 +34,11 @@ fun ActivityBlockerScreen(
     viewModel: ActivityBlockerViewModel = viewModel(),
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_BLOCKED_ACTIVITIES)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_BLOCKED_ACTIVITIES)
 
     Scaffold { padding ->
         LazyColumn(
@@ -39,6 +46,11 @@ fun ActivityBlockerScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp)
         ) {
+            if (isPermanent) {
+                item {
+                    PermanentRestrictionBanner()
+                }
+            }
             item {
                 Row(
                     modifier = Modifier

@@ -22,12 +22,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.data.FocusMode
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.models.FocusSchedule
 import io.github.warleysr.dechainer.screens.common.AppPickerDialog
 import io.github.warleysr.dechainer.screens.common.FocusGroupPickerDialog
 import io.github.warleysr.dechainer.screens.common.FocusRestrictionsDialog
 import io.github.warleysr.dechainer.screens.common.FocusScheduleDialog
 import io.github.warleysr.dechainer.screens.common.FocusSessionCard
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.isLooserSet
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -44,11 +46,20 @@ fun FocusModeScreen(viewModel: FocusModeViewModel = viewModel()) {
     var showRestrictionsDialog by remember { mutableStateOf(false) }
     var showScheduleDialog by remember { mutableStateOf(false) }
     var scheduleToEdit by remember { mutableStateOf<FocusSchedule?>(null) }
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_FOCUS_MODE)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_FOCUS_MODE)
 
     val isDeviceOwner = remember { DeviceOwnerRepository.isDeviceOwner() }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (isPermanent) {
+            item {
+                PermanentRestrictionBanner()
+            }
+        }
         item {
             Text(
                 stringResource(R.string.focus_mode_explanation),

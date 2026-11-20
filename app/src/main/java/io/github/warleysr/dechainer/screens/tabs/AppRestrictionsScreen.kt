@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +38,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.models.AppItem
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.isLooserRestrictions
@@ -168,7 +171,13 @@ fun AppRestrictionsScreen(
     var selectedFilter by remember { mutableStateOf(RestrictionFilter.ALL) }
     var showResetDialog by remember { mutableStateOf(false) }
 
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val permanentKey = remember(app.packageName) {
+        if (BrowserRestrictionsManager(context).supportsRestrictions(app.packageName))
+            PermanentRestrictionsManager.KEY_BROWSER_RESTRICTIONS
+        else null
+    }
+    val recoveryGate = rememberRecoveryGate(permanentKey)
 
     val activeCount = states.count { it.isManaged }
 

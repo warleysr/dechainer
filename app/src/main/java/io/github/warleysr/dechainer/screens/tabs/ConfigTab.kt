@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
+import io.github.warleysr.dechainer.screens.common.PermanentBadge
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.RecoveryGenerateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -77,6 +80,7 @@ fun ConfigTab(
     var blockTorrents by remember { mutableStateOf(SecurityManager.isBlockTorrentsEnabled(context)) }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
+    val permanentKeys = remember { PermanentRestrictionsManager.getPermanentKeys(context) }
 
     var forcedRemovalRemaining by remember { mutableLongStateOf(SecurityManager.getForcedRemovalRemainingTime(context)) }
     LaunchedEffect(Unit) {
@@ -90,7 +94,7 @@ fun ConfigTab(
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.device_owner_state)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.device_owner_state), PermanentRestrictionsManager.KEY_REMOVE_DEVICE_OWNER in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.device_owner_description)) },
                     leadingContent = { Icon(Icons.Outlined.Adb, "") },
                     trailingContent = {
@@ -107,7 +111,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.dns_settings)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.dns_settings), PermanentRestrictionsManager.KEY_DNS_SETTINGS in permanentKeys) },
                     supportingContent = { 
                         Text( stringResource(R.string.dns_description))
                     },
@@ -127,7 +131,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.browser_restrictions)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.browser_restrictions), PermanentRestrictionsManager.KEY_BROWSER_RESTRICTIONS in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.browser_restrictions_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Web, "") },
                     modifier = Modifier.clickable { navViewModel.navigateTo("browser_restrictions") }
@@ -136,7 +140,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.activity_blocker)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.activity_blocker), PermanentRestrictionsManager.KEY_ACTIVITY_BLOCKER in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.activity_blocker_description)) },
                     leadingContent = { Icon(Icons.Outlined.Accessibility, "") },
                     trailingContent = {
@@ -147,7 +151,7 @@ fun ConfigTab(
                                 }
                                 return@Switch
                             }
-                            recoveryGate.change(loosening = !checked) {
+                            recoveryGate.changeForFeature(PermanentRestrictionsManager.KEY_ACTIVITY_BLOCKER, loosening = !checked) {
                                 DechainerAccessibilityService.prepareServiceDisable()
                                 viewModel.changeAccessibilityPermission(checked)
                             }
@@ -158,7 +162,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.blocked_activities)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.blocked_activities), PermanentRestrictionsManager.KEY_BLOCKED_ACTIVITIES in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.blocked_activities_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Block, "") },
                     modifier = Modifier.clickable {
@@ -175,7 +179,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.visual_blocking)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.visual_blocking), PermanentRestrictionsManager.KEY_VISUAL_BLOCKING in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.visual_blocking_desc)) },
                     leadingContent = { Icon(Icons.Outlined.ImageSearch, "") },
                     modifier = Modifier.clickable {
@@ -192,7 +196,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.blocked_words_feat)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.blocked_words_feat), PermanentRestrictionsManager.KEY_BLOCKED_WORDS in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.blocked_words_feat_description)) },
                     leadingContent = { Icon(Icons.Outlined.NoAdultContent, "") },
                     modifier = Modifier.clickable {
@@ -209,7 +213,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.block_torrents)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.block_torrents), PermanentRestrictionsManager.KEY_BLOCK_TORRENTS in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.block_torrents_desc)) },
                     leadingContent = { Icon(Icons.Outlined.FileDownload, "") },
                     trailingContent = {
@@ -220,7 +224,7 @@ fun ConfigTab(
                                 }
                                 return@Switch
                             }
-                            recoveryGate.change(loosening = !checked) {
+                            recoveryGate.changeForFeature(PermanentRestrictionsManager.KEY_BLOCK_TORRENTS, loosening = !checked) {
                                 blockTorrents = checked
                                 SecurityManager.setBlockTorrentsEnabled(context, checked)
                             }
@@ -240,7 +244,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.impulse_lock)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.impulse_lock), PermanentRestrictionsManager.KEY_IMPULSE_LOCK in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.impulse_lock_desc)) },
                     leadingContent = { Icon(Icons.Outlined.LockClock, "") },
                     modifier = Modifier.clickable { navViewModel.navigateTo("impulse_lock") }
@@ -249,7 +253,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.focus_mode)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.focus_mode), PermanentRestrictionsManager.KEY_FOCUS_MODE in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.focus_mode_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Timer, "") },
                     modifier = Modifier.clickable { navViewModel.navigateTo("focus_mode") }
@@ -267,7 +271,7 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.color_filter_settings)) },
+                    headlineContent = { ConfigHeadline(stringResource(R.string.color_filter_settings), PermanentRestrictionsManager.KEY_COLOR_FILTER_SETTINGS in permanentKeys) },
                     supportingContent = { Text(stringResource(R.string.color_filter_settings_desc)) },
                     leadingContent = { Icon(Icons.Outlined.Palette, "") },
                     modifier = Modifier.clickable { navViewModel.navigateTo("color_filters") }
@@ -293,6 +297,24 @@ fun ConfigTab(
                     supportingContent = { Text(keyboardLabel) },
                     leadingContent = { Icon(Icons.Outlined.Keyboard, "") },
                     modifier = Modifier.clickable { showKeyboardDialog = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.permanent_restrictions)) },
+                    leadingContent = { Icon(Icons.Outlined.Lock, "") },
+                    supportingContent = { Text(stringResource(R.string.permanent_restrictions_desc)) },
+                    trailingContent = if (permanentKeys.isNotEmpty()) {
+                        {
+                            Badge(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
+                                Text(permanentKeys.size.toString())
+                            }
+                        }
+                    } else null,
+                    modifier = Modifier.clickable {
+                        navViewModel.navigateTo("permanent_restrictions")
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -414,6 +436,7 @@ fun ConfigTab(
                 TextButton(
                     enabled = confirmForcedRemoval,
                     onClick = {
+                        PermanentRestrictionsManager.clearAll(context)
                         viewModel.removeDeviceOwner()
                         showFinishForcedRemovalDialog = false
                         confirmForcedRemoval = false
@@ -446,7 +469,7 @@ fun ConfigTab(
             isLoading = isApplyingDns,
             onDismiss = { if (!isApplyingDns) showDnsDialog = false },
             onApply = { host ->
-                recoveryGate.run {
+                recoveryGate.runForFeature(PermanentRestrictionsManager.KEY_DNS_SETTINGS) {
                     dnsErrorRes = null
                     isApplyingDns = true
                     scope.launch {
@@ -741,6 +764,17 @@ fun KeyboardTypeDialog(
             }
         }
     )
+}
+
+@Composable
+private fun ConfigHeadline(text: String, isPermanent: Boolean) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(text, modifier = Modifier.weight(1f, fill = false))
+        if (isPermanent) {
+            Spacer(modifier = Modifier.width(8.dp))
+            PermanentBadge()
+        }
+    }
 }
 
 

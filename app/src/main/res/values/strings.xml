@@ -616,6 +616,31 @@
     <string name="tile_focus_phase_focus">Focus</string>
     <string name="tile_focus_phase_break">Break</string>
     <string name="tile_focus_paused">Paused</string>
+    <string name="permanent_restrictions">Permanent restrictions</string>
+    <string name="permanent_restrictions_desc">Lock restrictions and options so they cannot be removed even with the recovery code</string>
+    <string name="permanent_badge">Permanent</string>
+    <string name="permanent_banner_text">This setting has a permanent restriction active. It cannot be loosened or disabled, even with the recovery code. To edit it, start the 48-hour edit mode in Settings &gt; Permanent restrictions.</string>
+    <string name="permanent_blocked_snackbar">Blocked by permanent restriction. Start 48h edit mode in Settings &gt; Permanent restrictions.</string>
+    <string name="permanent_start_edit">Start editing (48h)</string>
+    <string name="permanent_start_edit_desc">Start a 48-hour timer to unlock removal of permanent restrictions</string>
+    <string name="permanent_edit_waiting">Edit unlock in %1$s</string>
+    <string name="permanent_edit_unlocked">Edit mode unlocked</string>
+    <string name="permanent_edit_unlocked_desc">You can now uncheck permanent restrictions. Lock again when finished.</string>
+    <string name="permanent_lock_again">Finish &amp; lock again</string>
+    <string name="permanent_cancel_edit">Cancel edit timer</string>
+    <string name="permanent_cancel_edit_text">Do you want to cancel the 48-hour edit timer? Permanent restrictions will remain locked.</string>
+    <string name="permanent_start_edit_dialog_title">Start 48-hour edit mode?</string>
+    <string name="permanent_start_edit_dialog_text">After 48 hours, you will be able to uncheck permanent restrictions. This timer cannot be fast-forwarded by changing the device clock.</string>
+    <string name="permanent_add_warning_title">Make restriction permanent?</string>
+    <string name="permanent_add_warning_text">WARNING: You are about to make \"%1$s\" permanent.\n\n• If it is currently disabled, it will be enabled automatically.\n• You will NOT be able to disable or loosen it, even with the recovery code.\n• The only way to remove this lock is by starting a 48-hour edit timer (resistant to clock changes).</string>
+    <string name="permanent_add_confirm_checkbox">I understand this cannot be undone without waiting 48 hours</string>
+    <string name="permanent_section_app_features">App features &amp; options</string>
+    <string name="permanent_section_dpc_restrictions">System / DPC restrictions</string>
+    <string name="permanent_remove_device_owner">Block removing Device Owner</string>
+    <string name="permanent_remove_device_owner_desc">Prevents removing Device Owner privileges even with the recovery code</string>
+    <string name="permanent_requires_device_owner">Requires Device Owner privileges</string>
+    <string name="permanent_dpc_permanent_error">This restriction is permanent and cannot be disabled</string>
+    <string name="permanent_do_removal_blocked">Device Owner removal is locked by a permanent restriction. Start the 48-hour edit mode in Settings &gt; Permanent restrictions to unlock it.</string>
 </resources>
 
 

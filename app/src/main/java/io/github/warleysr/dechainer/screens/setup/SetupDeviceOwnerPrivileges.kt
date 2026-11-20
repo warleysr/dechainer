@@ -6,9 +6,12 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
@@ -20,7 +23,11 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
     var shizukuInstalled by remember { mutableStateOf(viewModel.isShizukuInstalled()) }
     var shizukuRunning by remember { mutableStateOf(Shizuku.pingBinder()) }
     var commandResult by remember { mutableStateOf<String?>(null) }
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_REMOVE_DEVICE_OWNER)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_REMOVE_DEVICE_OWNER)
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -40,11 +47,16 @@ fun SetupDeviceOwnerPrivileges(viewModel: DeviceOwnerViewModel = viewModel()) {
         modifier = Modifier.fillMaxSize()
     ) {
         when {
-            viewModel.isDeviceOwner() -> DeviceOwnerRemoveContent(
-                onRemoveAction = {
-                    recoveryGate.run { viewModel.processDeviceOwnerPrivileges(remove = true) }
+            viewModel.isDeviceOwner() -> {
+                if (isPermanent) {
+                    PermanentRestrictionBanner()
                 }
-            )
+                DeviceOwnerRemoveContent(
+                    onRemoveAction = {
+                        recoveryGate.run { viewModel.processDeviceOwnerPrivileges(remove = true) }
+                    }
+                )
+            }
             !shizukuInstalled -> ShizukuNotInstalledCard(viewModel)
             !shizukuRunning -> ShizukuNotRunningCard(viewModel)
             !viewModel.isShizukuPermissionGranted() -> ShizukuNoPermissionCard()

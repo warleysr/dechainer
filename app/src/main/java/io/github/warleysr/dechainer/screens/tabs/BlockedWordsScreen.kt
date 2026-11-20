@@ -14,12 +14,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
+import io.github.warleysr.dechainer.screens.common.PermanentRestrictionBanner
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
 import io.github.warleysr.dechainer.viewmodels.BlockedWordsViewModel
@@ -36,11 +39,20 @@ fun BlockedWordsScreen(
     var activeExpanded by remember { mutableStateOf(true) }
     var passiveExpanded by remember { mutableStateOf(true) }
 
-    val recoveryGate = rememberRecoveryGate()
+    val context = LocalContext.current
+    val isPermanent = remember {
+        PermanentRestrictionsManager.isPermanent(context, PermanentRestrictionsManager.KEY_BLOCKED_WORDS)
+    }
+    val recoveryGate = rememberRecoveryGate(PermanentRestrictionsManager.KEY_BLOCKED_WORDS)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize()
     ) {
+        if (isPermanent) {
+            item {
+                PermanentRestrictionBanner()
+            }
+        }
         item {
             SectionHeader(
                 title = stringResource(R.string.active_blocking),
