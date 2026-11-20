@@ -1,6 +1,11 @@
 package io.github.warleysr.dechainer.screens.tabs
 
+import android.Manifest
 import android.app.admin.DevicePolicyManager
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,6 +22,7 @@ import androidx.compose.material.icons.outlined.LockClock
 import androidx.compose.material.icons.outlined.NoAdultContent
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
@@ -30,9 +36,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.AccessibilityKeepAliveSettings
+import io.github.warleysr.dechainer.notifications.AccessibilityKeepAliveService
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.RecoveryGenerateDialog
 import io.github.warleysr.dechainer.screens.common.rememberRecoveryGate
@@ -77,6 +86,17 @@ fun ConfigTab(
     var blockTorrents by remember { mutableStateOf(SecurityManager.isBlockTorrentsEnabled(context)) }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
+    var persistentNotification by remember {
+        mutableStateOf(AccessibilityKeepAliveSettings.isEnabled(context))
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            AccessibilityKeepAliveService.start(context)
+        }
+    }
 
     var forcedRemovalRemaining by remember { mutableLongStateOf(SecurityManager.getForcedRemovalRemainingTime(context)) }
     LaunchedEffect(Unit) {
@@ -148,8 +168,46 @@ fun ConfigTab(
                                 return@Switch
                             }
                             recoveryGate.change(loosening = !checked) {
+                                if (!checked) {
+                                    AccessibilityKeepAliveService.stop(context)
+                                }
                                 DechainerAccessibilityService.prepareServiceDisable()
                                 viewModel.changeAccessibilityPermission(checked)
+                            }
+                        })
+                    }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.persistent_notification)) },
+                    supportingContent = { Text(stringResource(R.string.persistent_notification_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.Shield, "") },
+                    trailingContent = {
+                        Switch(persistentNotification, onCheckedChange = { checked ->
+                            if (checked && !advancedBlocking) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(advancedBlockingRequiredMsg)
+                                }
+                                return@Switch
+                            }
+                            if (checked) {
+                                persistentNotification = true
+                                AccessibilityKeepAliveSettings.setEnabled(context, true)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                                    PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                                AccessibilityKeepAliveService.start(context)
+                            } else {
+                                recoveryGate.change(loosening = true) {
+                                    persistentNotification = false
+                                    AccessibilityKeepAliveSettings.setEnabled(context, false)
+                                    AccessibilityKeepAliveService.stop(context)
+                                }
                             }
                         })
                     }

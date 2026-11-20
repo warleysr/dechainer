@@ -154,6 +154,15 @@
                 android:value="Pomodoro focus timer: keeps the countdown of the current focus or break period on screen" />
         </service>
 
+        <service
+            android:name=".notifications.AccessibilityKeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Maintains accessibility service running to prevent OEM background process termination" />
+        </service>
+
         <receiver
             android:name=".notifications.FocusSystemReceiver"
             android:exported="true">

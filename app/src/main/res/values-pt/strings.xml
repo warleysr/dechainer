@@ -614,6 +614,13 @@
     <string name="disallow_config_wifi_private">Desativar configuração de Wi-Fi privado</string>
     <string name="disallow_config_wifi_shared">Desativar configuração de Wi-Fi compartilhado</string>
     <string name="disallow_non_market_app_by_knox">Desativar apps fora da loja (Knox)</string>
+
+    <string name="persistent_notification">Notificação persistente</string>
+    <string name="persistent_notification_desc">Executa um serviço em primeiro plano para evitar que otimizações agressivas da fabricante encerrem o serviço de acessibilidade</string>
+    <string name="keep_alive_channel_name">Serviço persistente</string>
+    <string name="keep_alive_channel_desc">Mantém o serviço de acessibilidade em execução em segundo plano</string>
+    <string name="keep_alive_notification_title">Bloqueio avançado ativo</string>
+    <string name="keep_alive_notification_text">Executando em segundo plano para evitar encerramento pelo sistema</string>
 </resources>
 
 

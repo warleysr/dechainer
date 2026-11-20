@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.AccessibilityKeepAliveSettings
 import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.data.UsageWarningSettings
 import io.github.warleysr.dechainer.screens.common.PendingChange
@@ -91,7 +92,8 @@ class MainActivity : ComponentActivity() {
                     val warningEnabled = warningPrefs.getBoolean(
                         UsageWarningSettings.KEY_ENABLED, UsageWarningSettings.DEFAULT_ENABLED
                     )
-                    if (!warningEnabled) return@LaunchedEffect
+                    val keepAliveEnabled = AccessibilityKeepAliveSettings.isEnabled(context)
+                    if (!warningEnabled && !keepAliveEnabled) return@LaunchedEffect
 
                     val granted = ContextCompat.checkSelfPermission(
                         context, Manifest.permission.POST_NOTIFICATIONS

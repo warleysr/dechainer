@@ -35,6 +35,7 @@ import io.github.warleysr.dechainer.activities.NsfwContentBlockedActivity
 import io.github.warleysr.dechainer.activities.OutsideTimeWindowActivity
 import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
 import io.github.warleysr.dechainer.activities.TimeUpActivity
+import io.github.warleysr.dechainer.data.AccessibilityKeepAliveSettings
 import io.github.warleysr.dechainer.data.ApkUpdateInstaller
 import io.github.warleysr.dechainer.data.AppGroupRepository
 import io.github.warleysr.dechainer.data.AppRepository
@@ -54,6 +55,7 @@ import io.github.warleysr.dechainer.models.AppGroup
 import io.github.warleysr.dechainer.models.ColorFilterMode
 import io.github.warleysr.dechainer.models.TimeWindow
 import io.github.warleysr.dechainer.models.UsageAlertStage
+import io.github.warleysr.dechainer.notifications.AccessibilityKeepAliveService
 import io.github.warleysr.dechainer.notifications.FocusService
 import io.github.warleysr.dechainer.notifications.UsageWarningNotifier
 import io.github.warleysr.dechainer.security.SecurityManager
@@ -466,6 +468,13 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         fun prepareServiceDisable() { disablingService = true }
 
+        fun isServiceEnabled(context: Context): Boolean {
+            val service = ComponentName(context, DechainerAccessibilityService::class.java)
+            return android.provider.Settings.Secure.getString(
+                context.contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )?.split(':')?.any { ComponentName.unflattenFromString(it) == service } == true
+        }
+
         val accessedActivities = mutableStateListOf<ActivityLog>()
 
         data class ActivityLog(
@@ -534,6 +543,10 @@ class DechainerAccessibilityService : AccessibilityService() {
         syncImpulseSuspension()
         FocusMode.sync(applicationContext)
 
+        if (AccessibilityKeepAliveSettings.isEnabled(this)) {
+            AccessibilityKeepAliveService.start(this)
+        }
+
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
         if (dpm.isAdminActive(admin)) {
@@ -565,6 +578,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                     }
                     SecurityManager.suspendUnknownSourcesRestrictionForDebugInstall(context)
                     FocusService.stopForDebugInstall(context)
+                    AccessibilityKeepAliveService.stopForDebugInstall(context)
                     disableSelf()
                 }
             }
@@ -613,6 +627,10 @@ class DechainerAccessibilityService : AccessibilityService() {
         }
         nsfwDispatcher.close()
         isRunning = false
+
+        if (disablingService) {
+            AccessibilityKeepAliveService.stop(applicationContext)
+        }
 
         if (!disablingService) {
             val blockedPackages = getControlledPackages()

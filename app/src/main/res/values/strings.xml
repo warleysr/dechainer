@@ -613,6 +613,13 @@
     <string name="disallow_config_wifi_private">Disallow configuring private Wi-Fi</string>
     <string name="disallow_config_wifi_shared">Disallow configuring shared Wi-Fi</string>
     <string name="disallow_non_market_app_by_knox">Disallow non-market apps (Knox)</string>
+
+    <string name="persistent_notification">Persistent notification</string>
+    <string name="persistent_notification_desc">Runs a foreground service to prevent aggressive battery optimizations from killing the accessibility service</string>
+    <string name="keep_alive_channel_name">Persistent service</string>
+    <string name="keep_alive_channel_desc">Maintains the accessibility service running in the background</string>
+    <string name="keep_alive_notification_title">Advanced blocking active</string>
+    <string name="keep_alive_notification_text">Running in background to prevent the service from being killed</string>
 </resources>
 
 

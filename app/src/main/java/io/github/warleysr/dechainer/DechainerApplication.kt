@@ -8,10 +8,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.provider.Settings
+import io.github.warleysr.dechainer.data.AccessibilityKeepAliveSettings
 import io.github.warleysr.dechainer.data.AppRepository
 import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.data.FocusMode
+import io.github.warleysr.dechainer.notifications.AccessibilityKeepAliveService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -81,15 +83,15 @@ class DechainerApplication : Application() {
 
         // Catches up with a focus phase that ran out while the process was dead, and re-arms its alarm.
         FocusMode.sync(this)
+
+        if (AccessibilityKeepAliveSettings.isEnabled(this) && DechainerAccessibilityService.isServiceEnabled(this)) {
+            AccessibilityKeepAliveService.start(this)
+        }
     }
 
     // A killed process skips the service's onUnbind, leaving the modes applied.
     private fun releaseOrphanedColorFilters() {
         if (!ColorFilterController.isApplied(this)) return
-        val service = ComponentName(this, DechainerAccessibilityService::class.java)
-        val enabled = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-            ?.split(':')
-            ?.any { ComponentName.unflattenFromString(it) == service } == true
-        if (!enabled) ColorFilterController.release(this)
+        if (!DechainerAccessibilityService.isServiceEnabled(this)) ColorFilterController.release(this)
     }
 }

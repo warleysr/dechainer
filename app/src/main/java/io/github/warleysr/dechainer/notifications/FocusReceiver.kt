@@ -50,6 +50,13 @@ class FocusSystemReceiver : BroadcastReceiver() {
             "android.intent.action.TIME_SET" -> {
                 FocusMode.sync(context)
                 io.github.warleysr.dechainer.data.FocusScheduleManager.reschedule(context)
+                if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+                    if (io.github.warleysr.dechainer.data.AccessibilityKeepAliveSettings.isEnabled(context) &&
+                        io.github.warleysr.dechainer.DechainerAccessibilityService.isServiceEnabled(context)
+                    ) {
+                        AccessibilityKeepAliveService.start(context)
+                    }
+                }
             }
         }
     }
