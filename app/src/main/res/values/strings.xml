@@ -613,6 +613,9 @@
     <string name="disallow_config_wifi_private">Disallow configuring private Wi-Fi</string>
     <string name="disallow_config_wifi_shared">Disallow configuring shared Wi-Fi</string>
     <string name="disallow_non_market_app_by_knox">Disallow non-market apps (Knox)</string>
+    <string name="tile_focus_phase_focus">Focus</string>
+    <string name="tile_focus_phase_break">Break</string>
+    <string name="tile_focus_paused">Paused</string>
 </resources>
 
 

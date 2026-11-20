@@ -15,6 +15,7 @@ import androidx.core.content.edit
 import io.github.warleysr.dechainer.notifications.FocusNotifier
 import io.github.warleysr.dechainer.notifications.FocusReceiver
 import io.github.warleysr.dechainer.security.SecurityManager
+import io.github.warleysr.dechainer.tiles.FocusModeTileService
 import timber.log.Timber
 import io.github.warleysr.dechainer.models.SuspensionReason
 import io.github.warleysr.dechainer.data.AppGroupRepository
@@ -275,6 +276,7 @@ object FocusMode {
         releaseRestrictions(context)
         cancelAlarm(context)
         FocusNotifier.cancel(context)
+        FocusModeTileService.requestUpdate(context)
     }
 
     /** Advances a phase that ran out (with the alert), then re-applies suspension, alarm and notification. */
@@ -312,6 +314,7 @@ object FocusMode {
         applyRestrictions(context, enforce = isEnforcing(context))
         scheduleAlarm(context)
         FocusNotifier.showStatus(context)
+        FocusModeTileService.requestUpdate(context)
     }
 
     private fun nextPhase(context: Context, finished: Phase): Phase {

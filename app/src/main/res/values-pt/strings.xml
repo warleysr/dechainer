@@ -614,6 +614,9 @@
     <string name="disallow_config_wifi_private">Desativar configuração de Wi-Fi privado</string>
     <string name="disallow_config_wifi_shared">Desativar configuração de Wi-Fi compartilhado</string>
     <string name="disallow_non_market_app_by_knox">Desativar apps fora da loja (Knox)</string>
+    <string name="tile_focus_phase_focus">Foco</string>
+    <string name="tile_focus_phase_break">Pausa</string>
+    <string name="tile_focus_paused">Pausado</string>
 </resources>
 
 

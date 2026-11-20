@@ -1062,8 +1062,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             }
         }
 
-        suspendPackage(pkg)
-        suspendPackage(pkg, suspend = false)
+        pulseSuspension(pkg)
         showNsfwBlockedActivity()
     }
 
@@ -1264,6 +1263,21 @@ class DechainerAccessibilityService : AccessibilityService() {
     ) = suspendPackages(
         arrayOf(packageName), suspend, reason, details
     )
+
+    /**
+     * Briefly toggles suspension on [pkg] without logging so Android tears down any active
+     * windows (including floating/split-screen windows) while keeping the app available on the launcher.
+     */
+    private fun pulseSuspension(pkg: String) {
+        if (isHeldByOtherBlock(pkg) ||
+            nsfwSuspensionTracker.isSuspended(pkg) ||
+            AppRepository.isManuallySuspended(pkg)
+        ) {
+            return
+        }
+        suspendPackage(pkg)
+        suspendPackage(pkg, suspend = false)
+    }
 
     private fun getControlledPackages(): Array<String> {
         val restrictedGroupPackages = AppGroupRepository.getGroups()
@@ -1525,6 +1539,10 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         stopTrackingAndSave()
         currentPackage = null
+
+        if (!reopening) {
+            pulseSuspension(pkg)
+        }
 
         if (!reopening && !outsideWindow) {
             usageWarningStages.forEach { stage ->

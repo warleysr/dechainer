@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import io.github.warleysr.dechainer.BuildConfig
 import io.github.warleysr.dechainer.data.DeviceAdmin
 import io.github.warleysr.dechainer.data.ReadingPassage
+import io.github.warleysr.dechainer.tiles.ImpulseLockTileService
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.SecureRandom
@@ -291,6 +292,7 @@ class SecurityManager {
                 putLong("impulse_block_duration", duration)
                 putBoolean("impulse_block_active", true)
             }
+            ImpulseLockTileService.requestUpdate(context)
         }
 
         fun getImpulseBlockRemainingTime(context: Context): Long {
@@ -326,6 +328,7 @@ class SecurityManager {
 
             if (remaining <= 0) {
                 prefs.edit { putBoolean("impulse_block_active", false) }
+                ImpulseLockTileService.requestUpdate(context)
                 return -1L
             }
             return remaining
