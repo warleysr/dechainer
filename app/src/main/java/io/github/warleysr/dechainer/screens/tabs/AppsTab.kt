@@ -102,10 +102,10 @@ fun AppsScreen(
     var showMenu by remember { mutableStateOf(false) }
 
     // Suspension/hidden state can change while this screen is in the background (the accessibility
-    // service suspends apps on its own, and the user can open one from the launcher), so re-read the
-    // real DevicePolicy state on every resume instead of trusting the cached list.
+    // service or focus mode can suspend apps on their own), so re-read AppRepository on every
+    // resume; if any writer invalidated the cache, this picks up the fresh DevicePolicy state.
     LifecycleResumeEffect(Unit) {
-        if (viewModel.apps.isNotEmpty()) viewModel.loadApps(forceRefresh = true)
+        if (viewModel.apps.isNotEmpty()) viewModel.loadApps()
         onPauseOrDispose { }
     }
 

@@ -33,7 +33,7 @@ class AppsViewModel : ViewModel() {
 
     fun loadApps(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            isLoading = true
+            if (apps.isEmpty()) isLoading = true
             apps = withContext(Dispatchers.IO) {
                 try {
                     AppRepository.getApps(forceRefresh)
