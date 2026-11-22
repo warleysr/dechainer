@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
+import androidx.compose.material.icons.outlined.BatterySaver
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.FileDownload
@@ -31,9 +32,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.BatteryOptimization
 import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.screens.common.PermanentBadge
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
@@ -78,6 +81,11 @@ fun ConfigTab(
 
     var shuffleKeyboard by remember { mutableStateOf(SecurityManager.isShuffleKeyboardEnabled(context)) }
     var blockTorrents by remember { mutableStateOf(SecurityManager.isBlockTorrentsEnabled(context)) }
+    var batteryExempt by remember { mutableStateOf(BatteryOptimization.isExempt(context)) }
+    LifecycleResumeEffect(Unit) {
+        batteryExempt = BatteryOptimization.isExempt(context)
+        onPauseOrDispose { }
+    }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
     val permanentKeys = remember { PermanentRestrictionsManager.getPermanentKeys(context) }
@@ -154,6 +162,9 @@ fun ConfigTab(
                             recoveryGate.changeForFeature(PermanentRestrictionsManager.KEY_ACTIVITY_BLOCKER, loosening = !checked) {
                                 DechainerAccessibilityService.prepareServiceDisable()
                                 viewModel.changeAccessibilityPermission(checked)
+                                if (checked) {
+                                    batteryExempt = BatteryOptimization.isExempt(context)
+                                }
                             }
                         })
                     }
@@ -235,10 +246,19 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.language_settings)) },
-                    supportingContent = { Text(stringResource(R.string.language_description)) },
-                    leadingContent = { Icon(Icons.Outlined.Language, "") },
-                    modifier = Modifier.clickable { showLanguageDialog = true }
+                    headlineContent = { Text(stringResource(R.string.permanent_restrictions)) },
+                    leadingContent = { Icon(Icons.Outlined.Lock, "") },
+                    supportingContent = { Text(stringResource(R.string.permanent_restrictions_desc)) },
+                    trailingContent = if (permanentKeys.isNotEmpty()) {
+                        {
+                            Badge(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
+                                Text(permanentKeys.size.toString())
+                            }
+                        }
+                    } else null,
+                    modifier = Modifier.clickable {
+                        navViewModel.navigateTo("permanent_restrictions")
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -262,19 +282,28 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.usage_warning_settings)) },
-                    supportingContent = { Text(stringResource(R.string.usage_warning_settings_desc)) },
-                    leadingContent = { Icon(Icons.Outlined.NotificationsActive, "") },
-                    modifier = Modifier.clickable { navViewModel.navigateTo("usage_warning") }
+                    headlineContent = { ConfigHeadline(stringResource(R.string.color_filter_settings), PermanentRestrictionsManager.KEY_COLOR_FILTER_SETTINGS in permanentKeys) },
+                    supportingContent = { Text(stringResource(R.string.color_filter_settings_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.Palette, "") },
+                    modifier = Modifier.clickable { navViewModel.navigateTo("color_filters") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
             item {
                 ListItem(
-                    headlineContent = { ConfigHeadline(stringResource(R.string.color_filter_settings), PermanentRestrictionsManager.KEY_COLOR_FILTER_SETTINGS in permanentKeys) },
-                    supportingContent = { Text(stringResource(R.string.color_filter_settings_desc)) },
-                    leadingContent = { Icon(Icons.Outlined.Palette, "") },
-                    modifier = Modifier.clickable { navViewModel.navigateTo("color_filters") }
+                    headlineContent = { Text(stringResource(R.string.language_settings)) },
+                    supportingContent = { Text(stringResource(R.string.language_description)) },
+                    leadingContent = { Icon(Icons.Outlined.Language, "") },
+                    modifier = Modifier.clickable { showLanguageDialog = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.usage_warning_settings)) },
+                    supportingContent = { Text(stringResource(R.string.usage_warning_settings_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.NotificationsActive, "") },
+                    modifier = Modifier.clickable { navViewModel.navigateTo("usage_warning") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -287,6 +316,17 @@ fun ConfigTab(
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
+            if (!batteryExempt) {
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.battery_optimization)) },
+                        supportingContent = { Text(stringResource(R.string.battery_optimization_desc)) },
+                        leadingContent = { Icon(Icons.Outlined.BatterySaver, "") },
+                        modifier = Modifier.clickable { BatteryOptimization.request(context) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
+            }
             item {
                 val keyboardLabel = if (shuffleKeyboard)
                     stringResource(R.string.keyboard_shuffle)
@@ -297,24 +337,6 @@ fun ConfigTab(
                     supportingContent = { Text(keyboardLabel) },
                     leadingContent = { Icon(Icons.Outlined.Keyboard, "") },
                     modifier = Modifier.clickable { showKeyboardDialog = true }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.permanent_restrictions)) },
-                    leadingContent = { Icon(Icons.Outlined.Lock, "") },
-                    supportingContent = { Text(stringResource(R.string.permanent_restrictions_desc)) },
-                    trailingContent = if (permanentKeys.isNotEmpty()) {
-                        {
-                            Badge(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
-                                Text(permanentKeys.size.toString())
-                            }
-                        }
-                    } else null,
-                    modifier = Modifier.clickable {
-                        navViewModel.navigateTo("permanent_restrictions")
-                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }

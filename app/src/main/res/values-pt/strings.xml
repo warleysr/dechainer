@@ -35,6 +35,8 @@
     <string name="config_device_owner">Obter na config.</string>
     <string name="device_owner_state">Privilégios de dono</string>
     <string name="device_owner_description">Permissão necessária para aplicar restrições e impedir desinstalação do app</string>
+    <string name="battery_optimization">Otimização de bateria</string>
+    <string name="battery_optimization_desc">O Android às vezes pausa apps em segundo plano. Conceda esta permissão para que limites e horários sejam aplicados na hora certa.</string>
     <string name="dns_description">DNS privado usado para bloquear acesso a sites</string>
     <string name="dns_settings">DNS privado</string>
     <string name="get_owner_privileges_first">Obtenha os privilégios de dono primeiro!</string>

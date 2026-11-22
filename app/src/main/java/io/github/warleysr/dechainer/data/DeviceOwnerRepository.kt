@@ -274,7 +274,10 @@ object DeviceOwnerRepository {
         }
 
         val granted = dpm.isDeviceOwnerApp(packageName)
-        if (granted) ColorFilterController.grantPermissionViaShizuku(context)
+        if (granted) {
+            ColorFilterController.grantPermissionViaShizuku(context)
+            BatteryOptimization.grantViaShizuku(context)
+        }
         return commandOutput
     }
 
@@ -461,6 +464,9 @@ object DeviceOwnerRepository {
                 }
             })
 
-        if (grant) ColorFilterController.grantPermissionViaShizuku(context)
+        if (grant) {
+            ColorFilterController.grantPermissionViaShizuku(context)
+            BatteryOptimization.grantViaShizuku(context)
+        }
     }
 }

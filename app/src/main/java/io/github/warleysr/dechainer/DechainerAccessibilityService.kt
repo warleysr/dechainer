@@ -1248,6 +1248,10 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (eligiblePackages.isEmpty()) return
 
         dpm.setPackagesSuspended(admin, eligiblePackages, suspend)
+        // Suspension changed outside AppRepository, so the cached AppItem list is now stale.
+        // Without this the Apps tab keeps showing the pre-suspension state (e.g. "Suspend" on an
+        // app the 18+ / browser / torrent rules just suspended).
+        AppRepository.invalidateCache()
         if (suspend && reason != null) {
             eligiblePackages.forEach { pkg ->
                 SuspensionLogRepository.log(applicationContext, pkg, reason, details)

@@ -393,6 +393,9 @@ object FocusMode {
         else dpm.setPackagesSuspended(admin, toClaim.toTypedArray(), true)
 
         val nowClaimed = toClaim.toSet() - failed.toSet()
+        if (nowClaimed.isNotEmpty()) {
+            AppRepository.invalidateCache()
+        }
         nowClaimed.forEach { pkg ->
             SuspensionLogRepository.log(context, pkg, SuspensionReason.FOCUS_MODE)
         }
@@ -469,7 +472,10 @@ object FocusMode {
         val admin = DeviceAdmin.component
         if (!dpm.isAdminActive(admin)) return
         val releasable = packages.filterNot { isTrackedElsewhere(context, it) }
-        if (releasable.isNotEmpty()) dpm.setPackagesSuspended(admin, releasable.toTypedArray(), false)
+        if (releasable.isNotEmpty()) {
+            dpm.setPackagesSuspended(admin, releasable.toTypedArray(), false)
+            AppRepository.invalidateCache()
+        }
     }
 
     private fun isTrackedElsewhere(context: Context, pkg: String) =

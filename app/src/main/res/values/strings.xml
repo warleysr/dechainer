@@ -35,6 +35,8 @@
     <string name="config_device_owner">Get in settings</string>
     <string name="device_owner_state">Owner privileges</string>
     <string name="device_owner_description">Permission required to apply restrictions and prevent app uninstallation</string>
+    <string name="battery_optimization">Battery optimization</string>
+    <string name="battery_optimization_desc">Android sometimes pauses background apps. Grant this so limits and time windows are enforced on time.</string>
     <string name="dns_description">Private DNS used to block access to sites</string>
     <string name="dns_settings">Private DNS</string>
     <string name="get_owner_privileges_first">Get owner privileges first!</string>
