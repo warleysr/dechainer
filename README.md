@@ -3,7 +3,7 @@
 
 # Déchaîner
 
-**A hard-to-bypass Android barrier against pornography and digital addiction.**
+**An impossible-to-bypass Android barrier against pornography and digital addiction.**
 
 Device Owner restrictions, an Accessibility Service and an on-device ML model working together,<br>
 built so that your future self can't simply turn it off.
