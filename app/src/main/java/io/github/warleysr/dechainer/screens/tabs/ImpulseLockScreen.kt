@@ -268,18 +268,20 @@ private fun ReadingSettings(viewModel: ImpulseLockViewModel, enabled: Boolean, o
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
     )
-    SecurityManager.ReadingLanguage.entries.forEach { language ->
+    SecurityManager.ReadingLanguage.entries
+        .filter {
+            it != SecurityManager.ReadingLanguage.ARABIC ||
+                SecurityManager.supportsArabic(viewModel.readingSource)
+        }
+        .forEach { language ->
         OptionRow(
-            selected = viewModel.readingLanguage == language,
+            selected = viewModel.effectiveReadingLanguage == language,
             enabled = enabled,
             title = when (language) {
                 SecurityManager.ReadingLanguage.ENGLISH -> stringResource(R.string.reading_language_english)
                 SecurityManager.ReadingLanguage.PORTUGUESE -> stringResource(R.string.reading_language_portuguese)
                 SecurityManager.ReadingLanguage.ARABIC -> stringResource(R.string.reading_language_arabic)
             },
-            supporting = if (language == SecurityManager.ReadingLanguage.ARABIC) {
-                stringResource(R.string.reading_language_arabic_desc)
-            } else null,
             onClick = { viewModel.updateReadingLanguage(language) }
         )
     }

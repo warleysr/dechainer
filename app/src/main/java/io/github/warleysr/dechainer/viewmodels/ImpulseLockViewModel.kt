@@ -49,6 +49,10 @@ class ImpulseLockViewModel : ViewModel() {
     val readingCount: Int
         get() = storedReadingCount.coerceAtMost(availableReadings)
 
+    /** The language actually used: Arabic only survives on a source that has Arabic text. */
+    val effectiveReadingLanguage: SecurityManager.ReadingLanguage
+        get() = SecurityManager.readingLanguageFor(readingSource, readingLanguage)
+
     var action by mutableStateOf(SecurityManager.getImpulseAction(context))
         private set
 

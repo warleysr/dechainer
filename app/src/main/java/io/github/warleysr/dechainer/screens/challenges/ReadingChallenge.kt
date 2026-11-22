@@ -61,7 +61,6 @@ private fun timeWords(text: String): TimedText {
 fun ReadingChallenge(onSuccess: () -> Unit) {
     val context = LocalContext.current
     val language = remember { SecurityManager.getReadingLanguage(context) }
-    val rtl = language == SecurityManager.ReadingLanguage.ARABIC
     val passages = remember { ReadingLibrary.pick(context, language) }
 
     if (passages.isEmpty()) {
@@ -72,6 +71,9 @@ fun ReadingChallenge(onSuccess: () -> Unit) {
 
     var index by remember { mutableIntStateOf(0) }
     val passage = passages[index]
+    // Direction follows the text actually shown, not the chosen language: an English fallback or a
+    // custom passage in Latin script has to stay LTR even while Arabic is selected.
+    val rtl = remember(passage) { passage.text.any { it in '\u0600'..'\u06FF' } }
     val timed = remember(passage) { timeWords(passage.text) }
     val elapsed = remember(index) { Animatable(0f) }
 
@@ -134,7 +136,7 @@ fun ReadingChallenge(onSuccess: () -> Unit) {
                         textDirection = if (rtl) TextDirection.Rtl else TextDirection.Ltr
                     ),
                     fontFamily = FontFamily.Serif,
-                    textAlign = if (rtl) TextAlign.End else TextAlign.Start,
+                    textAlign = if (rtl) TextAlign.Right else TextAlign.Left,
                     modifier = Modifier.fillMaxWidth()
                 )
                 if (passage.source.isNotBlank()) {
@@ -144,7 +146,7 @@ fun ReadingChallenge(onSuccess: () -> Unit) {
                         style = MaterialTheme.typography.labelLarge,
                         fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.End,
+                        textAlign = if (rtl) TextAlign.Right else TextAlign.End,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

@@ -218,6 +218,18 @@ class SecurityManager {
             prefs.edit { putString("reading_language", language.name) }
         }
 
+        /** Arabic text is only carried by the Quran, so the choice means nothing for other sources. */
+        fun supportsArabic(source: ReadingSource) = source == ReadingSource.QURAN
+
+        /**
+         * The language actually used for [source]: Arabic is clamped to English where it does not
+         * exist, so an Arabic device (or a choice left over from another source) never renders
+         * English text as if it were Arabic.
+         */
+        fun readingLanguageFor(source: ReadingSource, chosen: ReadingLanguage) =
+            if (chosen == ReadingLanguage.ARABIC && !supportsArabic(source)) ReadingLanguage.ENGLISH
+            else chosen
+
         /**
          * How many texts the reading challenge shows. Stored as chosen; callers cap it to what the
          * selected source actually has, so switching sources doesn't lose the setting.

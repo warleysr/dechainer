@@ -56,7 +56,9 @@ object ReadingLibrary {
 
     /** A random selection of [SecurityManager.getReadingCount] passages from the configured source. */
     fun pick(context: Context, language: SecurityManager.ReadingLanguage): List<ReadingPassage> {
-        val all = passages(context, SecurityManager.getReadingSource(context), language)
+        val source = SecurityManager.getReadingSource(context)
+        val effective = SecurityManager.readingLanguageFor(source, language)
+        val all = passages(context, source, effective)
         return all.shuffled().take(SecurityManager.getReadingCount(context).coerceAtMost(all.size))
     }
 
@@ -198,7 +200,7 @@ object ReadingLibrary {
             "Aos homens foi abrilhantado o amor à concupiscência relacionada às mulheres, aos filhos, ao entesouramento do ouro e da prata, aos cavalos de raça, ao gado e às sementeiras. Tal é o gozo da vida terrena; porém, a bem-aventurança está ao lado de Deus.",
             "Al Imran 3:14",
             "زُيِّنَ لِلنَّاسِ حُبُّ ٱلشَّهَوَٰتِ مِنَ ٱلنِّسَآءِ وَٱلْبَنِينَ وَٱلْقَنَٰطِيرِ ٱلْمُقَنطَرَةِ مِنَ ٱلذَّهَبِ وَٱلْفِضَّةِ وَٱلْخَيْلِ ٱلْمُسَوَّمَةِ وَٱلْأَنْعَٰمِ وَٱلْحَرْثِ ۗ ذَٰلِكَ مَتَٰعُ ٱلْحَيَوٰةِ ٱلدُّنْيَا ۖ وَٱللَّهُ عِندَهُۥ حُسْنُ ٱلْمَـَٔابِ",
-            "آل عمۡران 3:14"
+            "آل عمران 3:14"
         ),
         BuiltInPassage(
             "And those who, when they commit an immorality or wrong themselves [by transgression], remember Allah and seek forgiveness for their sins - and who can forgive sins except Allah? - and [who] do not persist in what they have done while they know.",
@@ -206,7 +208,7 @@ object ReadingLibrary {
             "Que, quando cometem uma obscenidade ou se condenam, mencionam a Deus e imploram o perdão por seus pecados - mas quem, senão Deus perdoa os pecados? - e não reincidem, com conhecimento, no que cometeram.",
             "Al Imran 3:135",
             "وَٱلَّذِينَ إِذَا فَعَلُوا۟ فَٰحِشَةً أَوْ ظَلَمُوٓا۟ أَنفُسَهُمْ ذَكَرُوا۟ ٱللَّهَ فَٱسْتَغْفَرُوا۟ لِذُنُوبِهِمْ وَمَن يَغْفِرُ ٱلذُّنُوبَ إِلَّا ٱللَّهُ وَلَمْ يُصِرُّوا۟ عَلَىٰ مَا فَعَلُوا۟ وَهُمْ يَعْلَمُونَ",
-            "آل عمۡران 3:135"
+            "آل عمران 3:135"
         ),
         BuiltInPassage(
             "Allah wants to accept your repentance, but those who follow [their] passions want you to digress [into] a great deviation. And Allah wants to lighten for you [your difficulties]; and mankind was created weak.",
@@ -222,7 +224,7 @@ object ReadingLibrary {
             "Dize: Meu Senhor vedou as obscenidades, manifestas ou íntimas; o delito; a agressão injusta; o atribuir parceiros a Ele, porque jamais deu autoridade a que digais d'Ele o que ignorais.",
             "Al A'raf 7:33",
             "قُلْ إِنَّمَا حَرَّمَ رَبِّىَ ٱلْفَوَٰحِشَ مَا ظَهَرَ مِنْهَا وَمَا بَطَنَ وَٱلْإِثْمَ وَٱلْبَغْىَ بِغَيْرِ ٱلْحَقِّ وَأَن تُشْرِكُوا۟ بِٱللَّهِ مَا لَمْ يُنَزِّلْ بِهِۦ سُلْطَٰنًۭا وَأَن تَقُولُوا۟ عَلَى ٱللَّهِ مَا لَا تَعْلَمُونَ",
-            "الأعۡراف 7:33"
+            "الأعراف 7:33"
         ),
         BuiltInPassage(
             "And she, in whose house he was, sought to seduce him. She closed the doors and said, \"Come, you.\" He said, \"[I seek] the refuge of Allah. Indeed, he is my master, who has made good my residence. Indeed, wrongdoers will not succeed.\"",
@@ -254,7 +256,7 @@ object ReadingLibrary {
             "Deus ordena a justiça, a caridade, o auxílio aos parentes, e veda a obscenidade, o ilícito e a iniqüidade. Ele vos exorta a que mediteis.",
             "An Nahl 16:90",
             "۞ إِنَّ ٱللَّهَ يَأْمُرُ بِٱلْعَدْلِ وَٱلْإِحْسَٰنِ وَإِيتَآئِ ذِى ٱلْقُرْبَىٰ وَيَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ وَٱلْبَغْىِ ۚ يَعِظُكُمْ لَعَلَّكُمْ تَذَكَّرُونَ",
-            "النحۡل 16:90"
+            "النحل 16:90"
         ),
         BuiltInPassage(
             "And do not approach unlawful sexual intercourse. Indeed, it is ever an immorality and is evil as a way.",
@@ -262,7 +264,7 @@ object ReadingLibrary {
             "Evitai a fornicação, porque é uma obscenidade e um péssimo exemplo!",
             "Al Isrá 17:32",
             "وَلَا تَقْرَبُوا۟ ٱلزِّنَىٰٓ ۖ إِنَّهُۥ كَانَ فَٰحِشَةًۭ وَسَآءَ سَبِيلًۭا",
-            "الإسۡراء 17:32"
+            "الإسراء 17:32"
         ),
         BuiltInPassage(
             "And do not pursue that of which you have no knowledge. Indeed, the hearing, the sight and the heart - about all those [one] will be questioned.",
@@ -270,7 +272,7 @@ object ReadingLibrary {
             "Não sigas (ó humano) o que ignoras, porque pelo teu ouvido, pela tua vista, e pelo teu coração, por tudo isto será responsável!",
             "Al Isrá 17:36",
             "وَلَا تَقْفُ مَا لَيْسَ لَكَ بِهِۦ عِلْمٌ ۚ إِنَّ ٱلسَّمْعَ وَٱلْبَصَرَ وَٱلْفُؤَادَ كُلُّ أُو۟لَٰٓئِكَ كَانَ عَنْهُ مَسْـُٔولًۭا",
-            "الإسۡراء 17:36"
+            "الإسراء 17:36"
         ),
         BuiltInPassage(
             "O you who have believed, do not follow the footsteps of Satan. And whoever follows the footsteps of Satan - indeed, he enjoins immorality and wrongdoing. And if not for the favor of Allah upon you and His mercy, not one of you would have been pure, ever, but Allah purifies whom He wills, and Allah is Hearing and Knowing.",
@@ -334,7 +336,7 @@ object ReadingLibrary {
             "Bem-aventurado aquele que se purificar, e mencionar o nome do seu Senhor e orar!",
             "Al A'la 87:14-15",
             "قَدْ أَفْلَحَ مَن تَزَكَّىٰ وَذَكَرَ ٱسْمَ رَبِّهِۦ فَصَلَّىٰ",
-            "الأعۡلى 87:14-15"
+            "الأعلى 87:14-15"
         ),
         BuiltInPassage(
             "And [by] the soul and He who proportioned it and inspired it [with discernment of] its wickedness and its righteousness, he has succeeded who purifies it, and he has failed who instills it [with corruption].",
@@ -342,7 +344,7 @@ object ReadingLibrary {
             "Pela alma e por Quem aperfeiçoou, e lhe imprimiu o discernimento entre o que é certo e o que é errado, que será venturoso quem a purificar (a alma), e desventurado quem a corromper.",
             "Ash Shams 91:7-10",
             "وَنَفْسٍۢ وَمَا سَوَّىٰهَا فَأَلْهَمَهَا فُجُورَهَا وَتَقْوَىٰهَا قَدْ أَفْلَحَ مَن زَكَّىٰهَا وَقَدْ خَابَ مَن دَسَّىٰهَا",
-            "الشمۡس 91:7-10"
+            "الشمس 91:7-10"
         )
     )
 
