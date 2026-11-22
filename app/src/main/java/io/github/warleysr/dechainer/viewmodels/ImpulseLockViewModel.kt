@@ -33,6 +33,9 @@ class ImpulseLockViewModel : ViewModel() {
     var readingSource by mutableStateOf(SecurityManager.getReadingSource(context))
         private set
 
+    var readingLanguage by mutableStateOf(SecurityManager.getReadingLanguage(context))
+        private set
+
     /** The count as stored; [readingCount] is what will actually be shown with the current source. */
     private var storedReadingCount by mutableIntStateOf(SecurityManager.getReadingCount(context))
 
@@ -81,6 +84,11 @@ class ImpulseLockViewModel : ViewModel() {
     fun updateReadingSource(value: SecurityManager.ReadingSource) {
         readingSource = value
         SecurityManager.setReadingSource(context, value)
+    }
+
+    fun updateReadingLanguage(value: SecurityManager.ReadingLanguage) {
+        readingLanguage = value
+        SecurityManager.setReadingLanguage(context, value)
     }
 
     fun updateReadingCount(value: Int) {
