@@ -387,6 +387,10 @@
     <string name="reading_challenge_title">Read slowly</string>
     <string name="reading_next">Next</string>
     <string name="reading_finish">Done</string>
+    <string name="reading_language_section">Language</string>
+    <string name="reading_language_english" translatable="false">English</string>
+    <string name="reading_language_portuguese" translatable="false">Português</string>
+    <string name="reading_language_arabic" translatable="false">العربية</string>
     <string name="reading_source_section">Texts</string>
     <string name="reading_source_bible">Bible</string>
     <string name="reading_source_bible_desc">Verses about lust and adultery — King James Version</string>

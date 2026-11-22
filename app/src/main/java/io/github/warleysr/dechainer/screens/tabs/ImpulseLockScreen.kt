@@ -264,6 +264,29 @@ private fun TetrisSettings(viewModel: ImpulseLockViewModel, enabled: Boolean) {
 @Composable
 private fun ReadingSettings(viewModel: ImpulseLockViewModel, enabled: Boolean, onAddPassage: () -> Unit) {
     Text(
+        stringResource(R.string.reading_language_section),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    )
+    SecurityManager.ReadingLanguage.entries
+        .filter {
+            it != SecurityManager.ReadingLanguage.ARABIC ||
+                SecurityManager.supportsArabic(viewModel.readingSource)
+        }
+        .forEach { language ->
+        OptionRow(
+            selected = viewModel.effectiveReadingLanguage == language,
+            enabled = enabled,
+            title = when (language) {
+                SecurityManager.ReadingLanguage.ENGLISH -> stringResource(R.string.reading_language_english)
+                SecurityManager.ReadingLanguage.PORTUGUESE -> stringResource(R.string.reading_language_portuguese)
+                SecurityManager.ReadingLanguage.ARABIC -> stringResource(R.string.reading_language_arabic)
+            },
+            onClick = { viewModel.updateReadingLanguage(language) }
+        )
+    }
+
+    Text(
         stringResource(R.string.reading_source_section),
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)

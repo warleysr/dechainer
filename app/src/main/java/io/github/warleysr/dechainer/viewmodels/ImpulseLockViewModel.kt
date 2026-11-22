@@ -33,6 +33,9 @@ class ImpulseLockViewModel : ViewModel() {
     var readingSource by mutableStateOf(SecurityManager.getReadingSource(context))
         private set
 
+    var readingLanguage by mutableStateOf(SecurityManager.getReadingLanguage(context))
+        private set
+
     /** The count as stored; [readingCount] is what will actually be shown with the current source. */
     private var storedReadingCount by mutableIntStateOf(SecurityManager.getReadingCount(context))
 
@@ -45,6 +48,10 @@ class ImpulseLockViewModel : ViewModel() {
 
     val readingCount: Int
         get() = storedReadingCount.coerceAtMost(availableReadings)
+
+    /** The language actually used: Arabic only survives on a source that has Arabic text. */
+    val effectiveReadingLanguage: SecurityManager.ReadingLanguage
+        get() = SecurityManager.readingLanguageFor(readingSource, readingLanguage)
 
     var action by mutableStateOf(SecurityManager.getImpulseAction(context))
         private set
@@ -81,6 +88,11 @@ class ImpulseLockViewModel : ViewModel() {
     fun updateReadingSource(value: SecurityManager.ReadingSource) {
         readingSource = value
         SecurityManager.setReadingSource(context, value)
+    }
+
+    fun updateReadingLanguage(value: SecurityManager.ReadingLanguage) {
+        readingLanguage = value
+        SecurityManager.setReadingLanguage(context, value)
     }
 
     fun updateReadingCount(value: Int) {

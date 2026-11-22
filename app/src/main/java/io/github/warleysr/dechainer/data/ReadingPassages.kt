@@ -6,15 +6,23 @@ import io.github.warleysr.dechainer.security.SecurityManager
 /** One text shown by the reading challenge, already in the language it will be displayed in. */
 data class ReadingPassage(val text: String, val source: String)
 
-/** A built-in passage, carried in both languages the app ships with. */
+/** A built-in passage, carried in every language the app ships with. Arabic is optional. */
 class BuiltInPassage(
     private val textEn: String,
     private val sourceEn: String,
     private val textPt: String,
-    private val sourcePt: String
+    private val sourcePt: String,
+    private val textAr: String? = null,
+    private val sourceAr: String? = null
 ) {
-    fun resolve(portuguese: Boolean) =
-        if (portuguese) ReadingPassage(textPt, sourcePt) else ReadingPassage(textEn, sourceEn)
+    fun resolve(language: SecurityManager.ReadingLanguage) = when (language) {
+        SecurityManager.ReadingLanguage.ARABIC ->
+            if (textAr != null) ReadingPassage(textAr, sourceAr ?: sourceEn)
+            else ReadingPassage(textEn, sourceEn)
+
+        SecurityManager.ReadingLanguage.PORTUGUESE -> ReadingPassage(textPt, sourcePt)
+        SecurityManager.ReadingLanguage.ENGLISH -> ReadingPassage(textEn, sourceEn)
+    }
 }
 
 /**
@@ -30,11 +38,11 @@ class BuiltInPassage(
  */
 object ReadingLibrary {
 
-    fun passages(context: Context, source: SecurityManager.ReadingSource, portuguese: Boolean): List<ReadingPassage> =
+    fun passages(context: Context, source: SecurityManager.ReadingSource, language: SecurityManager.ReadingLanguage): List<ReadingPassage> =
         when (source) {
-            SecurityManager.ReadingSource.BIBLE -> BIBLE.map { it.resolve(portuguese) }
-            SecurityManager.ReadingSource.QURAN -> QURAN.map { it.resolve(portuguese) }
-            SecurityManager.ReadingSource.QUOTES -> QUOTES.map { it.resolve(portuguese) }
+            SecurityManager.ReadingSource.BIBLE -> BIBLE.map { it.resolve(language) }
+            SecurityManager.ReadingSource.QURAN -> QURAN.map { it.resolve(language) }
+            SecurityManager.ReadingSource.QUOTES -> QUOTES.map { it.resolve(language) }
             SecurityManager.ReadingSource.CUSTOM -> SecurityManager.getCustomReadingPassages(context)
         }
 
@@ -47,8 +55,10 @@ object ReadingLibrary {
         }
 
     /** A random selection of [SecurityManager.getReadingCount] passages from the configured source. */
-    fun pick(context: Context, portuguese: Boolean): List<ReadingPassage> {
-        val all = passages(context, SecurityManager.getReadingSource(context), portuguese)
+    fun pick(context: Context, language: SecurityManager.ReadingLanguage): List<ReadingPassage> {
+        val source = SecurityManager.getReadingSource(context)
+        val effective = SecurityManager.readingLanguageFor(source, language)
+        val all = passages(context, source, effective)
         return all.shuffled().take(SecurityManager.getReadingCount(context).coerceAtMost(all.size))
     }
 
@@ -180,121 +190,161 @@ object ReadingLibrary {
             "Satan threatens you with poverty and orders you to immorality, while Allah promises you forgiveness from Him and bounty. And Allah is all-Encompassing and Knowing.",
             "Al-Baqarah 2:268",
             "Satanás vos atemoriza com a miséria e vos induz à obscenidade; por outro lado, Deus vos promete a Sua indulgência e a Sua graça, porque é Munificente, Sapientíssimo.",
-            "Al-Baqara 2:268"
+            "Al-Baqara 2:268",
+            "ٱلشَّيْطَٰنُ يَعِدُكُمُ ٱلْفَقْرَ وَيَأْمُرُكُم بِٱلْفَحْشَآءِ ۖ وَٱللَّهُ يَعِدُكُم مَّغْفِرَةًۭ مِّنْهُ وَفَضْلًۭا ۗ وَٱللَّهُ وَٰسِعٌ عَلِيمٌۭ",
+            "البقرة 2:268"
         ),
         BuiltInPassage(
             "Beautified for people is the love of that which they desire - of women and sons, heaped-up sums of gold and silver, fine branded horses, and cattle and tilled land. That is the enjoyment of worldly life, but Allah has with Him the best return.",
             "Ali 'Imran 3:14",
             "Aos homens foi abrilhantado o amor à concupiscência relacionada às mulheres, aos filhos, ao entesouramento do ouro e da prata, aos cavalos de raça, ao gado e às sementeiras. Tal é o gozo da vida terrena; porém, a bem-aventurança está ao lado de Deus.",
-            "Al Imran 3:14"
+            "Al Imran 3:14",
+            "زُيِّنَ لِلنَّاسِ حُبُّ ٱلشَّهَوَٰتِ مِنَ ٱلنِّسَآءِ وَٱلْبَنِينَ وَٱلْقَنَٰطِيرِ ٱلْمُقَنطَرَةِ مِنَ ٱلذَّهَبِ وَٱلْفِضَّةِ وَٱلْخَيْلِ ٱلْمُسَوَّمَةِ وَٱلْأَنْعَٰمِ وَٱلْحَرْثِ ۗ ذَٰلِكَ مَتَٰعُ ٱلْحَيَوٰةِ ٱلدُّنْيَا ۖ وَٱللَّهُ عِندَهُۥ حُسْنُ ٱلْمَـَٔابِ",
+            "آل عمران 3:14"
         ),
         BuiltInPassage(
             "And those who, when they commit an immorality or wrong themselves [by transgression], remember Allah and seek forgiveness for their sins - and who can forgive sins except Allah? - and [who] do not persist in what they have done while they know.",
             "Ali 'Imran 3:135",
             "Que, quando cometem uma obscenidade ou se condenam, mencionam a Deus e imploram o perdão por seus pecados - mas quem, senão Deus perdoa os pecados? - e não reincidem, com conhecimento, no que cometeram.",
-            "Al Imran 3:135"
+            "Al Imran 3:135",
+            "وَٱلَّذِينَ إِذَا فَعَلُوا۟ فَٰحِشَةً أَوْ ظَلَمُوٓا۟ أَنفُسَهُمْ ذَكَرُوا۟ ٱللَّهَ فَٱسْتَغْفَرُوا۟ لِذُنُوبِهِمْ وَمَن يَغْفِرُ ٱلذُّنُوبَ إِلَّا ٱللَّهُ وَلَمْ يُصِرُّوا۟ عَلَىٰ مَا فَعَلُوا۟ وَهُمْ يَعْلَمُونَ",
+            "آل عمران 3:135"
         ),
         BuiltInPassage(
             "Allah wants to accept your repentance, but those who follow [their] passions want you to digress [into] a great deviation. And Allah wants to lighten for you [your difficulties]; and mankind was created weak.",
             "An-Nisa 4:27-28",
             "Deus deseja absolver-vos; porém, os que seguem os desejos vãos anseiam vos desviar profundamente. E Deus deseja aliviar-vos o fardo, porque o homem foi criado débil.",
-            "An-Nissá 4:27-28"
+            "An-Nissá 4:27-28",
+            "وَٱللَّهُ يُرِيدُ أَن يَتُوبَ عَلَيْكُمْ وَيُرِيدُ ٱلَّذِينَ يَتَّبِعُونَ ٱلشَّهَوَٰتِ أَن تَمِيلُوا۟ مَيْلًا عَظِيمًۭا يُرِيدُ ٱللَّهُ أَن يُخَفِّفَ عَنكُمْ ۚ وَخُلِقَ ٱلْإِنسَٰنُ ضَعِيفًۭا",
+            "النساء 4:27-28"
         ),
         BuiltInPassage(
             "Say, \"My Lord has only forbidden immoralities - what is apparent of them and what is concealed - and sin, and oppression without right, and that you associate with Allah that for which He has not sent down authority, and that you say about Allah that which you do not know.\"",
             "Al-A'raf 7:33",
             "Dize: Meu Senhor vedou as obscenidades, manifestas ou íntimas; o delito; a agressão injusta; o atribuir parceiros a Ele, porque jamais deu autoridade a que digais d'Ele o que ignorais.",
-            "Al A'raf 7:33"
+            "Al A'raf 7:33",
+            "قُلْ إِنَّمَا حَرَّمَ رَبِّىَ ٱلْفَوَٰحِشَ مَا ظَهَرَ مِنْهَا وَمَا بَطَنَ وَٱلْإِثْمَ وَٱلْبَغْىَ بِغَيْرِ ٱلْحَقِّ وَأَن تُشْرِكُوا۟ بِٱللَّهِ مَا لَمْ يُنَزِّلْ بِهِۦ سُلْطَٰنًۭا وَأَن تَقُولُوا۟ عَلَى ٱللَّهِ مَا لَا تَعْلَمُونَ",
+            "الأعراف 7:33"
         ),
         BuiltInPassage(
             "And she, in whose house he was, sought to seduce him. She closed the doors and said, \"Come, you.\" He said, \"[I seek] the refuge of Allah. Indeed, he is my master, who has made good my residence. Indeed, wrongdoers will not succeed.\"",
             "Yusuf 12:23",
             "A mulher, em cuja casa se alojara, tentou seduzi-lo; fechou as portas e lhe disse: Agora vem! Porém, ele disse: Amparo-me em Deus! Ele (o marido) é meu amo e acolheu-me condignamente. Em verdade, os iníquos jamais prosperarão.",
-            "Yussuf 12:23"
+            "Yussuf 12:23",
+            "وَرَٰوَدَتْهُ ٱلَّتِى هُوَ فِى بَيْتِهَا عَن نَّفْسِهِۦ وَغَلَّقَتِ ٱلْأَبْوَٰبَ وَقَالَتْ هَيْتَ لَكَ ۚ قَالَ مَعَاذَ ٱللَّهِ ۖ إِنَّهُۥ رَبِّىٓ أَحْسَنَ مَثْوَاىَ ۖ إِنَّهُۥ لَا يُفْلِحُ ٱلظَّٰلِمُونَ",
+            "يوسف 12:23"
         ),
         BuiltInPassage(
             "He said, \"My Lord, prison is more to my liking than that to which they invite me. And if You do not avert from me their plan, I might incline toward them and [thus] be of the ignorant.\"",
             "Yusuf 12:33",
             "Disse (José): Ó Senhor meu, é preferível o cárcere ao que me incitam; porém, se não afastares de mim as suas conspirações, cederei a elas e serei um dos néscios.",
-            "Yussuf 12:33"
+            "Yussuf 12:33",
+            "قَالَ رَبِّ ٱلسِّجْنُ أَحَبُّ إِلَىَّ مِمَّا يَدْعُونَنِىٓ إِلَيْهِ ۖ وَإِلَّا تَصْرِفْ عَنِّى كَيْدَهُنَّ أَصْبُ إِلَيْهِنَّ وَأَكُن مِّنَ ٱلْجَٰهِلِينَ",
+            "يوسف 12:33"
         ),
         BuiltInPassage(
             "And I do not acquit myself. Indeed, the soul is a persistent enjoiner of evil, except those upon which my Lord has mercy. Indeed, my Lord is Forgiving and Merciful.",
             "Yusuf 12:53",
             "Porém, eu não me escuso, porquanto o ser é propenso ao mal, exceto aqueles de quem o meu Senhor se apiada, porque o meu Senhor é Indulgente, Misericordiosíssimo.",
-            "Yussuf 12:53"
+            "Yussuf 12:53",
+            "۞ وَمَآ أُبَرِّئُ نَفْسِىٓ ۚ إِنَّ ٱلنَّفْسَ لَأَمَّارَةٌۢ بِٱلسُّوٓءِ إِلَّا مَا رَحِمَ رَبِّىٓ ۚ إِنَّ رَبِّى غَفُورٌۭ رَّحِيمٌۭ",
+            "يوسف 12:53"
         ),
         BuiltInPassage(
             "Indeed, Allah orders justice and good conduct and giving to relatives and forbids immorality and bad conduct and oppression. He admonishes you that perhaps you will be reminded.",
             "An-Nahl 16:90",
             "Deus ordena a justiça, a caridade, o auxílio aos parentes, e veda a obscenidade, o ilícito e a iniqüidade. Ele vos exorta a que mediteis.",
-            "An Nahl 16:90"
+            "An Nahl 16:90",
+            "۞ إِنَّ ٱللَّهَ يَأْمُرُ بِٱلْعَدْلِ وَٱلْإِحْسَٰنِ وَإِيتَآئِ ذِى ٱلْقُرْبَىٰ وَيَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ وَٱلْبَغْىِ ۚ يَعِظُكُمْ لَعَلَّكُمْ تَذَكَّرُونَ",
+            "النحل 16:90"
         ),
         BuiltInPassage(
             "And do not approach unlawful sexual intercourse. Indeed, it is ever an immorality and is evil as a way.",
             "Al-Isra 17:32",
             "Evitai a fornicação, porque é uma obscenidade e um péssimo exemplo!",
-            "Al Isrá 17:32"
+            "Al Isrá 17:32",
+            "وَلَا تَقْرَبُوا۟ ٱلزِّنَىٰٓ ۖ إِنَّهُۥ كَانَ فَٰحِشَةًۭ وَسَآءَ سَبِيلًۭا",
+            "الإسراء 17:32"
         ),
         BuiltInPassage(
             "And do not pursue that of which you have no knowledge. Indeed, the hearing, the sight and the heart - about all those [one] will be questioned.",
             "Al-Isra 17:36",
             "Não sigas (ó humano) o que ignoras, porque pelo teu ouvido, pela tua vista, e pelo teu coração, por tudo isto será responsável!",
-            "Al Isrá 17:36"
+            "Al Isrá 17:36",
+            "وَلَا تَقْفُ مَا لَيْسَ لَكَ بِهِۦ عِلْمٌ ۚ إِنَّ ٱلسَّمْعَ وَٱلْبَصَرَ وَٱلْفُؤَادَ كُلُّ أُو۟لَٰٓئِكَ كَانَ عَنْهُ مَسْـُٔولًۭا",
+            "الإسراء 17:36"
         ),
         BuiltInPassage(
             "O you who have believed, do not follow the footsteps of Satan. And whoever follows the footsteps of Satan - indeed, he enjoins immorality and wrongdoing. And if not for the favor of Allah upon you and His mercy, not one of you would have been pure, ever, but Allah purifies whom He wills, and Allah is Hearing and Knowing.",
             "An-Nur 24:21",
             "Ó fiéis, não sigais as pegadas de Satanás; e saiba, quem segue as pegadas de Satanás, que ele recomenda a obscenidade e o ilícito. E se não fosse pela graça de Deus e pela Sua misericórdia para convosco, Ele jamais teria purificado nenhum de vós; porém, Deus purifica quem Lhe apraz, porque é Oniouvinte, Sapientíssimo.",
-            "An Nur 24:21"
+            "An Nur 24:21",
+            "۞ يَٰٓأَيُّهَا ٱلَّذِينَ ءَامَنُوا۟ لَا تَتَّبِعُوا۟ خُطُوَٰتِ ٱلشَّيْطَٰنِ ۚ وَمَن يَتَّبِعْ خُطُوَٰتِ ٱلشَّيْطَٰنِ فَإِنَّهُۥ يَأْمُرُ بِٱلْفَحْشَآءِ وَٱلْمُنكَرِ ۚ وَلَوْلَا فَضْلُ ٱللَّهِ عَلَيْكُمْ وَرَحْمَتُهُۥ مَا زَكَىٰ مِنكُم مِّنْ أَحَدٍ أَبَدًۭا وَلَٰكِنَّ ٱللَّهَ يُزَكِّى مَن يَشَآءُ ۗ وَٱللَّهُ سَمِيعٌ عَلِيمٌۭ",
+            "النور 24:21"
         ),
         BuiltInPassage(
             "Tell the believing men to reduce [some] of their vision and guard their private parts. That is purer for them. Indeed, Allah is Acquainted with what they do.",
             "An-Nur 24:30",
             "Dize aos fiéis que recatem os seus olhares e conservem seus pudores, porque isso é mais benéfico para eles; Deus está bem inteirado de tudo quanto fazem.",
-            "An Nur 24:30"
+            "An Nur 24:30",
+            "قُل لِّلْمُؤْمِنِينَ يَغُضُّوا۟ مِنْ أَبْصَٰرِهِمْ وَيَحْفَظُوا۟ فُرُوجَهُمْ ۚ ذَٰلِكَ أَزْكَىٰ لَهُمْ ۗ إِنَّ ٱللَّهَ خَبِيرٌۢ بِمَا يَصْنَعُونَ",
+            "النور 24:30"
         ),
         BuiltInPassage(
             "Recite, [O Muhammad], what has been revealed to you of the Book and establish prayer. Indeed, prayer prohibits immorality and wrongdoing, and the remembrance of Allah is greater. And Allah knows that which you do.",
             "Al-'Ankabut 29:45",
             "Recita o que te foi revelado do Livro e observa a oração, porque a oração preserva (o homem) da obscenidade e do ilícito; mas, na verdade, a recordação de Deus é o mais importante. Sabei que Deus está ciente de tudo quanto fazeis.",
-            "Al Ankabut 29:45"
+            "Al Ankabut 29:45",
+            "ٱتْلُ مَآ أُوحِىَ إِلَيْكَ مِنَ ٱلْكِتَٰبِ وَأَقِمِ ٱلصَّلَوٰةَ ۖ إِنَّ ٱلصَّلَوٰةَ تَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ ۗ وَلَذِكْرُ ٱللَّهِ أَكْبَرُ ۗ وَٱللَّهُ يَعْلَمُ مَا تَصْنَعُونَ",
+            "العنكبوت 29:45"
         ),
         BuiltInPassage(
             "Say, \"O My servants who have transgressed against themselves [by sinning], do not despair of the mercy of Allah. Indeed, Allah forgives all sins. Indeed, it is He who is the Forgiving, the Merciful.\"",
             "Az-Zumar 39:53",
             "Dize: Ó servos meus, que se excederam contra si próprios, não desespereis da misericórdia de Deus; certamente, Ele perdoa todos os pecados, porque Ele é o Indulgente, o Misericordiosíssimo.",
-            "Az Zumar 39:53"
+            "Az Zumar 39:53",
+            "۞ قُلْ يَٰعِبَادِىَ ٱلَّذِينَ أَسْرَفُوا۟ عَلَىٰٓ أَنفُسِهِمْ لَا تَقْنَطُوا۟ مِن رَّحْمَةِ ٱللَّهِ ۚ إِنَّ ٱللَّهَ يَغْفِرُ ٱلذُّنُوبَ جَمِيعًا ۚ إِنَّهُۥ هُوَ ٱلْغَفُورُ ٱلرَّحِيمُ",
+            "الزمر 39:53"
         ),
         BuiltInPassage(
             "He knows that which deceives the eyes and what the breasts conceal.",
             "Ghafir 40:19",
             "Ele conhece os olhares furtivos e tudo quanto ocultam os corações.",
-            "Ghafir 40:19"
+            "Ghafir 40:19",
+            "يَعْلَمُ خَآئِنَةَ ٱلْأَعْيُنِ وَمَا تُخْفِى ٱلصُّدُورُ",
+            "غافر 40:19"
         ),
         BuiltInPassage(
             "Have you seen he who has taken as his god his [own] desire, and Allah has sent him astray due to knowledge and has set a seal upon his hearing and his heart and put over his vision a veil? So who will guide him after Allah? Then will you not be reminded?",
             "Al-Jathiyah 45:23",
             "Não tens reparado, naquele que idolatrou a sua concupiscência! Deus extraviou-o com conhecimento, sigilando os seus ouvidos e o seu coração, e cobriu a sua visão. Quem o iluminará, depois de Deus (tê-lo desencaminhado)? Não meditais, pois?",
-            "Al Jássiya 45:23"
+            "Al Jássiya 45:23",
+            "أَفَرَءَيْتَ مَنِ ٱتَّخَذَ إِلَٰهَهُۥ هَوَىٰهُ وَأَضَلَّهُ ٱللَّهُ عَلَىٰ عِلْمٍۢ وَخَتَمَ عَلَىٰ سَمْعِهِۦ وَقَلْبِهِۦ وَجَعَلَ عَلَىٰ بَصَرِهِۦ غِشَٰوَةًۭ فَمَن يَهْدِيهِ مِنۢ بَعْدِ ٱللَّهِ ۚ أَفَلَا تَذَكَّرُونَ",
+            "الجاثية 45:23"
         ),
         BuiltInPassage(
             "But as for he who feared the position of his Lord and prevented the soul from [unlawful] inclination, then indeed, Paradise will be [his] refuge.",
             "An-Nazi'at 79:40-41",
             "Ao contrário, quem tiver temido o comparecimento ante o seu Senhor e se tiver refreado em relação à luxúria, terá o Paraíso por abrigo.",
-            "An Názi'at 79:40-41"
+            "An Názi'at 79:40-41",
+            "وَأَمَّا مَنْ خَافَ مَقَامَ رَبِّهِۦ وَنَهَى ٱلنَّفْسَ عَنِ ٱلْهَوَىٰ فَإِنَّ ٱلْجَنَّةَ هِىَ ٱلْمَأْوَىٰ",
+            "النازعات 79:40-41"
         ),
         BuiltInPassage(
             "He has certainly succeeded who purifies himself and mentions the name of his Lord and prays.",
             "Al-A'la 87:14-15",
             "Bem-aventurado aquele que se purificar, e mencionar o nome do seu Senhor e orar!",
-            "Al A'la 87:14-15"
+            "Al A'la 87:14-15",
+            "قَدْ أَفْلَحَ مَن تَزَكَّىٰ وَذَكَرَ ٱسْمَ رَبِّهِۦ فَصَلَّىٰ",
+            "الأعلى 87:14-15"
         ),
         BuiltInPassage(
             "And [by] the soul and He who proportioned it and inspired it [with discernment of] its wickedness and its righteousness, he has succeeded who purifies it, and he has failed who instills it [with corruption].",
             "Ash-Shams 91:7-10",
             "Pela alma e por Quem aperfeiçoou, e lhe imprimiu o discernimento entre o que é certo e o que é errado, que será venturoso quem a purificar (a alma), e desventurado quem a corromper.",
-            "Ash Shams 91:7-10"
+            "Ash Shams 91:7-10",
+            "وَنَفْسٍۢ وَمَا سَوَّىٰهَا فَأَلْهَمَهَا فُجُورَهَا وَتَقْوَىٰهَا قَدْ أَفْلَحَ مَن زَكَّىٰهَا وَقَدْ خَابَ مَن دَسَّىٰهَا",
+            "الشمس 91:7-10"
         )
     )
 

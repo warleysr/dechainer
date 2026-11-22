@@ -14,6 +14,7 @@ import io.github.warleysr.dechainer.tiles.ImpulseLockTileService
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.SecureRandom
+import java.util.Locale
 import androidx.core.content.edit
 
 class SecurityManager {
@@ -34,6 +35,11 @@ class SecurityManager {
     /** Where the reading challenge takes its texts from. */
     enum class ReadingSource {
         BIBLE, QURAN, QUOTES, CUSTOM
+    }
+
+    /** Language built-in texts are shown in. Arabic falls back to English where no Arabic exists. */
+    enum class ReadingLanguage {
+        ENGLISH, PORTUGUESE, ARABIC
     }
 
     companion object {
@@ -189,6 +195,40 @@ class SecurityManager {
             val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
             prefs.edit { putString("reading_source", source.name) }
         }
+
+        /**
+         * Language for the reading challenge. Defaults from the device language on first run
+         * (Arabic and Portuguese devices get those, everything else English), then stays whatever
+         * was picked here. Null-safe: an unparsable stored value falls back to the device default.
+         */
+        fun getReadingLanguage(context: Context): ReadingLanguage {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.getString("reading_language", null)?.let { stored ->
+                runCatching { ReadingLanguage.valueOf(stored) }.getOrNull()?.let { return it }
+            }
+            return when (Locale.getDefault().language) {
+                "ar" -> ReadingLanguage.ARABIC
+                "pt" -> ReadingLanguage.PORTUGUESE
+                else -> ReadingLanguage.ENGLISH
+            }
+        }
+
+        fun setReadingLanguage(context: Context, language: ReadingLanguage) {
+            val prefs = context.getSharedPreferences("security_prefs", Context.MODE_PRIVATE)
+            prefs.edit { putString("reading_language", language.name) }
+        }
+
+        /** Arabic text is only carried by the Quran, so the choice means nothing for other sources. */
+        fun supportsArabic(source: ReadingSource) = source == ReadingSource.QURAN
+
+        /**
+         * The language actually used for [source]: Arabic is clamped to English where it does not
+         * exist, so an Arabic device (or a choice left over from another source) never renders
+         * English text as if it were Arabic.
+         */
+        fun readingLanguageFor(source: ReadingSource, chosen: ReadingLanguage) =
+            if (chosen == ReadingLanguage.ARABIC && !supportsArabic(source)) ReadingLanguage.ENGLISH
+            else chosen
 
         /**
          * How many texts the reading challenge shows. Stored as chosen; callers cap it to what the

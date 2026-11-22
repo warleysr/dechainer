@@ -11,7 +11,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -19,10 +18,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.ReadingLibrary
+import io.github.warleysr.dechainer.security.SecurityManager
 
 // Pace of a slow, attentive reading (~110 words per minute for an average word): a fixed cost per
 // word plus a bit per letter, so long words take longer, and pauses where the punctuation asks for one.
@@ -59,8 +60,8 @@ private fun timeWords(text: String): TimedText {
 @Composable
 fun ReadingChallenge(onSuccess: () -> Unit) {
     val context = LocalContext.current
-    val portuguese = LocalConfiguration.current.locales[0].language == "pt"
-    val passages = remember { ReadingLibrary.pick(context, portuguese) }
+    val language = remember { SecurityManager.getReadingLanguage(context) }
+    val passages = remember { ReadingLibrary.pick(context, language) }
 
     if (passages.isEmpty()) {
         // Only possible with "my phrases" and none written: nothing to read, so nothing to hold back.
@@ -70,6 +71,9 @@ fun ReadingChallenge(onSuccess: () -> Unit) {
 
     var index by remember { mutableIntStateOf(0) }
     val passage = passages[index]
+    // Direction follows the text actually shown, not the chosen language: an English fallback or a
+    // custom passage in Latin script has to stay LTR even while Arabic is selected.
+    val rtl = remember(passage) { passage.text.any { it in '\u0600'..'\u06FF' } }
     val timed = remember(passage) { timeWords(passage.text) }
     val elapsed = remember(index) { Animatable(0f) }
 
@@ -128,8 +132,12 @@ fun ReadingChallenge(onSuccess: () -> Unit) {
             ) {
                 Text(
                     annotated,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontFamily = FontFamily.Serif
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        textDirection = if (rtl) TextDirection.Rtl else TextDirection.Ltr
+                    ),
+                    fontFamily = FontFamily.Serif,
+                    textAlign = if (rtl) TextAlign.Right else TextAlign.Left,
+                    modifier = Modifier.fillMaxWidth()
                 )
                 if (passage.source.isNotBlank()) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -138,7 +146,7 @@ fun ReadingChallenge(onSuccess: () -> Unit) {
                         style = MaterialTheme.typography.labelLarge,
                         fontStyle = FontStyle.Italic,
                         color = MaterialTheme.colorScheme.primary,
-                        textAlign = TextAlign.End,
+                        textAlign = if (rtl) TextAlign.Right else TextAlign.End,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

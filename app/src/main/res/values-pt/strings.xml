@@ -387,6 +387,7 @@
     <string name="reading_challenge_title">Leia com calma</string>
     <string name="reading_next">Próximo</string>
     <string name="reading_finish">Concluir</string>
+    <string name="reading_language_section">Idioma</string>
     <string name="reading_source_section">Textos</string>
     <string name="reading_source_bible">Bíblia</string>
     <string name="reading_source_bible_desc">Versículos sobre luxúria e adultério — tradução de João Ferreira de Almeida</string>
