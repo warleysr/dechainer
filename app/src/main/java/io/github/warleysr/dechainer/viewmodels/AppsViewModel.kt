@@ -31,12 +31,12 @@ class AppsViewModel : ViewModel() {
         loadGroups()
     }
 
-    fun loadApps() {
+    fun loadApps(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             isLoading = true
             apps = withContext(Dispatchers.IO) {
                 try {
-                    AppRepository.getApps()
+                    AppRepository.getApps(forceRefresh)
                 } catch (e: Exception) {
                     emptyList()
                 }

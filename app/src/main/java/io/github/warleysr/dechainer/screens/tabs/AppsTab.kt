@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.screens.common.NoDeviceOwnerPrivileges
@@ -99,6 +100,14 @@ fun AppsScreen(
     val recoveryGate = rememberRecoveryGate()
     var showSystemApps by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+
+    // Suspension/hidden state can change while this screen is in the background (the accessibility
+    // service suspends apps on its own, and the user can open one from the launcher), so re-read the
+    // real DevicePolicy state on every resume instead of trusting the cached list.
+    LifecycleResumeEffect(Unit) {
+        if (viewModel.apps.isNotEmpty()) viewModel.loadApps(forceRefresh = true)
+        onPauseOrDispose { }
+    }
 
     val restrictedGroupPackages = remember(viewModel.groups) {
         viewModel.groups.filter { it.timeLimit.isSet || it.timeWindows.isNotEmpty() }
