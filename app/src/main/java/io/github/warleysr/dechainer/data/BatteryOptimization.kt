@@ -1,11 +1,15 @@
 package io.github.warleysr.dechainer.data
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
-import android.net.Uri
 import android.os.PowerManager
 import android.provider.Settings
+import androidx.core.net.toUri
+import io.github.warleysr.dechainer.utils.ShizukuRunner
+import timber.log.Timber
 
 object BatteryOptimization {
 
@@ -14,17 +18,41 @@ object BatteryOptimization {
         return powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
     }
 
+    fun grantViaShizuku(context: Context): Boolean {
+        if (isExempt(context)) return true
+        runCatching {
+            ShizukuRunner.exec("dumpsys", "deviceidle", "whitelist", "+${context.packageName}")
+        }.onFailure {
+            Timber.w(it, "Failed to grant battery optimization exemption via Shizuku")
+        }
+        return isExempt(context)
+    }
+
     fun request(context: Context) {
         runCatching {
+            val hasActivity = context.findActivity() != null
             val intent = Intent(
                 Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                Uri.parse("package:${context.packageName}")
-            )
+                "package:${context.packageName}".toUri()
+            ).apply {
+                if (!hasActivity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             try {
                 context.startActivity(intent)
             } catch (_: ActivityNotFoundException) {
-                context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                val fallback = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                    if (!hasActivity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallback)
             }
+        }.onFailure {
+            Timber.w(it, "Failed to open battery optimization settings")
         }
+    }
+
+    private tailrec fun Context.findActivity(): Activity? = when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
     }
 }

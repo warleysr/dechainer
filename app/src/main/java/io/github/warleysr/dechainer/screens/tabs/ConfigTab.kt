@@ -117,17 +117,6 @@ fun ConfigTab(
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
-            if (!batteryExempt) {
-                item {
-                    ListItem(
-                        headlineContent = { Text(stringResource(R.string.battery_optimization)) },
-                        supportingContent = { Text(stringResource(R.string.battery_optimization_desc)) },
-                        leadingContent = { Icon(Icons.Outlined.BatterySaver, "") },
-                        modifier = Modifier.clickable { BatteryOptimization.request(context) }
-                    )
-                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                }
-            }
             item {
                 ListItem(
                     headlineContent = { ConfigHeadline(stringResource(R.string.dns_settings), PermanentRestrictionsManager.KEY_DNS_SETTINGS in permanentKeys) },
@@ -173,6 +162,9 @@ fun ConfigTab(
                             recoveryGate.changeForFeature(PermanentRestrictionsManager.KEY_ACTIVITY_BLOCKER, loosening = !checked) {
                                 DechainerAccessibilityService.prepareServiceDisable()
                                 viewModel.changeAccessibilityPermission(checked)
+                                if (checked) {
+                                    batteryExempt = BatteryOptimization.isExempt(context)
+                                }
                             }
                         })
                     }
@@ -254,10 +246,19 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.language_settings)) },
-                    supportingContent = { Text(stringResource(R.string.language_description)) },
-                    leadingContent = { Icon(Icons.Outlined.Language, "") },
-                    modifier = Modifier.clickable { showLanguageDialog = true }
+                    headlineContent = { Text(stringResource(R.string.permanent_restrictions)) },
+                    leadingContent = { Icon(Icons.Outlined.Lock, "") },
+                    supportingContent = { Text(stringResource(R.string.permanent_restrictions_desc)) },
+                    trailingContent = if (permanentKeys.isNotEmpty()) {
+                        {
+                            Badge(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
+                                Text(permanentKeys.size.toString())
+                            }
+                        }
+                    } else null,
+                    modifier = Modifier.clickable {
+                        navViewModel.navigateTo("permanent_restrictions")
+                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -281,19 +282,28 @@ fun ConfigTab(
             }
             item {
                 ListItem(
-                    headlineContent = { Text(stringResource(R.string.usage_warning_settings)) },
-                    supportingContent = { Text(stringResource(R.string.usage_warning_settings_desc)) },
-                    leadingContent = { Icon(Icons.Outlined.NotificationsActive, "") },
-                    modifier = Modifier.clickable { navViewModel.navigateTo("usage_warning") }
+                    headlineContent = { ConfigHeadline(stringResource(R.string.color_filter_settings), PermanentRestrictionsManager.KEY_COLOR_FILTER_SETTINGS in permanentKeys) },
+                    supportingContent = { Text(stringResource(R.string.color_filter_settings_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.Palette, "") },
+                    modifier = Modifier.clickable { navViewModel.navigateTo("color_filters") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
             item {
                 ListItem(
-                    headlineContent = { ConfigHeadline(stringResource(R.string.color_filter_settings), PermanentRestrictionsManager.KEY_COLOR_FILTER_SETTINGS in permanentKeys) },
-                    supportingContent = { Text(stringResource(R.string.color_filter_settings_desc)) },
-                    leadingContent = { Icon(Icons.Outlined.Palette, "") },
-                    modifier = Modifier.clickable { navViewModel.navigateTo("color_filters") }
+                    headlineContent = { Text(stringResource(R.string.language_settings)) },
+                    supportingContent = { Text(stringResource(R.string.language_description)) },
+                    leadingContent = { Icon(Icons.Outlined.Language, "") },
+                    modifier = Modifier.clickable { showLanguageDialog = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.usage_warning_settings)) },
+                    supportingContent = { Text(stringResource(R.string.usage_warning_settings_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.NotificationsActive, "") },
+                    modifier = Modifier.clickable { navViewModel.navigateTo("usage_warning") }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -306,6 +316,17 @@ fun ConfigTab(
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
+            if (!batteryExempt) {
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.battery_optimization)) },
+                        supportingContent = { Text(stringResource(R.string.battery_optimization_desc)) },
+                        leadingContent = { Icon(Icons.Outlined.BatterySaver, "") },
+                        modifier = Modifier.clickable { BatteryOptimization.request(context) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
+            }
             item {
                 val keyboardLabel = if (shuffleKeyboard)
                     stringResource(R.string.keyboard_shuffle)
@@ -316,24 +337,6 @@ fun ConfigTab(
                     supportingContent = { Text(keyboardLabel) },
                     leadingContent = { Icon(Icons.Outlined.Keyboard, "") },
                     modifier = Modifier.clickable { showKeyboardDialog = true }
-                )
-                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-            }
-            item {
-                ListItem(
-                    headlineContent = { Text(stringResource(R.string.permanent_restrictions)) },
-                    leadingContent = { Icon(Icons.Outlined.Lock, "") },
-                    supportingContent = { Text(stringResource(R.string.permanent_restrictions_desc)) },
-                    trailingContent = if (permanentKeys.isNotEmpty()) {
-                        {
-                            Badge(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.onErrorContainer) {
-                                Text(permanentKeys.size.toString())
-                            }
-                        }
-                    } else null,
-                    modifier = Modifier.clickable {
-                        navViewModel.navigateTo("permanent_restrictions")
-                    }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
