@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Adb
+import androidx.compose.material.icons.outlined.BatterySaver
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.FileDownload
@@ -31,9 +32,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
+import io.github.warleysr.dechainer.data.BatteryOptimization
 import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.screens.common.PermanentBadge
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
@@ -78,6 +81,11 @@ fun ConfigTab(
 
     var shuffleKeyboard by remember { mutableStateOf(SecurityManager.isShuffleKeyboardEnabled(context)) }
     var blockTorrents by remember { mutableStateOf(SecurityManager.isBlockTorrentsEnabled(context)) }
+    var batteryExempt by remember { mutableStateOf(BatteryOptimization.isExempt(context)) }
+    LifecycleResumeEffect(Unit) {
+        batteryExempt = BatteryOptimization.isExempt(context)
+        onPauseOrDispose { }
+    }
 
     val advancedBlocking = DechainerAccessibilityService.isRunning
     val permanentKeys = remember { PermanentRestrictionsManager.getPermanentKeys(context) }
@@ -108,6 +116,17 @@ fun ConfigTab(
                     modifier = Modifier.clickable(onClick = { navViewModel.navigateTo("setup_device_owner") })
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            if (!batteryExempt) {
+                item {
+                    ListItem(
+                        headlineContent = { Text(stringResource(R.string.battery_optimization)) },
+                        supportingContent = { Text(stringResource(R.string.battery_optimization_desc)) },
+                        leadingContent = { Icon(Icons.Outlined.BatterySaver, "") },
+                        modifier = Modifier.clickable { BatteryOptimization.request(context) }
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                }
             }
             item {
                 ListItem(
