@@ -44,7 +44,9 @@ import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.ColorFilterSettings
 import io.github.warleysr.dechainer.data.FocusMode
+import io.github.warleysr.dechainer.data.StatsRepository
 import io.github.warleysr.dechainer.data.SuspensionLogRepository
+import io.github.warleysr.dechainer.models.BlockEventType
 import io.github.warleysr.dechainer.models.SuspensionReason
 import io.github.warleysr.dechainer.data.PlayStoreRatingFetcher
 import io.github.warleysr.dechainer.data.UsageWarningSettings
@@ -686,8 +688,15 @@ class DechainerAccessibilityService : AccessibilityService() {
                 val blockedActivities =
                     blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
 
-                if (blockedActivities.contains(className))
+                if (blockedActivities.contains(className)) {
+                    StatsRepository.recordBlockEvent(
+                        applicationContext,
+                        BlockEventType.ACTIVITY,
+                        newPackage,
+                        className
+                    )
                     performGlobalAction(GLOBAL_ACTION_BACK)
+                }
             }
         }
 
@@ -776,6 +785,13 @@ class DechainerAccessibilityService : AccessibilityService() {
     }
 
     private fun showBlockedActivity(forbiddenWord: String) {
+        val pkg = currentPackage ?: packageName
+        StatsRepository.recordBlockEvent(
+            applicationContext,
+            BlockEventType.WORD,
+            pkg,
+            forbiddenWord
+        )
         serviceScope.launch {
             withContext(Dispatchers.Main) {
                 val intent = Intent(
@@ -1047,6 +1063,8 @@ class DechainerAccessibilityService : AccessibilityService() {
             Timber.d("NSFW scan: $pkg is already suspended, block ignored")
             return
         }
+
+        StatsRepository.recordBlockEvent(applicationContext, BlockEventType.VISUAL, pkg)
 
         if (nsfwSuspendEnabled) {
             val shouldSuspend = nsfwSuspensionTracker.registerBlock(
@@ -1528,6 +1546,8 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         if (config.appLimitMinutes > 0) {
             usagePrefs.edit { putLong(pkg, usagePrefs.getLong(pkg, 0L) + currentSessionMillis) }
+            val totalTodayUsage = usagePrefs.all.values.filterIsInstance<Long>().sum()
+            StatsRepository.updateDailyUsage(applicationContext, LocalDate.now().toString(), totalTodayUsage)
         }
         if (config.group != null && config.groupLimitMinutes > 0) {
             val groupId = config.group.id
@@ -1543,6 +1563,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         stopTrackingAndSave()
         currentPackage = null
+        StatsRepository.recordTimeLimitBlock(applicationContext, isReopening = reopening)
 
         if (!reopening) {
             pulseSuspension(pkg)
@@ -1601,6 +1622,10 @@ class DechainerAccessibilityService : AccessibilityService() {
     private fun checkDateReset() {
         val today = LocalDate.now().toString()
         if (today != lastCheckDate) {
+            val previousTotal = usagePrefs.all.values.filterIsInstance<Long>().sum()
+            if (previousTotal > 0L) {
+                StatsRepository.updateDailyUsage(applicationContext, lastCheckDate, previousTotal)
+            }
             usagePrefs.edit { clear() }
             groupUsagePrefs.edit { clear() }
             cancelActiveUsageWarning()

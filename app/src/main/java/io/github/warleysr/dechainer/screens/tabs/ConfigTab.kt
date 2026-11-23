@@ -21,8 +21,10 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Web
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,10 +36,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.warleysr.dechainer.BuildConfig
 import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.BatteryOptimization
 import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
+import io.github.warleysr.dechainer.screens.common.GitHubUpdateDialog
 import io.github.warleysr.dechainer.screens.common.PermanentBadge
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
 import io.github.warleysr.dechainer.screens.common.RecoveryGenerateDialog
@@ -71,6 +75,7 @@ fun ConfigTab(
     var showCancelForcedRemovalDialog by remember { mutableStateOf(false) }
     var showFinishForcedRemovalDialog by remember { mutableStateOf(false) }
     var confirmForcedRemoval by remember { mutableStateOf(false) }
+    var showGitHubUpdateDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -309,6 +314,15 @@ fun ConfigTab(
             }
             item {
                 ListItem(
+                    headlineContent = { Text(stringResource(R.string.stats_dashboard)) },
+                    supportingContent = { Text(stringResource(R.string.stats_dashboard_desc)) },
+                    leadingContent = { Icon(Icons.Outlined.BarChart, "") },
+                    modifier = Modifier.clickable { navViewModel.navigateTo("stats_dashboard") }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
                     headlineContent = { Text(stringResource(R.string.suspension_logs)) },
                     supportingContent = { Text(stringResource(R.string.suspension_logs_desc)) },
                     leadingContent = { Icon(Icons.Outlined.History, "") },
@@ -371,6 +385,17 @@ fun ConfigTab(
                         else if (forcedRemovalRemaining == 0L) showFinishForcedRemovalDialog = true
                         else showCancelForcedRemovalDialog = true
                     }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text(stringResource(R.string.app_update_check)) },
+                    supportingContent = {
+                        Text(stringResource(R.string.app_update_current_version, BuildConfig.VERSION_NAME))
+                    },
+                    leadingContent = { Icon(Icons.Outlined.SystemUpdate, "") },
+                    modifier = Modifier.clickable { showGitHubUpdateDialog = true }
                 )
                 HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
             }
@@ -550,6 +575,10 @@ fun ConfigTab(
                 showRecoveryDialog = false
             }
         )
+    }
+
+    if (showGitHubUpdateDialog) {
+        GitHubUpdateDialog(onDismiss = { showGitHubUpdateDialog = false })
     }
 
     RecoveryGateDialog(recoveryGate)
