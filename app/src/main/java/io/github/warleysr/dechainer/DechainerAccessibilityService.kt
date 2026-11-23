@@ -44,6 +44,7 @@ import io.github.warleysr.dechainer.data.BrowserRestrictionsManager
 import io.github.warleysr.dechainer.data.ColorFilterController
 import io.github.warleysr.dechainer.data.ColorFilterSettings
 import io.github.warleysr.dechainer.data.FocusMode
+import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
 import io.github.warleysr.dechainer.data.SuspensionLogRepository
 import io.github.warleysr.dechainer.models.SuspensionReason
 import io.github.warleysr.dechainer.data.PlayStoreRatingFetcher
@@ -454,6 +455,8 @@ class DechainerAccessibilityService : AccessibilityService() {
         private const val NSFW_MIN_MEDIA_SIZE_DP = 96
         private const val NSFW_DIAG_MIN_SIZE_DP = 48
         private const val NSFW_DIAG_MAX_NODES = 40
+        private const val KEY_ACCESSIBILITY_ADDED_DISALLOW_INSTALL_APPS =
+            "accessibility_added_disallow_install_apps"
 
         var isRunning by mutableStateOf(false)
             private set
@@ -536,8 +539,13 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
-        if (dpm.isAdminActive(admin)) {
-            dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
+        if (securityPrefs.getBoolean(KEY_ACCESSIBILITY_ADDED_DISALLOW_INSTALL_APPS, false)) {
+            securityPrefs.edit { remove(KEY_ACCESSIBILITY_ADDED_DISALLOW_INSTALL_APPS) }
+            if (dpm.isDeviceOwnerApp(packageName) &&
+                !PermanentRestrictionsManager.isDpcPermanent(this, UserManager.DISALLOW_INSTALL_APPS)
+            ) {
+                dpm.clearUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
+            }
         }
         ApkUpdateInstaller.restoreUnknownSourcesRestrictionsIfIdle(applicationContext)
 
@@ -620,8 +628,15 @@ class DechainerAccessibilityService : AccessibilityService() {
 
             val dpm = getSystemService(DEVICE_POLICY_SERVICE) as DevicePolicyManager
             val admin = ComponentName(this, DechainerDeviceAdminReceiver::class.java)
-            if (dpm.isAdminActive(admin)) {
-                dpm.addUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
+            if (dpm.isDeviceOwnerApp(packageName)) {
+                val alreadyRestricted = dpm.getUserRestrictions(admin)
+                    .getBoolean(UserManager.DISALLOW_INSTALL_APPS)
+                if (!alreadyRestricted) {
+                    securityPrefs.edit(commit = true) {
+                        putBoolean(KEY_ACCESSIBILITY_ADDED_DISALLOW_INSTALL_APPS, true)
+                    }
+                    dpm.addUserRestriction(admin, UserManager.DISALLOW_INSTALL_APPS)
+                }
             }
 
             val intent = Intent(
