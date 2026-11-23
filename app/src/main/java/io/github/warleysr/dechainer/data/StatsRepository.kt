@@ -4,15 +4,20 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 import io.github.warleysr.dechainer.models.AppBlockSummary
+import io.github.warleysr.dechainer.models.AppUsageSummary
 import io.github.warleysr.dechainer.models.BlockEvent
 import io.github.warleysr.dechainer.models.BlockEventType
 import io.github.warleysr.dechainer.models.DailyStats
 import io.github.warleysr.dechainer.models.RelapseEntry
 import io.github.warleysr.dechainer.models.StreakBreakReason
 import io.github.warleysr.dechainer.models.StreakSummary
+import io.github.warleysr.dechainer.models.TimeLimit
+import io.github.warleysr.dechainer.models.WeeklyUsageSummary
 import org.json.JSONArray
 import org.json.JSONObject
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.temporal.TemporalAdjusters
 import java.util.UUID
 
 object StatsRepository {
@@ -24,14 +29,11 @@ object StatsRepository {
     private const val KEY_BEST_STREAK = "best_streak_days"
     private const val KEY_LAST_BREAK_DATE = "last_break_date"
     private const val KEY_LAST_BREAK_REASON = "last_break_reason"
-    private const val KEY_TOTAL_SAVED_MILLIS = "total_saved_millis"
 
     private const val MAX_EVENTS = 1000
-    private const val MAX_DAYS = 90
+    private const val MAX_DAYS = 180
     private const val MAX_RELAPSES = 200
     private const val DEDUP_WINDOW_MS = 5_000L
-    private const val TIME_LIMIT_SAVED_MILLIS = 15 * 60_000L
-    private const val REOPEN_LIMIT_SAVED_MILLIS = 5 * 60_000L
 
     private val lock = Any()
 
@@ -42,7 +44,12 @@ object StatsRepository {
         val stored = p.getString(KEY_TRACKING_START, null)
         if (stored != null) {
             try {
-                return LocalDate.parse(stored)
+                val parsed = LocalDate.parse(stored)
+                if (today.isBefore(parsed)) {
+                    p.edit { putString(KEY_TRACKING_START, today.toString()) }
+                    return today
+                }
+                return parsed
             } catch (_: Exception) {
             }
         }
@@ -85,54 +92,19 @@ object StatsRepository {
 
             val dailyMap = decodeDailyMap(p.getString(KEY_DAILY, null)).toMutableMap()
             val current = dailyMap[dateStr] ?: DailyStats(date = dateStr)
-            val addedSaved = type.estimatedSavedMinutes * 60_000L
             val updated = when (type) {
-                BlockEventType.VISUAL -> current.copy(
-                    visualBlocks = current.visualBlocks + 1,
-                    savedMillis = current.savedMillis + addedSaved
-                )
-                BlockEventType.WORD -> current.copy(
-                    wordBlocks = current.wordBlocks + 1,
-                    savedMillis = current.savedMillis + addedSaved
-                )
-                BlockEventType.ACTIVITY -> current.copy(
-                    activityBlocks = current.activityBlocks + 1,
-                    savedMillis = current.savedMillis + addedSaved
-                )
+                BlockEventType.VISUAL -> current.copy(visualBlocks = current.visualBlocks + 1)
+                BlockEventType.WORD -> current.copy(wordBlocks = current.wordBlocks + 1)
+                BlockEventType.ACTIVITY -> current.copy(activityBlocks = current.activityBlocks + 1)
             }
             dailyMap[dateStr] = updated
             pruneOldDays(dailyMap)
 
-            val totalSaved = p.getLong(KEY_TOTAL_SAVED_MILLIS, 0L) + addedSaved
             p.edit {
                 putString(KEY_EVENTS, encodeEvents(events))
                 putString(KEY_DAILY, encodeDailyMap(dailyMap))
-                putLong(KEY_TOTAL_SAVED_MILLIS, totalSaved)
                 putString(KEY_LAST_BREAK_DATE, dateStr)
                 putString(KEY_LAST_BREAK_REASON, StreakBreakReason.CRITICAL_BLOCK.name)
-            }
-        }
-    }
-
-    fun recordTimeLimitBlock(
-        context: Context,
-        isReopening: Boolean,
-        date: LocalDate = LocalDate.now()
-    ) {
-        synchronized(lock) {
-            val p = prefs(context)
-            ensureTrackingStartDate(p, date)
-            val dateStr = date.toString()
-            val addedSaved = if (isReopening) REOPEN_LIMIT_SAVED_MILLIS else TIME_LIMIT_SAVED_MILLIS
-            val dailyMap = decodeDailyMap(p.getString(KEY_DAILY, null)).toMutableMap()
-            val current = dailyMap[dateStr] ?: DailyStats(date = dateStr)
-            dailyMap[dateStr] = current.copy(savedMillis = current.savedMillis + addedSaved)
-            pruneOldDays(dailyMap)
-
-            val totalSaved = p.getLong(KEY_TOTAL_SAVED_MILLIS, 0L) + addedSaved
-            p.edit {
-                putString(KEY_DAILY, encodeDailyMap(dailyMap))
-                putLong(KEY_TOTAL_SAVED_MILLIS, totalSaved)
             }
         }
     }
@@ -140,7 +112,8 @@ object StatsRepository {
     fun updateDailyUsage(
         context: Context,
         date: String,
-        totalUsageMillis: Long
+        totalUsageMillis: Long,
+        appUsageMillis: Map<String, Long> = emptyMap()
     ) {
         synchronized(lock) {
             val p = prefs(context)
@@ -152,7 +125,13 @@ object StatsRepository {
             ensureTrackingStartDate(p, parsedDate)
             val dailyMap = decodeDailyMap(p.getString(KEY_DAILY, null)).toMutableMap()
             val current = dailyMap[date] ?: DailyStats(date = date)
-            dailyMap[date] = current.copy(totalUsageMillis = totalUsageMillis.coerceAtLeast(0L))
+            val limitMillis = computeConfiguredLimitForDay(context, parsedDate.dayOfWeek)
+            val cleanedApps = appUsageMillis.filterValues { it > 0L }
+            dailyMap[date] = current.copy(
+                totalUsageMillis = totalUsageMillis.coerceAtLeast(0L),
+                totalLimitMillis = limitMillis,
+                appUsageMillis = if (cleanedApps.isNotEmpty()) cleanedApps else current.appUsageMillis
+            )
             pruneOldDays(dailyMap)
             p.edit { putString(KEY_DAILY, encodeDailyMap(dailyMap)) }
         }
@@ -257,17 +236,29 @@ object StatsRepository {
         synchronized(lock) {
             val p = prefs(context)
             val dailyMap = decodeDailyMap(p.getString(KEY_DAILY, null))
-            val liveTodayUsage = readLiveUsageMillis(context)
+            val limitsByPkg = readAllLimits(context)
+            val liveAppUsage = readLiveAppUsage(context)
+            val liveTodayUsage = liveAppUsage.values.sum()
             val todayStr = today.toString()
 
             val result = mutableListOf<DailyStats>()
             for (offset in (days - 1) downTo 0) {
-                val dateStr = today.minusDays(offset.toLong()).toString()
+                val date = today.minusDays(offset.toLong())
+                val dateStr = date.toString()
                 val base = dailyMap[dateStr] ?: DailyStats(date = dateStr)
-                val adjusted = if (dateStr == todayStr && liveTodayUsage > base.totalUsageMillis) {
-                    base.copy(totalUsageMillis = liveTodayUsage)
+                val effectiveLimit = if (base.totalLimitMillis > 0L) {
+                    base.totalLimitMillis
                 } else {
-                    base
+                    sumLimitsForDay(limitsByPkg, date.dayOfWeek)
+                }
+                val adjusted = if (dateStr == todayStr && liveTodayUsage >= base.totalUsageMillis) {
+                    base.copy(
+                        totalUsageMillis = liveTodayUsage,
+                        totalLimitMillis = effectiveLimit,
+                        appUsageMillis = if (liveAppUsage.isNotEmpty()) liveAppUsage else base.appUsageMillis
+                    )
+                } else {
+                    base.copy(totalLimitMillis = effectiveLimit)
                 }
                 result.add(adjusted)
             }
@@ -275,12 +266,86 @@ object StatsRepository {
         }
     }
 
-    fun getTotalSavedMillis(context: Context): Long {
+    fun getWeeklyUsageSummary(
+        context: Context,
+        weekOffset: Int = 0,
+        today: LocalDate = LocalDate.now()
+    ): WeeklyUsageSummary {
         synchronized(lock) {
             val p = prefs(context)
-            val stored = p.getLong(KEY_TOTAL_SAVED_MILLIS, 0L)
-            if (stored > 0L) return stored
-            return decodeDailyMap(p.getString(KEY_DAILY, null)).values.sumOf { it.savedMillis }
+            val dailyMap = decodeDailyMap(p.getString(KEY_DAILY, null))
+            val limitsByPkg = readAllLimits(context)
+            val liveAppUsage = readLiveAppUsage(context)
+            val liveTodayUsage = liveAppUsage.values.sum()
+            val todayStr = today.toString()
+
+            val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+            val startDate = currentWeekStart.plusWeeks(weekOffset.toLong())
+            val endDate = startDate.plusDays(6)
+
+            val days = (0L..6L).map { offset ->
+                val date = startDate.plusDays(offset)
+                val dateStr = date.toString()
+                val base = dailyMap[dateStr] ?: DailyStats(date = dateStr)
+                val effectiveLimit = if (base.totalLimitMillis > 0L) {
+                    base.totalLimitMillis
+                } else {
+                    sumLimitsForDay(limitsByPkg, date.dayOfWeek)
+                }
+                if (dateStr == todayStr && liveTodayUsage >= base.totalUsageMillis) {
+                    base.copy(
+                        totalUsageMillis = liveTodayUsage,
+                        totalLimitMillis = effectiveLimit,
+                        appUsageMillis = if (liveAppUsage.isNotEmpty()) liveAppUsage else base.appUsageMillis
+                    )
+                } else {
+                    base.copy(totalLimitMillis = effectiveLimit)
+                }
+            }
+
+            val totalUsageMillis = days.sumOf { it.totalUsageMillis }
+            val elapsedDays = days.count { !LocalDate.parse(it.date).isAfter(today) }.coerceAtLeast(1)
+            val totalLimitMillis = days.sumOf { it.totalLimitMillis }
+            val averageDailyMillis = totalUsageMillis / elapsedDays
+
+            val appTotals = mutableMapOf<String, Long>()
+            days.forEach { day ->
+                day.appUsageMillis.forEach { (pkg, millis) ->
+                    appTotals[pkg] = (appTotals[pkg] ?: 0L) + millis
+                }
+            }
+            val allPackages = (appTotals.keys + limitsByPkg.keys).distinct()
+            val appSummaries = allPackages.mapNotNull { pkg ->
+                val used = appTotals[pkg] ?: 0L
+                val weeklyLimit = limitsByPkg[pkg]?.let { limit ->
+                    DayOfWeek.entries.sumOf { dow -> limit.minutesFor(dow) * 60_000L }
+                } ?: 0L
+                if (used == 0L && weeklyLimit == 0L) return@mapNotNull null
+                AppUsageSummary(
+                    packageName = pkg,
+                    appName = resolveAppName(context, pkg),
+                    usedMillis = used,
+                    weeklyLimitMillis = weeklyLimit
+                )
+            }.sortedWith(compareByDescending<AppUsageSummary> { it.usedMillis }.thenBy { it.appName.lowercase() })
+
+            val trackingStart = ensureTrackingStartDate(p, today)
+            val earliestRecorded = dailyMap.keys.minOrNull()?.let {
+                runCatching { LocalDate.parse(it) }.getOrNull()
+            }
+            val oldestKnown = listOfNotNull(trackingStart, earliestRecorded).minOrNull() ?: today
+            val hasPreviousData = oldestKnown.isBefore(startDate)
+
+            return WeeklyUsageSummary(
+                startDate = startDate.toString(),
+                endDate = endDate.toString(),
+                days = days,
+                totalUsageMillis = totalUsageMillis,
+                totalLimitMillis = totalLimitMillis,
+                averageDailyMillis = averageDailyMillis,
+                appSummaries = appSummaries,
+                hasPreviousData = hasPreviousData
+            )
         }
     }
 
@@ -342,9 +407,26 @@ object StatsRepository {
         }
     }
 
-    private fun readLiveUsageMillis(context: Context): Long {
+    private fun readAllLimits(context: Context): Map<String, TimeLimit> {
+        val daily = context.getSharedPreferences(AppTimeLimits.PREFS_NAME, Context.MODE_PRIVATE)
+        val weekly = context.getSharedPreferences(AppTimeLimits.WEEKLY_PREFS_NAME, Context.MODE_PRIVATE)
+        return AppTimeLimits.readAll(daily, weekly)
+    }
+
+    private fun sumLimitsForDay(limits: Map<String, TimeLimit>, dayOfWeek: DayOfWeek): Long =
+        limits.values.sumOf { it.minutesFor(dayOfWeek).coerceAtLeast(0) * 60_000L }
+
+    private fun computeConfiguredLimitForDay(context: Context, dayOfWeek: DayOfWeek): Long =
+        sumLimitsForDay(readAllLimits(context), dayOfWeek)
+
+    private fun readLiveAppUsage(context: Context): Map<String, Long> {
         val usagePrefs = context.getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)
-        return usagePrefs.all.values.filterIsInstance<Long>().sum()
+        val result = mutableMapOf<String, Long>()
+        usagePrefs.all.forEach { (pkg, value) ->
+            val millis = value as? Long ?: return@forEach
+            if (millis > 0L) result[pkg] = millis
+        }
+        return result
     }
 
     private fun resolveAppName(context: Context, packageName: String): String = try {
@@ -411,7 +493,12 @@ object StatsRepository {
         map.forEach { (date, s) ->
             root.put(date, JSONObject().apply {
                 put("totalUsageMillis", s.totalUsageMillis)
-                put("savedMillis", s.savedMillis)
+                put("totalLimitMillis", s.totalLimitMillis)
+                if (s.appUsageMillis.isNotEmpty()) {
+                    put("appUsageMillis", JSONObject().apply {
+                        s.appUsageMillis.forEach { (pkg, millis) -> put(pkg, millis) }
+                    })
+                }
                 put("visualBlocks", s.visualBlocks)
                 put("wordBlocks", s.wordBlocks)
                 put("activityBlocks", s.activityBlocks)
@@ -431,10 +518,21 @@ object StatsRepository {
             while (keys.hasNext()) {
                 val date = keys.next()
                 val obj = root.getJSONObject(date)
+                val appUsage = mutableMapOf<String, Long>()
+                val appUsageObj = obj.optJSONObject("appUsageMillis")
+                if (appUsageObj != null) {
+                    val pkgKeys = appUsageObj.keys()
+                    while (pkgKeys.hasNext()) {
+                        val pkg = pkgKeys.next()
+                        val millis = appUsageObj.optLong(pkg, 0L)
+                        if (millis > 0L) appUsage[pkg] = millis
+                    }
+                }
                 map[date] = DailyStats(
                     date = date,
                     totalUsageMillis = obj.optLong("totalUsageMillis", 0L),
-                    savedMillis = obj.optLong("savedMillis", 0L),
+                    totalLimitMillis = obj.optLong("totalLimitMillis", 0L),
+                    appUsageMillis = appUsage,
                     visualBlocks = obj.optInt("visualBlocks", 0),
                     wordBlocks = obj.optInt("wordBlocks", 0),
                     activityBlocks = obj.optInt("activityBlocks", 0),

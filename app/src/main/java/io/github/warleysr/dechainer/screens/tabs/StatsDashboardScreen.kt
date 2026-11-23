@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,11 +32,13 @@ import androidx.core.graphics.drawable.toBitmap
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.StatsRepository
 import io.github.warleysr.dechainer.models.AppBlockSummary
+import io.github.warleysr.dechainer.models.AppUsageSummary
 import io.github.warleysr.dechainer.models.BlockEventType
 import io.github.warleysr.dechainer.models.DailyStats
 import io.github.warleysr.dechainer.models.RelapseEntry
 import io.github.warleysr.dechainer.models.StreakBreakReason
 import io.github.warleysr.dechainer.models.StreakSummary
+import io.github.warleysr.dechainer.models.WeeklyUsageSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -52,8 +56,8 @@ private enum class StatsPeriod(val days: Int, val labelRes: Int) {
 
 private data class DashboardState(
     val streak: StreakSummary,
-    val weeklyDays: List<DailyStats>,
-    val totalSavedMillis: Long,
+    val weeklyUsage: WeeklyUsageSummary,
+    val last7Days: List<DailyStats>,
     val visualCount: Int,
     val wordCount: Int,
     val activityCount: Int,
@@ -65,11 +69,14 @@ private data class DashboardState(
 fun StatsDashboardScreen() {
     val context = LocalContext.current
     var selectedPeriod by remember { mutableStateOf(StatsPeriod.WEEK) }
+    var weekOffset by remember { mutableIntStateOf(0) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
     var showRelapseDialog by remember { mutableStateOf(false) }
 
-    val state by produceState<DashboardState?>(null, selectedPeriod, refreshTrigger) {
-        value = withContext(Dispatchers.IO) { loadDashboardState(context, selectedPeriod.days) }
+    val state by produceState<DashboardState?>(null, selectedPeriod, weekOffset, refreshTrigger) {
+        value = withContext(Dispatchers.IO) {
+            loadDashboardState(context, selectedPeriod.days, weekOffset)
+        }
     }
 
     val data = state
@@ -91,9 +98,11 @@ fun StatsDashboardScreen() {
             }
 
             item {
-                WeeklyUsageAndSavedCard(
-                    weeklyDays = data.weeklyDays,
-                    totalSavedMillis = data.totalSavedMillis
+                AppUsageWeeklyCard(
+                    summary = data.weeklyUsage,
+                    weekOffset = weekOffset,
+                    onPreviousWeek = { weekOffset -= 1 },
+                    onNextWeek = { if (weekOffset < 0) weekOffset += 1 }
                 )
             }
 
@@ -104,7 +113,7 @@ fun StatsDashboardScreen() {
                     visualCount = data.visualCount,
                     wordCount = data.wordCount,
                     activityCount = data.activityCount,
-                    weeklyDays = data.weeklyDays
+                    weeklyDays = data.last7Days
                 )
             }
 
@@ -167,18 +176,22 @@ fun StatsDashboardScreen() {
     }
 }
 
-private fun loadDashboardState(context: Context, periodDays: Int): DashboardState {
+private fun loadDashboardState(
+    context: Context,
+    periodDays: Int,
+    weekOffset: Int
+): DashboardState {
     val streak = StatsRepository.getStreakSummary(context)
-    val weeklyDays = StatsRepository.getDailyStatsRange(context, days = 7)
-    val totalSavedMillis = StatsRepository.getTotalSavedMillis(context)
+    val weeklyUsage = StatsRepository.getWeeklyUsageSummary(context, weekOffset = weekOffset)
+    val last7Days = StatsRepository.getDailyStatsRange(context, days = 7)
     val events = StatsRepository.getBlockEvents(context, days = periodDays)
     val topApps = StatsRepository.getAppBlockSummaries(context, days = periodDays)
     val relapses = StatsRepository.getRelapses(context)
 
     return DashboardState(
         streak = streak,
-        weeklyDays = weeklyDays,
-        totalSavedMillis = totalSavedMillis,
+        weeklyUsage = weeklyUsage,
+        last7Days = last7Days,
         visualCount = events.count { it.type == BlockEventType.VISUAL },
         wordCount = events.count { it.type == BlockEventType.WORD },
         activityCount = events.count { it.type == BlockEventType.ACTIVITY },
@@ -313,14 +326,17 @@ private fun StreakCard(
 }
 
 @Composable
-private fun WeeklyUsageAndSavedCard(
-    weeklyDays: List<DailyStats>,
-    totalSavedMillis: Long
+private fun AppUsageWeeklyCard(
+    summary: WeeklyUsageSummary,
+    weekOffset: Int,
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit
 ) {
-    val weekSavedMillis = remember(weeklyDays) { weeklyDays.sumOf { it.savedMillis } }
-    val weekUsageMillis = remember(weeklyDays) { weeklyDays.sumOf { it.totalUsageMillis } }
-    val maxUsageMillis = remember(weeklyDays) {
-        (weeklyDays.maxOfOrNull { it.totalUsageMillis } ?: 0L).coerceAtLeast(1L)
+    val rangeText = "${formatIsoDateShort(summary.startDate)} – ${formatIsoDateShort(summary.endDate)}"
+    val weekLabel = when (weekOffset) {
+        0 -> stringResource(R.string.stats_this_week, rangeText)
+        -1 -> stringResource(R.string.stats_last_week, rangeText)
+        else -> rangeText
     }
 
     Card(
@@ -329,101 +345,269 @@ private fun WeeklyUsageAndSavedCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = stringResource(R.string.stats_weekly_usage_title),
+                text = stringResource(R.string.stats_app_usage_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(6.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                MetricBox(
-                    label = stringResource(R.string.stats_time_saved_total),
-                    value = formatDurationMillis(totalSavedMillis),
-                    icon = Icons.Outlined.Savings,
-                    tint = MaterialTheme.colorScheme.primary,
+                IconButton(
+                    onClick = onPreviousWeek,
+                    enabled = summary.hasPreviousData
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
+                        contentDescription = stringResource(R.string.stats_previous_week)
+                    )
+                }
+                Text(
+                    text = weekLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f)
                 )
-                MetricBox(
-                    label = stringResource(R.string.stats_time_saved_week),
-                    value = formatDurationMillis(weekSavedMillis),
-                    icon = Icons.Outlined.Timer,
-                    tint = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.weight(1f)
-                )
+                IconButton(
+                    onClick = onNextWeek,
+                    enabled = weekOffset < 0
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                        contentDescription = stringResource(R.string.stats_next_week)
+                    )
+                }
             }
 
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(8.dp))
 
-            Text(
-                text = stringResource(R.string.stats_weekly_usage_total, formatDurationMillis(weekUsageMillis)),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            // 7-day bar chart
-            val todayStr = remember { LocalDate.now().toString() }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.Bottom
+                    .height(IntrinsicSize.Max),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                weeklyDays.forEach { day ->
-                    val fraction = if (day.totalUsageMillis == 0L) {
-                        0.04f
+                MetricBox(
+                    label = stringResource(R.string.stats_weekly_total_label),
+                    value = formatDurationMillis(summary.totalUsageMillis),
+                    icon = Icons.Outlined.HourglassBottom,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                )
+                MetricBox(
+                    label = stringResource(R.string.stats_weekly_limit_label),
+                    value = if (summary.totalLimitMillis > 0L) {
+                        formatDurationMillis(summary.totalLimitMillis)
                     } else {
-                        (day.totalUsageMillis.toFloat() / maxUsageMillis.toFloat()).coerceIn(0.08f, 1f)
-                    }
+                        stringResource(R.string.stats_no_limit)
+                    },
+                    icon = Icons.Outlined.Timer,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                )
+                MetricBox(
+                    label = stringResource(R.string.stats_daily_average_label),
+                    value = formatDurationMillis(summary.averageDailyMillis),
+                    icon = Icons.Outlined.CalendarToday,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                )
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            val todayStr = remember { LocalDate.now().toString() }
+            val maxFallbackMillis = remember(summary.days) {
+                (summary.days.maxOfOrNull { it.totalUsageMillis } ?: 0L).coerceAtLeast(1L)
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                summary.days.forEach { day ->
                     val isToday = day.date == todayStr
-                    val barColor = if (isToday) {
-                        MaterialTheme.colorScheme.primary
+                    val hasLimit = day.totalLimitMillis > 0L
+                    val fraction = if (hasLimit) {
+                        (day.totalUsageMillis.toFloat() / day.totalLimitMillis.toFloat()).coerceIn(0f, 1f)
                     } else {
-                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f)
+                        (day.totalUsageMillis.toFloat() / maxFallbackMillis.toFloat()).coerceIn(0f, 1f)
                     }
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Bottom
+                    val overOrAtLimit = hasLimit && day.totalUsageMillis >= day.totalLimitMillis
+                    val barColor = when {
+                        overOrAtLimit -> MaterialTheme.colorScheme.error
+                        isToday -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.secondary
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = formatShortMinutes(day.totalUsageMillis),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.65f)
-                                .height((72 * fraction).dp)
-                                .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
-                                .background(barColor)
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = dayLabel(day.date),
-                            style = MaterialTheme.typography.labelSmall,
+                            text = "${dayLabel(day.date)} ${formatIsoDateShort(day.date)}",
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
                             color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1
+                            modifier = Modifier.width(78.dp)
+                        )
+                        LinearProgressIndicator(
+                            progress = { fraction },
+                            color = barColor,
+                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            drawStopIndicator = {},
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(8.dp)
+                                .clip(CircleShape)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = if (hasLimit) {
+                                stringResource(
+                                    R.string.stats_usage_vs_limit,
+                                    formatDurationMillis(day.totalUsageMillis),
+                                    formatDurationMillis(day.totalLimitMillis)
+                                )
+                            } else {
+                                formatDurationMillis(day.totalUsageMillis)
+                            },
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (overOrAtLimit) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.width(92.dp)
                         )
                     }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(16.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+
             Text(
-                text = stringResource(R.string.stats_time_saved_estimate_note),
-                style = MaterialTheme.typography.bodySmall,
+                text = stringResource(R.string.stats_per_app_weekly_title),
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Spacer(Modifier.height(8.dp))
+
+            if (summary.appSummaries.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.stats_no_usage_week),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    summary.appSummaries.forEach { app ->
+                        AppWeeklyUsageRow(app)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppWeeklyUsageRow(app: AppUsageSummary) {
+    val context = LocalContext.current
+    val icon: ImageBitmap? = remember(app.packageName) {
+        try {
+            context.packageManager.getApplicationIcon(app.packageName).toBitmap().asImageBitmap()
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
+        }
+    }
+    val hasLimit = app.weeklyLimitMillis > 0L
+    val fraction = if (hasLimit) {
+        (app.usedMillis.toFloat() / app.weeklyLimitMillis.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val reached = hasLimit && app.usedMillis >= app.weeklyLimitMillis
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (icon != null) {
+            Image(
+                bitmap = icon,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp)
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Outlined.Android,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(10.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = app.appName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (hasLimit) {
+                        stringResource(
+                            R.string.stats_usage_vs_limit,
+                            formatDurationMillis(app.usedMillis),
+                            formatDurationMillis(app.weeklyLimitMillis)
+                        )
+                    } else {
+                        formatDurationMillis(app.usedMillis)
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (reached) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (hasLimit) {
+                Spacer(Modifier.height(4.dp))
+                LinearProgressIndicator(
+                    progress = { fraction },
+                    color = if (reached) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(CircleShape)
+                )
+            }
         }
     }
 }
@@ -571,9 +755,13 @@ private fun MetricBox(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleLarge,
+                style = if (value.length > 6) {
+                    MaterialTheme.typography.titleMedium
+                } else {
+                    MaterialTheme.typography.titleLarge
+                },
                 fontWeight = FontWeight.Bold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
             Text(

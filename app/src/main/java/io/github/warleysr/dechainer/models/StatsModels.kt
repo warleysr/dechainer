@@ -1,9 +1,9 @@
 package io.github.warleysr.dechainer.models
 
-enum class BlockEventType(val estimatedSavedMinutes: Int) {
-    VISUAL(10),
-    WORD(10),
-    ACTIVITY(10)
+enum class BlockEventType {
+    VISUAL,
+    WORD,
+    ACTIVITY
 }
 
 data class BlockEvent(
@@ -19,7 +19,8 @@ data class BlockEvent(
 data class DailyStats(
     val date: String,
     val totalUsageMillis: Long = 0L,
-    val savedMillis: Long = 0L,
+    val totalLimitMillis: Long = 0L,
+    val appUsageMillis: Map<String, Long> = emptyMap(),
     val visualBlocks: Int = 0,
     val wordBlocks: Int = 0,
     val activityBlocks: Int = 0,
@@ -32,6 +33,24 @@ data class DailyStats(
     val isClean: Boolean
         get() = totalCriticalBlocks == 0 && !recoverySessionOpened && manualRelapseCount == 0
 }
+
+data class AppUsageSummary(
+    val packageName: String,
+    val appName: String,
+    val usedMillis: Long,
+    val weeklyLimitMillis: Long
+)
+
+data class WeeklyUsageSummary(
+    val startDate: String,
+    val endDate: String,
+    val days: List<DailyStats>,
+    val totalUsageMillis: Long,
+    val totalLimitMillis: Long,
+    val averageDailyMillis: Long,
+    val appSummaries: List<AppUsageSummary>,
+    val hasPreviousData: Boolean
+)
 
 data class RelapseEntry(
     val id: String = java.util.UUID.randomUUID().toString(),

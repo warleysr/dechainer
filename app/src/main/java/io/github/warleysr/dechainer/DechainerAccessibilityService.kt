@@ -681,7 +681,7 @@ class DechainerAccessibilityService : AccessibilityService() {
                 pendingLeaves.clear()
             }
 
-            if (className.contains("Activity", ignoreCase = true)) {
+            if (className.isNotBlank()) {
                 addLog(newPackage, className)
                 val blockerPrefs =
                     getSharedPreferences("activity_blocker_prefs", MODE_PRIVATE)
@@ -1546,8 +1546,15 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         if (config.appLimitMinutes > 0) {
             usagePrefs.edit { putLong(pkg, usagePrefs.getLong(pkg, 0L) + currentSessionMillis) }
-            val totalTodayUsage = usagePrefs.all.values.filterIsInstance<Long>().sum()
-            StatsRepository.updateDailyUsage(applicationContext, LocalDate.now().toString(), totalTodayUsage)
+            val appUsageMap = usagePrefs.all.mapNotNull { (p, v) ->
+                (v as? Long)?.takeIf { it > 0L }?.let { p to it }
+            }.toMap()
+            StatsRepository.updateDailyUsage(
+                applicationContext,
+                LocalDate.now().toString(),
+                appUsageMap.values.sum(),
+                appUsageMap
+            )
         }
         if (config.group != null && config.groupLimitMinutes > 0) {
             val groupId = config.group.id
@@ -1563,7 +1570,6 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         stopTrackingAndSave()
         currentPackage = null
-        StatsRepository.recordTimeLimitBlock(applicationContext, isReopening = reopening)
 
         if (!reopening) {
             pulseSuspension(pkg)
@@ -1622,9 +1628,17 @@ class DechainerAccessibilityService : AccessibilityService() {
     private fun checkDateReset() {
         val today = LocalDate.now().toString()
         if (today != lastCheckDate) {
-            val previousTotal = usagePrefs.all.values.filterIsInstance<Long>().sum()
+            val previousAppUsage = usagePrefs.all.mapNotNull { (p, v) ->
+                (v as? Long)?.takeIf { it > 0L }?.let { p to it }
+            }.toMap()
+            val previousTotal = previousAppUsage.values.sum()
             if (previousTotal > 0L) {
-                StatsRepository.updateDailyUsage(applicationContext, lastCheckDate, previousTotal)
+                StatsRepository.updateDailyUsage(
+                    applicationContext,
+                    lastCheckDate,
+                    previousTotal,
+                    previousAppUsage
+                )
             }
             usagePrefs.edit { clear() }
             groupUsagePrefs.edit { clear() }
