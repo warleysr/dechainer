@@ -36,7 +36,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.ApkUpdateInstaller
+import io.github.warleysr.dechainer.data.GitHubUpdater
 import io.github.warleysr.dechainer.data.UsageWarningSettings
+import io.github.warleysr.dechainer.screens.common.GitHubUpdateDialog
 import io.github.warleysr.dechainer.screens.common.PendingChange
 import io.github.warleysr.dechainer.screens.setup.SetupDeviceOwnerPrivileges
 import io.github.warleysr.dechainer.screens.setup.SetupRecovery
@@ -45,7 +47,9 @@ import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.ui.theme.DechainerTheme
 import io.github.warleysr.dechainer.viewmodels.DeviceOwnerViewModel
 import io.github.warleysr.dechainer.viewmodels.NavigationViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
 
@@ -80,6 +84,18 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val context = LocalContext.current
+                var pendingAutoUpdateRelease by remember {
+                    mutableStateOf<GitHubUpdater.GitHubRelease?>(null)
+                }
+                LaunchedEffect(Unit) {
+                    if (!GitHubUpdater.isAutoCheckEnabled(context)) return@LaunchedEffect
+                    val result = withContext(Dispatchers.IO) { GitHubUpdater.checkForUpdate() }
+                    if (result is GitHubUpdater.CheckResult.UpdateAvailable &&
+                        GitHubUpdater.shouldPromptForRelease(context, result.release)
+                    ) {
+                        pendingAutoUpdateRelease = result.release
+                    }
+                }
                 val notificationPermissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission()
                 ) {}
@@ -178,7 +194,7 @@ class MainActivity : ComponentActivity() {
                         val selectedBaseTab = when (currentScreen) {
                             "restrictions" -> "restrictions"
                             "apps", "app_restrictions" -> "apps"
-                            "config", "setup_device_owner", "activity_blocker", "browser_restrictions", "blocked_words", "visual_blocking", "impulse_lock", "focus_mode", "usage_warning", "color_filters", "suspension_logs", "permanent_restrictions" -> "config"
+                            "config", "setup_device_owner", "activity_blocker", "browser_restrictions", "blocked_words", "visual_blocking", "impulse_lock", "focus_mode", "usage_warning", "color_filters", "suspension_logs", "stats_dashboard", "permanent_restrictions" -> "config"
                             else -> "restrictions"
                         }
 
@@ -230,6 +246,7 @@ class MainActivity : ComponentActivity() {
                                     "usage_warning" -> UsageWarningScreen()
                                     "color_filters" -> ColorFilterScreen()
                                     "suspension_logs" -> SuspensionLogsScreen()
+                                    "stats_dashboard" -> StatsDashboardScreen()
                                     "permanent_restrictions" -> PermanentRestrictionsScreen()
                                     "app_restrictions" -> {
                                         navViewModel.selectedAppForRestrictions?.let { app ->
@@ -244,6 +261,14 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             }
+                    }
+
+                    pendingAutoUpdateRelease?.let { release ->
+                        GitHubUpdateDialog(
+                            onDismiss = { pendingAutoUpdateRelease = null },
+                            preloadedRelease = release,
+                            isAutoPrompt = true
+                        )
                     }
                 }
             }

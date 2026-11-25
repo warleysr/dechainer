@@ -83,7 +83,10 @@ object ApkUpdateInstaller {
             }
         }.isSuccess
         if (!copied) return Inspection.Invalid.also { file.delete() }
+        return inspectFile(context, file)
+    }
 
+    fun inspectFile(context: Context, file: File): Inspection {
         val pm = context.packageManager
         val archive = pm.getPackageArchiveInfo(file.path, 0)
             ?: return Inspection.Invalid.also { file.delete() }
@@ -104,6 +107,20 @@ object ApkUpdateInstaller {
             newVersion = archive.versionName ?: archive.longVersionCode.toString(),
             isDowngrade = isDowngrade
         )
+    }
+
+    fun hasMatchingSignature(context: Context, apkFile: File): Boolean {
+        val pm = context.packageManager
+        val flags = PackageManager.GET_SIGNING_CERTIFICATES
+        val installed = runCatching { pm.getPackageInfo(context.packageName, flags) }.getOrNull()
+            ?: return false
+        val archive = pm.getPackageArchiveInfo(apkFile.path, flags) ?: return false
+
+        val installedSigners = installed.signingInfo?.apkContentsSigners
+        val archiveSigners = archive.signingInfo?.apkContentsSigners
+        if (installedSigners.isNullOrEmpty() || archiveSigners.isNullOrEmpty()) return false
+
+        return installedSigners.any { inst -> archiveSigners.any { arch -> inst == arch } }
     }
 
     fun install(context: Context, update: Inspection.Update): Boolean {

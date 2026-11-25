@@ -19,6 +19,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.warleysr.dechainer.R
 import io.github.warleysr.dechainer.data.PermanentRestrictionsManager
+import io.github.warleysr.dechainer.data.StatsRepository
 import io.github.warleysr.dechainer.security.SecurityManager
 import kotlinx.coroutines.delay
 
@@ -116,7 +117,10 @@ class RecoveryGate(
     }
 
     fun challengesDone() {
-        if (!SecurityManager.isSessionActive()) SecurityManager.startSession()
+        if (!SecurityManager.isSessionActive()) {
+            SecurityManager.startSession()
+            StatsRepository.recordRecoverySessionOpened(context)
+        }
         updateSessionActive()
         pendingAction?.invoke()
         clear()

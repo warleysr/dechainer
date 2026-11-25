@@ -40,6 +40,7 @@ import io.github.warleysr.dechainer.data.DeviceOwnerRepository
 import io.github.warleysr.dechainer.data.FocusMode
 import io.github.warleysr.dechainer.screens.common.ApkUpdateDialog
 import io.github.warleysr.dechainer.screens.common.ApkUpdateIntroDialog
+import io.github.warleysr.dechainer.screens.common.GitHubUpdateDialog
 import io.github.warleysr.dechainer.screens.common.UsageLimitsOverview
 import io.github.warleysr.dechainer.screens.common.FocusSessionCard
 import io.github.warleysr.dechainer.screens.common.RecoveryGateDialog
@@ -68,6 +69,7 @@ fun LockScreen(onAuthenticated: () -> Unit) {
     // Without the unknown sources restriction APKs install normally, so the updater is not offered.
     val apkUpdatesAvailable = remember { ApkUpdateInstaller.isUnknownSourcesRestricted(context) }
     var showingApkIntro by remember { mutableStateOf(false) }
+    var checkingGitHubUpdate by remember { mutableStateOf(false) }
     var pickedApk by remember { mutableStateOf<Uri?>(null) }
     val apkPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         pickedApk = uri
@@ -243,8 +245,16 @@ fun LockScreen(onAuthenticated: () -> Unit) {
                     showingApkIntro = false
                     apkPicker.launch(arrayOf("application/vnd.android.package-archive"))
                 },
-                onDismiss = { showingApkIntro = false }
+                onDismiss = { showingApkIntro = false },
+                onCheckGitHub = {
+                    showingApkIntro = false
+                    checkingGitHubUpdate = true
+                }
             )
+        }
+
+        if (checkingGitHubUpdate) {
+            GitHubUpdateDialog(onDismiss = { checkingGitHubUpdate = false })
         }
 
         pickedApk?.let { uri ->
