@@ -1,72 +1,153 @@
 package io.github.warleysr.dechainer.viewmodels
 
-import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import io.github.warleysr.dechainer.DechainerAccessibilityService
+import androidx.lifecycle.viewModelScope
 import io.github.warleysr.dechainer.DechainerApplication
-import androidx.core.content.edit
+import io.github.warleysr.dechainer.data.AppRepository
+import io.github.warleysr.dechainer.data.ScreenBlockerRepository
+import io.github.warleysr.dechainer.models.AppItem
+import io.github.warleysr.dechainer.models.ScreenBlockRule
+import io.github.warleysr.dechainer.models.WindowHierarchyNode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-data class GroupedActivityLog(
+data class AppHierarchyUi(
     val packageName: String,
     val appName: String,
     val icon: Drawable,
-    val activities: List<DechainerAccessibilityService.Companion.ActivityLog>
+    val lastSeenTimestamp: Long,
+    val nodes: List<WindowHierarchyNode>,
+    val totalNodeCount: Int,
+    val activeRuleCount: Int
 )
 
 class ActivityBlockerViewModel : ViewModel() {
     private val context = DechainerApplication.getInstance()
     private val packageManager = context.packageManager
-    
-    val blockedActivities = mutableStateListOf<String>()
-    
+
+    private val appNameCache = HashMap<String, String>()
+    private val appIconCache = HashMap<String, Drawable>()
+
+    var rules by mutableStateOf<List<ScreenBlockRule>>(emptyList())
+        private set
+
+    var appHierarchies by mutableStateOf<List<AppHierarchyUi>>(emptyList())
+        private set
+
+    var installedApps by mutableStateOf<List<AppItem>>(emptyList())
+        private set
+
+    var isLoadingApps by mutableStateOf(false)
+        private set
+
     init {
-        loadBlockedActivities()
+        refresh()
     }
 
-    private fun loadBlockedActivities() {
-        val prefs = context.getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
-        val blocked = prefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
-        blockedActivities.clear()
-        blockedActivities.addAll(blocked.sorted())
-    }
+    fun refresh() {
+        val loadedRules = ScreenBlockerRepository.getRules(context, forceRefresh = true)
+        val loadedHierarchies = ScreenBlockerRepository.getHierarchies(context, forceRefresh = true)
+        rules = loadedRules
 
-    fun addBlockedActivity(className: String) {
-        if (className.isNotBlank() && !blockedActivities.contains(className)) {
-            blockedActivities.add(className)
-            saveBlockedActivities()
-        }
-    }
-
-    fun removeBlockedActivity(className: String) {
-        if (blockedActivities.remove(className)) {
-            saveBlockedActivities()
-        }
-    }
-
-    private fun saveBlockedActivities() {
-        val prefs = context.getSharedPreferences("activity_blocker_prefs", Context.MODE_PRIVATE)
-        prefs.edit { putStringSet("blocked_activities", blockedActivities.toSet()) }
-    }
-
-    fun getGroupedAccessedActivities(): List<GroupedActivityLog> {
-        return DechainerAccessibilityService.accessedActivities
+        val rulesByPkg = loadedRules
+            .filter { it.packageName.isNotBlank() }
             .groupBy { it.packageName }
-            .map { (packageName, logs) ->
-                val appInfo = try {
-                    packageManager.getApplicationInfo(packageName, 0)
-                } catch (_: Exception) { null }
-                
-                GroupedActivityLog(
-                    packageName = packageName,
-                    appName = appInfo?.loadLabel(packageManager)?.toString() ?: packageName,
-                    icon = appInfo?.loadIcon(packageManager) ?: context.packageManager.defaultActivityIcon,
-                    activities = logs
+
+        val hierarchyMap = loadedHierarchies.associateBy { it.packageName }.toMutableMap()
+
+        // Ensure apps that have rules (e.g. migrated passive-word rules) are also shown in the hierarchy list.
+        rulesByPkg.keys.forEach { pkg ->
+            if (pkg !in hierarchyMap) {
+                hierarchyMap[pkg] = io.github.warleysr.dechainer.models.AppScreenHierarchy(
+                    packageName = pkg,
+                    lastSeenTimestamp = 0L,
+                    nodes = emptyList()
                 )
             }
-            .sortedBy { it.appName.lowercase() }
+        }
+
+        appHierarchies = hierarchyMap.values
+            .map { hierarchy ->
+                val pkg = hierarchy.packageName
+                AppHierarchyUi(
+                    packageName = pkg,
+                    appName = resolveAppName(pkg),
+                    icon = resolveAppIcon(pkg),
+                    lastSeenTimestamp = hierarchy.lastSeenTimestamp,
+                    nodes = hierarchy.nodes,
+                    totalNodeCount = countNodes(hierarchy.nodes),
+                    activeRuleCount = rulesByPkg[pkg]?.size ?: 0
+                )
+            }
+            .sortedWith(
+                compareByDescending<AppHierarchyUi> { it.activeRuleCount > 0 }
+                    .thenByDescending { it.lastSeenTimestamp }
+                    .thenBy { it.appName.lowercase() }
+            )
+    }
+
+    fun loadInstalledApps() {
+        if (installedApps.isNotEmpty() || isLoadingApps) return
+        viewModelScope.launch {
+            isLoadingApps = true
+            installedApps = withContext(Dispatchers.IO) {
+                AppRepository.getApps()
+            }
+            isLoadingApps = false
+        }
+    }
+
+    fun upsertRule(rule: ScreenBlockRule) {
+        ScreenBlockerRepository.upsertRule(context, rule)
+        refresh()
+    }
+
+    fun removeRule(ruleId: String) {
+        ScreenBlockerRepository.removeRule(context, ruleId)
+        refresh()
+    }
+
+    fun clearUnusedHierarchies() {
+        ScreenBlockerRepository.clearUnusedHierarchies(context)
+        refresh()
+    }
+
+    fun findRule(packageName: String, hierarchyPath: List<String>): ScreenBlockRule? {
+        return rules.firstOrNull { it.packageName == packageName && it.hierarchyPath == hierarchyPath }
+    }
+
+    fun resolveAppName(packageName: String): String {
+        if (packageName.isBlank()) return ""
+        appNameCache[packageName]?.let { return it }
+        val name = try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            appInfo.loadLabel(packageManager).toString()
+        } catch (_: Exception) {
+            packageName
+        }
+        appNameCache[packageName] = name
+        return name
+    }
+
+    fun resolveAppIcon(packageName: String): Drawable {
+        if (packageName.isBlank()) return packageManager.defaultActivityIcon
+        appIconCache[packageName]?.let { return it }
+        val icon = try {
+            val appInfo = packageManager.getApplicationInfo(packageName, 0)
+            appInfo.loadIcon(packageManager)
+        } catch (_: Exception) {
+            packageManager.defaultActivityIcon
+        }
+        appIconCache[packageName] = icon
+        return icon
+    }
+
+    private fun countNodes(nodes: List<WindowHierarchyNode>): Int {
+        return nodes.sumOf { 1 + countNodes(it.children) }
     }
 }

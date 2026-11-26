@@ -29,6 +29,7 @@ object StatsRepository {
     private const val KEY_BEST_STREAK = "best_streak_days"
     private const val KEY_LAST_BREAK_DATE = "last_break_date"
     private const val KEY_LAST_BREAK_REASON = "last_break_reason"
+    private const val KEY_LIVE_USAGE_DATE = "live_usage_date"
 
     private const val MAX_EVENTS = 1000
     private const val MAX_DAYS = 180
@@ -228,6 +229,16 @@ object StatsRepository {
             .sortedByDescending { it.totalCount }
     }
 
+    fun getLiveUsageDate(context: Context): String? = synchronized(lock) {
+        prefs(context).getString(KEY_LIVE_USAGE_DATE, null)
+    }
+
+    fun setLiveUsageDate(context: Context, date: String) {
+        synchronized(lock) {
+            prefs(context).edit { putString(KEY_LIVE_USAGE_DATE, date) }
+        }
+    }
+
     fun getDailyStatsRange(
         context: Context,
         days: Int = 7,
@@ -237,23 +248,27 @@ object StatsRepository {
             val p = prefs(context)
             val dailyMap = decodeDailyMap(p.getString(KEY_DAILY, null))
             val limitsByPkg = readAllLimits(context)
+            val groups = readGroups(context)
+            val liveUsageDate = p.getString(KEY_LIVE_USAGE_DATE, null)
             val liveAppUsage = readLiveAppUsage(context)
-            val liveTodayUsage = liveAppUsage.values.sum()
+            val liveTotalUsage = liveAppUsage.values.sum()
             val todayStr = today.toString()
+            val effectiveLiveDate = liveUsageDate ?: todayStr
 
             val result = mutableListOf<DailyStats>()
             for (offset in (days - 1) downTo 0) {
                 val date = today.minusDays(offset.toLong())
                 val dateStr = date.toString()
                 val base = dailyMap[dateStr] ?: DailyStats(date = dateStr)
-                val effectiveLimit = if (base.totalLimitMillis > 0L) {
+                val configuredLimit = sumLimitsForDay(limitsByPkg, groups, date.dayOfWeek)
+                val effectiveLimit = if (date.isBefore(today) && base.totalLimitMillis > 0L) {
                     base.totalLimitMillis
                 } else {
-                    sumLimitsForDay(limitsByPkg, date.dayOfWeek)
+                    configuredLimit
                 }
-                val adjusted = if (dateStr == todayStr && liveTodayUsage >= base.totalUsageMillis) {
+                val adjusted = if (dateStr == effectiveLiveDate && liveTotalUsage >= base.totalUsageMillis) {
                     base.copy(
-                        totalUsageMillis = liveTodayUsage,
+                        totalUsageMillis = liveTotalUsage,
                         totalLimitMillis = effectiveLimit,
                         appUsageMillis = if (liveAppUsage.isNotEmpty()) liveAppUsage else base.appUsageMillis
                     )
@@ -275,9 +290,12 @@ object StatsRepository {
             val p = prefs(context)
             val dailyMap = decodeDailyMap(p.getString(KEY_DAILY, null))
             val limitsByPkg = readAllLimits(context)
+            val groups = readGroups(context)
+            val liveUsageDate = p.getString(KEY_LIVE_USAGE_DATE, null)
             val liveAppUsage = readLiveAppUsage(context)
-            val liveTodayUsage = liveAppUsage.values.sum()
+            val liveTotalUsage = liveAppUsage.values.sum()
             val todayStr = today.toString()
+            val effectiveLiveDate = liveUsageDate ?: todayStr
 
             val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             val startDate = currentWeekStart.plusWeeks(weekOffset.toLong())
@@ -287,14 +305,15 @@ object StatsRepository {
                 val date = startDate.plusDays(offset)
                 val dateStr = date.toString()
                 val base = dailyMap[dateStr] ?: DailyStats(date = dateStr)
-                val effectiveLimit = if (base.totalLimitMillis > 0L) {
+                val configuredLimit = sumLimitsForDay(limitsByPkg, groups, date.dayOfWeek)
+                val effectiveLimit = if (date.isBefore(today) && base.totalLimitMillis > 0L) {
                     base.totalLimitMillis
                 } else {
-                    sumLimitsForDay(limitsByPkg, date.dayOfWeek)
+                    configuredLimit
                 }
-                if (dateStr == todayStr && liveTodayUsage >= base.totalUsageMillis) {
+                if (dateStr == effectiveLiveDate && liveTotalUsage >= base.totalUsageMillis) {
                     base.copy(
-                        totalUsageMillis = liveTodayUsage,
+                        totalUsageMillis = liveTotalUsage,
                         totalLimitMillis = effectiveLimit,
                         appUsageMillis = if (liveAppUsage.isNotEmpty()) liveAppUsage else base.appUsageMillis
                     )
@@ -413,11 +432,79 @@ object StatsRepository {
         return AppTimeLimits.readAll(daily, weekly)
     }
 
-    private fun sumLimitsForDay(limits: Map<String, TimeLimit>, dayOfWeek: DayOfWeek): Long =
-        limits.values.sumOf { it.minutesFor(dayOfWeek).coerceAtLeast(0) * 60_000L }
+    private fun readGroups(context: Context): List<io.github.warleysr.dechainer.models.AppGroup> {
+        val prefs = context.getSharedPreferences(AppGroupRepository.PREFS_NAME, Context.MODE_PRIVATE)
+        val json = prefs.getString("groups", null) ?: return emptyList()
+        val list = mutableListOf<io.github.warleysr.dechainer.models.AppGroup>()
+        try {
+            val array = JSONArray(json)
+            for (i in 0 until array.length()) {
+                val obj = array.getJSONObject(i)
+                val id = obj.optString("id")
+                val name = obj.optString("name")
+                val pkgArr = obj.optJSONArray("packages")
+                val packages = mutableSetOf<String>()
+                if (pkgArr != null) {
+                    for (j in 0 until pkgArr.length()) {
+                        val pkg = pkgArr.optString(j)
+                        if (pkg.isNotBlank()) packages.add(pkg)
+                    }
+                }
+                val dailyLimit = obj.optInt("limit", 0)
+                val weeklyArr = obj.optJSONArray("weeklyLimit")
+                val weeklyList = if (weeklyArr != null && weeklyArr.length() == DayOfWeek.entries.size) {
+                    List(DayOfWeek.entries.size) { idx -> weeklyArr.optInt(idx, 0) }
+                } else null
+                val timeLimit = if (weeklyList != null) TimeLimit.perDay(weeklyList) else TimeLimit.daily(dailyLimit)
+                list.add(
+                    io.github.warleysr.dechainer.models.AppGroup(
+                        id = id,
+                        name = name,
+                        packageNames = packages,
+                        timeLimit = timeLimit
+                    )
+                )
+            }
+        } catch (_: Exception) {
+        }
+        return list
+    }
+
+    private fun sumLimitsForDay(
+        limits: Map<String, TimeLimit>,
+        groups: List<io.github.warleysr.dechainer.models.AppGroup>,
+        dayOfWeek: DayOfWeek
+    ): Long {
+        val limitedGroups = groups.filter {
+            it.packageNames.isNotEmpty() && it.timeLimit.minutesFor(dayOfWeek) > 0
+        }
+        val pkgsInLimitedGroups = limitedGroups.flatMap { it.packageNames }.toSet()
+
+        val individualMinutes = limits
+            .filterKeys { it !in pkgsInLimitedGroups }
+            .values
+            .sumOf { it.minutesFor(dayOfWeek).coerceAtLeast(0).toLong() }
+
+        val groupMinutes = limitedGroups.sumOf { group ->
+            val groupCap = group.timeLimit.minutesFor(dayOfWeek).coerceAtLeast(0).toLong()
+            val allMembersHaveIndividual = group.packageNames.all { pkg ->
+                (limits[pkg]?.minutesFor(dayOfWeek) ?: 0) > 0
+            }
+            if (allMembersHaveIndividual) {
+                val memberSum = group.packageNames.sumOf { pkg ->
+                    (limits[pkg]?.minutesFor(dayOfWeek) ?: 0).coerceAtLeast(0).toLong()
+                }
+                minOf(groupCap, memberSum)
+            } else {
+                groupCap
+            }
+        }
+
+        return (individualMinutes + groupMinutes) * 60_000L
+    }
 
     private fun computeConfiguredLimitForDay(context: Context, dayOfWeek: DayOfWeek): Long =
-        sumLimitsForDay(readAllLimits(context), dayOfWeek)
+        sumLimitsForDay(readAllLimits(context), readGroups(context), dayOfWeek)
 
     private fun readLiveAppUsage(context: Context): Map<String, Long> {
         val usagePrefs = context.getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)

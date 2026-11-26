@@ -2,6 +2,7 @@ package io.github.warleysr.dechainer.data
 
 import android.content.Context
 import androidx.core.content.edit
+import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.models.AppGroup
 import io.github.warleysr.dechainer.models.TimeLimit
@@ -84,7 +85,8 @@ object AppGroupRepository {
     }
 
     fun getGroupUsage(groupId: String, inMinutes: Boolean = false): Long {
-        val used = context.getSharedPreferences(USAGE_PREFS_NAME, Context.MODE_PRIVATE).getLong(groupId, 0L)
+        val packageNames = getGroups().firstOrNull { it.id == groupId }?.packageNames ?: emptySet()
+        val used = DechainerAccessibilityService.getGroupUsageMillis(context, groupId, packageNames)
         return if (inMinutes) TimeUnit.MILLISECONDS.toMinutes(used) else used
     }
 

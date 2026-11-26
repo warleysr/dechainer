@@ -224,7 +224,8 @@ fun AppsScreen(
         }
     }
 
-    selectedApp?.let { app ->
+    selectedApp?.let { snapshot ->
+        val app = viewModel.apps.find { it.packageName == snapshot.packageName } ?: snapshot
         AppActionDialog(
             app = app,
             onDismiss = { selectedApp = null },
@@ -262,7 +263,8 @@ fun AppsScreen(
         )
     }
 
-    showTimeLimitDialog?.let { app ->
+    showTimeLimitDialog?.let { snapshot ->
+        val app = viewModel.apps.find { it.packageName == snapshot.packageName } ?: snapshot
         TimeLimitDialog(
             app = app,
             onDismiss = { showTimeLimitDialog = null },
@@ -276,7 +278,8 @@ fun AppsScreen(
         )
     }
 
-    showTimeWindowsDialog?.let { app ->
+    showTimeWindowsDialog?.let { snapshot ->
+        val app = viewModel.apps.find { it.packageName == snapshot.packageName } ?: snapshot
         TimeWindowsDialog(
             title = stringResource(R.string.time_windows_dialog_title, app.name),
             initialWindows = app.timeWindows,

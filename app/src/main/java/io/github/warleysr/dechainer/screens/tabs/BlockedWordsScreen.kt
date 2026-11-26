@@ -32,12 +32,8 @@ fun BlockedWordsScreen(
     viewModel: BlockedWordsViewModel = viewModel()
 ) {
     var showAppSelectionDialog by remember { mutableStateOf(false) }
-    var showPassiveAppSelectionDialog by remember { mutableStateOf(false) }
-    var passiveAppToEdit by remember { mutableStateOf<String?>(null) }
     var showActiveEdit by remember { mutableStateOf(false) }
-
     var activeExpanded by remember { mutableStateOf(true) }
-    var passiveExpanded by remember { mutableStateOf(true) }
 
     val context = LocalContext.current
     val isPermanent = remember {
@@ -108,67 +104,6 @@ fun BlockedWordsScreen(
                 }
             }
         }
-
-        item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
-
-        item {
-            SectionHeader(
-                title = stringResource(R.string.passive_blocking),
-                description = stringResource(R.string.passive_blocking_tooltip),
-                isExpanded = passiveExpanded,
-                onToggle = { passiveExpanded = !passiveExpanded }
-            )
-        }
-
-        item {
-            AnimatedVisibility(visible = passiveExpanded) {
-                Column {
-                    viewModel.passiveWordsMap.keys.forEach { pkg ->
-                        val app = viewModel.apps.find { it.packageName == pkg }
-                        ListItem(
-                            headlineContent = { Text(app?.name ?: pkg) },
-                            supportingContent = {
-                                val wordCount = viewModel.passiveWordsMap[pkg]?.split("\n")?.count { it.isNotBlank() } ?: 0
-                                Text("$wordCount " + stringResource(R.string.blocked_words_feat))
-                            },
-                            leadingContent = {
-                                app?.icon?.let {
-                                    Image(
-                                        bitmap = it.toBitmap().asImageBitmap(),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(40.dp)
-                                    )
-                                }
-                            },
-                            trailingContent = {
-                                Row {
-                                    IconButton(onClick = {
-                                        passiveAppToEdit = pkg
-                                    }) {
-                                        Icon(Icons.Outlined.Edit, null)
-                                    }
-                                    IconButton(onClick = {
-                                        recoveryGate.run { viewModel.updatePassiveWords(pkg, "") }
-                                    }) {
-                                        Icon(Icons.Default.Delete, null)
-                                    }
-                                }
-                            }
-                        )
-                    }
-
-                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                        TextButton(onClick = {
-                            showPassiveAppSelectionDialog = true
-                        }) {
-                            Icon(Icons.Default.Add, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.add_app))
-                        }
-                    }
-                }
-            }
-        }
     }
 
     if (showAppSelectionDialog) {
@@ -192,18 +127,6 @@ fun BlockedWordsScreen(
                 }
             },
             multiSelect = true
-        )
-    }
-
-    if (showPassiveAppSelectionDialog) {
-        AppSelectionDialog(
-            viewModel = viewModel,
-            onDismiss = { showPassiveAppSelectionDialog = false },
-            onAppClick = { pkg ->
-                passiveAppToEdit = pkg
-                showPassiveAppSelectionDialog = false
-            },
-            multiSelect = false
         )
     }
 
@@ -238,48 +161,14 @@ fun BlockedWordsScreen(
         )
     }
 
-    if (passiveAppToEdit != null) {
-        val pkg = passiveAppToEdit!!
-        val app = viewModel.apps.find { it.packageName == pkg }
-        var words by remember { mutableStateOf(viewModel.passiveWordsMap[pkg] ?: "") }
-
-        AlertDialog(
-            onDismissRequest = { passiveAppToEdit = null },
-            title = { Text(app?.name ?: pkg) },
-            text = {
-                OutlinedTextField(
-                    value = words,
-                    onValueChange = { words = it },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
-                    placeholder = { Text(stringResource(R.string.word_hint)) },
-                    supportingText = { Text(stringResource(R.string.one_word_per_line)) }
-                )
-            },
-            confirmButton = {
-                Button(onClick = {
-                    val loosening = !wordSet(words).containsAll(wordSet(viewModel.passiveWordsMap[pkg] ?: ""))
-                    recoveryGate.change(loosening) { viewModel.updatePassiveWords(pkg, words) }
-                    passiveAppToEdit = null
-                }) {
-                    Text(stringResource(R.string.confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { passiveAppToEdit = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            }
-        )
-    }
-
     RecoveryGateDialog(recoveryGate)
 }
 
 @Composable
 fun SectionHeader(
-    title: String, 
-    description: String, 
-    isExpanded: Boolean, 
+    title: String,
+    description: String,
+    isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
     var showInfo by remember { mutableStateOf(false) }
@@ -297,8 +186,8 @@ fun SectionHeader(
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            title, 
-            style = MaterialTheme.typography.titleLarge, 
+            title,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f)
         )

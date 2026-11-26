@@ -33,7 +33,8 @@ fun AppManagementDialogs(
     var showEditGroupDialog by remember { mutableStateOf<AppGroup?>(null) }
     val recoveryGate = rememberRecoveryGate()
 
-    selectedApp?.let { app ->
+    selectedApp?.let { snapshot ->
+        val app = viewModel.apps.find { it.packageName == snapshot.packageName } ?: snapshot
         AppActionDialog(
             app = app,
             onDismiss = onDismissSelectedApp,
@@ -72,7 +73,8 @@ fun AppManagementDialogs(
         )
     }
 
-    showTimeLimitDialog?.let { app ->
+    showTimeLimitDialog?.let { snapshot ->
+        val app = viewModel.apps.find { it.packageName == snapshot.packageName } ?: snapshot
         TimeLimitDialog(
             app = app,
             onDismiss = { showTimeLimitDialog = null },
@@ -86,7 +88,8 @@ fun AppManagementDialogs(
         )
     }
 
-    showTimeWindowsDialog?.let { app ->
+    showTimeWindowsDialog?.let { snapshot ->
+        val app = viewModel.apps.find { it.packageName == snapshot.packageName } ?: snapshot
         TimeWindowsDialog(
             title = stringResource(R.string.time_windows_dialog_title, app.name),
             initialWindows = app.timeWindows,

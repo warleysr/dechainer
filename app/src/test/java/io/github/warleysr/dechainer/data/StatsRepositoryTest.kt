@@ -30,6 +30,8 @@ class StatsRepositoryTest {
             .edit { clear() }
         context.getSharedPreferences(AppTimeLimits.WEEKLY_PREFS_NAME, Context.MODE_PRIVATE)
             .edit { clear() }
+        context.getSharedPreferences(AppGroupRepository.PREFS_NAME, Context.MODE_PRIVATE)
+            .edit { clear() }
     }
 
     @Test
@@ -139,5 +141,43 @@ class StatsRepositoryTest {
         assertEquals(40 * 60_000L, previousWeek.days[0].totalUsageMillis)
         assertEquals(60 * 60_000L, previousWeek.days[0].totalLimitMillis)
         assertEquals(60 * 60_000L, previousWeek.appSummaries[0].usedMillis)
+    }
+
+    @Test
+    fun `getWeeklyUsageSummary respects per-weekday limits, group limits, and live usage date`() {
+        val daily = context.getSharedPreferences(AppTimeLimits.PREFS_NAME, Context.MODE_PRIVATE)
+        val weekly = context.getSharedPreferences(AppTimeLimits.WEEKLY_PREFS_NAME, Context.MODE_PRIVATE)
+        // Mon=10, Tue=20, Wed=30, Thu=40, Fri=50, Sat=60, Sun=70
+        AppTimeLimits.write(
+            daily,
+            weekly,
+            "com.example.video",
+            TimeLimit.perDay(listOf(10, 20, 30, 40, 50, 60, 70))
+        )
+
+        // Group with daily limit of 45m for apps without individual limits
+        val groupJson = """[{"id":"g1","name":"Social","packages":["com.example.ig","com.example.tt"],"limit":45}]"""
+        context.getSharedPreferences(AppGroupRepository.PREFS_NAME, Context.MODE_PRIVATE).edit {
+            putString("groups", groupJson)
+        }
+
+        // Unarchived live usage from Tuesday 2026-11-24 viewed on Wednesday 2026-11-25
+        val tuesday = LocalDate.of(2026, 11, 24)
+        val wednesday = LocalDate.of(2026, 11, 25)
+        StatsRepository.setLiveUsageDate(context, tuesday.toString())
+        context.getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE).edit {
+            putLong("com.example.ig", 25 * 60_000L)
+        }
+
+        val summary = StatsRepository.getWeeklyUsageSummary(context, weekOffset = 0, today = wednesday)
+        // Tuesday (index 1) should receive the 25m unarchived live usage, NOT Wednesday (index 2)
+        assertEquals(25 * 60_000L, summary.days[1].totalUsageMillis)
+        assertEquals(0L, summary.days[2].totalUsageMillis)
+
+        // Daily limits should include both individual per-weekday limit and group cap (45m)
+        assertEquals((10 + 45) * 60_000L, summary.days[0].totalLimitMillis)
+        assertEquals((20 + 45) * 60_000L, summary.days[1].totalLimitMillis)
+        assertEquals((30 + 45) * 60_000L, summary.days[2].totalLimitMillis)
+        assertEquals((70 + 45) * 60_000L, summary.days[6].totalLimitMillis)
     }
 }

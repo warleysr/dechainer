@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import androidx.core.content.edit
+import io.github.warleysr.dechainer.DechainerAccessibilityService
 import io.github.warleysr.dechainer.DechainerApplication
 import io.github.warleysr.dechainer.models.AppItem
 import io.github.warleysr.dechainer.models.SuspensionReason
@@ -222,8 +223,7 @@ object AppRepository {
     fun getAppTimeLimits(): Map<String, TimeLimit> = AppTimeLimits.readAll(dailyLimitsPrefs, weeklyLimitsPrefs)
 
     fun getAppUsage(packageName: String, inMinutes: Boolean = false): Long {
-        val used = context.getSharedPreferences("internal_usage_stats", Context.MODE_PRIVATE)
-            .getLong(packageName, 0L)
+        val used = DechainerAccessibilityService.getAppUsageMillis(context, packageName)
         return if (inMinutes) TimeUnit.MILLISECONDS.toMinutes(used) else used
     }
 

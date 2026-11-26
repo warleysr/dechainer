@@ -21,8 +21,8 @@ import android.os.UserManager
 import android.view.Display
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.time.LocalDate
@@ -50,11 +50,14 @@ import io.github.warleysr.dechainer.data.SuspensionLogRepository
 import io.github.warleysr.dechainer.models.BlockEventType
 import io.github.warleysr.dechainer.models.SuspensionReason
 import io.github.warleysr.dechainer.data.PlayStoreRatingFetcher
+import io.github.warleysr.dechainer.data.ScreenBlockerRepository
 import io.github.warleysr.dechainer.data.UsageWarningSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSettings
 import io.github.warleysr.dechainer.data.VisualBlockingSuspensionTracker
 import io.github.warleysr.dechainer.models.AppGroup
 import io.github.warleysr.dechainer.models.ColorFilterMode
+import io.github.warleysr.dechainer.models.ScreenBlockMode
+import io.github.warleysr.dechainer.models.ScreenBlockRule
 import io.github.warleysr.dechainer.models.TimeWindow
 import io.github.warleysr.dechainer.models.UsageAlertStage
 import io.github.warleysr.dechainer.notifications.FocusService
@@ -64,6 +67,8 @@ import io.github.warleysr.dechainer.utils.HomeScreenDetector
 import io.github.warleysr.dechainer.utils.NightLightOverlay
 import io.github.warleysr.dechainer.utils.BlockedWordMatcher
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
+import io.github.warleysr.dechainer.utils.ScreenRuleMatcher
+import io.github.warleysr.dechainer.utils.WindowHierarchyTracker
 import org.jsoup.HttpStatusException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -98,15 +103,25 @@ class DechainerAccessibilityService : AccessibilityService() {
     private lateinit var groupsPrefs: SharedPreferences
     private lateinit var groupUsagePrefs: SharedPreferences
     private lateinit var blockedWordsPrefs: SharedPreferences
+    private lateinit var activityBlockerPrefs: SharedPreferences
     private lateinit var securityPrefs: SharedPreferences
     private lateinit var ratingPrefs: SharedPreferences
     private lateinit var visualBlockingPrefs: SharedPreferences
     private lateinit var usageWarningPrefs: SharedPreferences
     private lateinit var colorFilterPrefs: SharedPreferences
 
+    private data class CompiledScreenRule(
+        val rule: ScreenBlockRule,
+        val wordPatterns: Map<String, Regex>
+    )
+
     private var forbiddenPatterns: Map<String, Regex> = emptyMap()
-    private var passiveForbiddenPatterns: Map<String, Map<String, Regex>> = emptyMap()
+    private var compiledScreenRules: List<CompiledScreenRule> = emptyList()
     private var targetPackages: Set<String> = emptySet()
+
+    private val windowHierarchyTracker = WindowHierarchyTracker()
+    private val activityClassCache = HashMap<String, Boolean>()
+    private var lastScreenBlockElapsedMs = 0L
 
     private var wasTypingActively = false
     private var lastActiveTypedText = ""
@@ -245,13 +260,19 @@ class DechainerAccessibilityService : AccessibilityService() {
                     lastForegroundPackage = currentPackage
                     stopTrackingAndSave(screenOff = true)
                     currentPackage = null
+                    windowHierarchyTracker.reset()
                 }
 
                 Intent.ACTION_SCREEN_ON -> {
                     syncColorFilters()
                     lastForegroundPackage?.let {
-                        currentPackage = it
-                        sessionStartTime = SystemClock.elapsedRealtime()
+                        val now = SystemClock.elapsedRealtime()
+                        synchronized(usageLock) {
+                            currentPackage = it
+                            sessionStartTime = now
+                            activeTrackedPackage = it
+                            activeSessionStartMs = now
+                        }
                         checkDateReset()
                         startTracking(it)
                     }
@@ -293,6 +314,12 @@ class DechainerAccessibilityService : AccessibilityService() {
 
             blockedWordsPrefs -> {
                 updateForbiddenPatterns()
+            }
+
+            activityBlockerPrefs -> {
+                if (key == ScreenBlockerRepository.KEY_RULES) {
+                    updateScreenBlockRules()
+                }
             }
 
             visualBlockingPrefs -> {
@@ -369,21 +396,18 @@ class DechainerAccessibilityService : AccessibilityService() {
             BlockedWordMatcher.buildRegex(word)
         }
         targetPackages = blockedWordsPrefs.getStringSet("target_packages", emptySet()) ?: emptySet()
+    }
 
-        val all = blockedWordsPrefs.all
-        val passiveMap = mutableMapOf<String, Map<String, Regex>>()
-        all.forEach { (key, value) ->
-            if (key.startsWith("passive_words_")) {
-                val pkg = key.substringAfter("passive_words_")
-                val wordsSet = (value as? Set<*>)?.filterIsInstance<String>()?.toSet() ?: emptySet()
-                if (wordsSet.isNotEmpty()) {
-                    passiveMap[pkg] = wordsSet.associateWith { word ->
-                        BlockedWordMatcher.buildRegex(word)
-                    }
-                }
+    private fun updateScreenBlockRules() {
+        val rules = ScreenBlockerRepository.getRules(applicationContext, forceRefresh = true)
+        compiledScreenRules = rules.map { rule ->
+            val patterns = if (rule.mode == ScreenBlockMode.PASSIVE_WORDS) {
+                rule.words.associateWith { word -> BlockedWordMatcher.buildRegex(word) }
+            } else {
+                emptyMap()
             }
+            CompiledScreenRule(rule, patterns)
         }
-        passiveForbiddenPatterns = passiveMap
     }
 
     private val blockRunnable = Runnable {
@@ -469,23 +493,37 @@ class DechainerAccessibilityService : AccessibilityService() {
         var checkingRating = false
             private set
 
+        private val usageLock = Any()
+
+        @Volatile
+        private var activeTrackedPackage: String? = null
+
+        @Volatile
+        private var activeSessionStartMs: Long = 0L
+
+        fun getAppUsageMillis(context: Context, packageName: String): Long = synchronized(usageLock) {
+            val saved = context.getSharedPreferences("internal_usage_stats", MODE_PRIVATE)
+                .getLong(packageName, 0L)
+            val live = if (activeTrackedPackage == packageName && activeSessionStartMs > 0L) {
+                (SystemClock.elapsedRealtime() - activeSessionStartMs).coerceAtLeast(0L)
+            } else 0L
+            saved + live
+        }
+
+        fun getGroupUsageMillis(context: Context, groupId: String, packageNames: Set<String>): Long =
+            synchronized(usageLock) {
+                val saved = context.getSharedPreferences("group_usage_stats", MODE_PRIVATE)
+                    .getLong(groupId, 0L)
+                val pkg = activeTrackedPackage
+                val live = if (pkg != null && pkg in packageNames && activeSessionStartMs > 0L) {
+                    (SystemClock.elapsedRealtime() - activeSessionStartMs).coerceAtLeast(0L)
+                } else 0L
+                saved + live
+            }
+
         fun prepareServiceDisable() { disablingService = true }
 
-        val accessedActivities = mutableStateListOf<ActivityLog>()
-
-        data class ActivityLog(
-            val packageName: String,
-            val className: String,
-            val timestamp: Long = System.currentTimeMillis()
-        )
-
-        private fun addLog(packageName: String, className: String) {
-            if (accessedActivities.any { it.packageName == packageName && it.className == className }) {
-                accessedActivities.removeIf { it.packageName == packageName && it.className == className }
-            }
-            accessedActivities.add(0, ActivityLog(packageName, className))
-            if (accessedActivities.size > 100) accessedActivities.removeAt(accessedActivities.lastIndex)
-        }
+        private const val SCREEN_BLOCK_DEBOUNCE_MS = 450L
     }
 
     override fun onServiceConnected() {
@@ -501,7 +539,17 @@ class DechainerAccessibilityService : AccessibilityService() {
         weeklyTimeWindowPrefs = getSharedPreferences(AppTimeWindows.WEEKLY_PREFS_NAME, MODE_PRIVATE)
         groupsPrefs = getSharedPreferences(AppGroupRepository.PREFS_NAME, MODE_PRIVATE)
         groupUsagePrefs = getSharedPreferences("group_usage_stats", MODE_PRIVATE)
+
+        val persistedUsageDate = StatsRepository.getLiveUsageDate(applicationContext)
+        if (persistedUsageDate != null) {
+            lastCheckDate = persistedUsageDate
+        } else {
+            lastCheckDate = LocalDate.now().toString()
+            StatsRepository.setLiveUsageDate(applicationContext, lastCheckDate)
+        }
+        checkDateReset()
         blockedWordsPrefs = getSharedPreferences("blocked_words_prefs", MODE_PRIVATE)
+        activityBlockerPrefs = getSharedPreferences(ScreenBlockerRepository.PREFS_NAME, MODE_PRIVATE)
         securityPrefs = getSharedPreferences("security_prefs", MODE_PRIVATE)
         ratingPrefs = getSharedPreferences("app_ratings", MODE_PRIVATE)
         visualBlockingPrefs = getSharedPreferences(VisualBlockingSettings.PREFS_NAME, MODE_PRIVATE)
@@ -516,12 +564,14 @@ class DechainerAccessibilityService : AccessibilityService() {
         weeklyTimeWindowPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         groupsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
+        activityBlockerPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         visualBlockingPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         usageWarningPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         colorFilterPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
         securityPrefs.registerOnSharedPreferenceChangeListener(prefsListener)
 
         updateForbiddenPatterns()
+        updateScreenBlockRules()
         updateVisualBlockingSettings()
         updateUsageWarningSettings()
 
@@ -597,6 +647,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         weeklyTimeWindowPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         groupsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         blockedWordsPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
+        activityBlockerPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         visualBlockingPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         usageWarningPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
         colorFilterPrefs.unregisterOnSharedPreferenceChangeListener(prefsListener)
@@ -658,7 +709,17 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) onColorFilterForegroundChanged(event)
-        if (event.packageName == packageName) return
+        if (event.packageName == packageName) {
+            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+                val className = event.className?.toString()
+                if (className != null && className.startsWith(packageName)) {
+                    stopTrackingAndSave()
+                    currentPackage = null
+                    windowHierarchyTracker.reset()
+                }
+            }
+            return
+        }
 
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED ||
             event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
@@ -669,7 +730,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         // App tracking to control time limits and time between re-openings
         if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             val newPackage = event.packageName?.toString() ?: return
-            val className = event.className?.toString() ?: return
+            val className = event.className?.toString() ?: ""
             if (newPackage == "com.android.systemui") return
             if (className.contains("InputMethodService", ignoreCase = true)
                 || className.contains("SoftInputWindow", ignoreCase = true)
@@ -678,8 +739,13 @@ class DechainerAccessibilityService : AccessibilityService() {
             if (newPackage != currentPackage) {
                 stopTrackingAndSave()
                 pendingLeaves.remove(newPackage)
-                currentPackage = newPackage
-                sessionStartTime = SystemClock.elapsedRealtime()
+                val now = SystemClock.elapsedRealtime()
+                synchronized(usageLock) {
+                    currentPackage = newPackage
+                    sessionStartTime = now
+                    activeTrackedPackage = newPackage
+                    activeSessionStartMs = now
+                }
                 checkDateReset()
                 startTracking(newPackage)
                 wasTypingActively = false
@@ -697,25 +763,41 @@ class DechainerAccessibilityService : AccessibilityService() {
             }
 
             if (className.isNotBlank()) {
-                addLog(newPackage, className)
-                val blockerPrefs =
-                    getSharedPreferences("activity_blocker_prefs", MODE_PRIVATE)
-                val blockedActivities =
-                    blockerPrefs.getStringSet("blocked_activities", emptySet()) ?: emptySet()
+                val isActivity = isActivityClass(newPackage, className)
+                val liveWindowIds = getLiveAppWindowIds(newPackage)
+                val currentPath = windowHierarchyTracker.onWindowStateChanged(
+                    packageName = newPackage,
+                    className = className,
+                    windowId = event.windowId,
+                    isActivity = isActivity,
+                    liveWindowIds = liveWindowIds
+                )
+                ScreenBlockerRepository.recordPath(applicationContext, newPackage, currentPath)
 
-                if (blockedActivities.contains(className)) {
-                    StatsRepository.recordBlockEvent(
-                        applicationContext,
-                        BlockEventType.ACTIVITY,
-                        newPackage,
-                        className
-                    )
-                    performGlobalAction(GLOBAL_ACTION_BACK)
+                val totalMatch = compiledScreenRules.firstOrNull {
+                    it.rule.mode == ScreenBlockMode.TOTAL &&
+                        ScreenRuleMatcher.matches(it.rule, newPackage, currentPath)
                 }
+                if (totalMatch != null) {
+                    val nowMs = SystemClock.elapsedRealtime()
+                    if (nowMs - lastScreenBlockElapsedMs >= SCREEN_BLOCK_DEBOUNCE_MS) {
+                        lastScreenBlockElapsedMs = nowMs
+                        StatsRepository.recordBlockEvent(
+                            applicationContext,
+                            BlockEventType.ACTIVITY,
+                            newPackage,
+                            currentPath.joinToString(" > ")
+                        )
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                    }
+                    return
+                }
+
+                checkPassiveScreenRules(newPackage, currentPath, event)
             }
         }
 
-        // Passive blocking: when the forbidden word appears on the screen
+        // Passive blocking: when a forbidden word appears in a targeted window/hierarchy
         else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             val pkg = currentPackage ?: return
 
@@ -766,15 +848,81 @@ class DechainerAccessibilityService : AccessibilityService() {
                 }
             }
 
-            val passivePatterns = passiveForbiddenPatterns[pkg] ?: return
+            val hasPassiveForPkg = compiledScreenRules.any {
+                it.rule.mode == ScreenBlockMode.PASSIVE_WORDS &&
+                    (it.rule.packageName == pkg || it.rule.isLegacyClassOnly)
+            }
+            if (hasPassiveForPkg) {
+                val currentPath = windowHierarchyTracker.onWindowContentChanged(
+                    packageName = pkg,
+                    windowId = event.windowId,
+                    liveWindowIds = getLiveAppWindowIds(pkg)
+                )
+                checkPassiveScreenRules(pkg, currentPath, event)
+            }
+        }
+    }
 
-            val screenText = buildScreenText(event) ?: return
+    private fun isActivityClass(pkg: String, className: String): Boolean {
+        val key = "$pkg/$className"
+        activityClassCache[key]?.let { return it }
+        val isAct = try {
+            packageManager.getActivityInfo(ComponentName(pkg, className), 0)
+            true
+        } catch (_: Exception) {
+            false
+        }
+        if (activityClassCache.size > 500) activityClassCache.clear()
+        activityClassCache[key] = isAct
+        return isAct
+    }
 
-            passivePatterns.forEach { (word, regex) ->
+    private fun getLiveAppWindowIds(pkg: String): Set<Int> {
+        val result = mutableSetOf<Int>()
+        try {
+            windows?.forEach { window ->
+                if (window.type == AccessibilityWindowInfo.TYPE_APPLICATION) {
+                    val root = window.root
+                    if (root != null) {
+                        try {
+                            if (root.packageName?.toString() == pkg) {
+                                result.add(window.id)
+                            }
+                        } finally {
+                            root.recycle()
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+        return result
+    }
+
+    private fun checkPassiveScreenRules(
+        pkg: String,
+        currentPath: List<String>,
+        event: AccessibilityEvent
+    ) {
+        val matchingRules = compiledScreenRules.filter {
+            it.rule.mode == ScreenBlockMode.PASSIVE_WORDS &&
+                it.wordPatterns.isNotEmpty() &&
+                ScreenRuleMatcher.matches(it.rule, pkg, currentPath)
+        }
+        if (matchingRules.isEmpty()) return
+
+        val screenText = buildScreenText(event) ?: return
+
+        for (compiled in matchingRules) {
+            for ((word, regex) in compiled.wordPatterns) {
                 if (regex.containsMatchIn(screenText)) {
-                    performGlobalAction(GLOBAL_ACTION_BACK)
-                    showBlockedActivity(word)
-                    return@forEach
+                    val nowMs = SystemClock.elapsedRealtime()
+                    if (nowMs - lastScreenBlockElapsedMs >= SCREEN_BLOCK_DEBOUNCE_MS) {
+                        lastScreenBlockElapsedMs = nowMs
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                        showBlockedActivity(word)
+                    }
+                    return
                 }
             }
         }
@@ -785,7 +933,8 @@ class DechainerAccessibilityService : AccessibilityService() {
 
         event.text.forEach { sb.append(it).append(' ') }
 
-        event.source?.also { root ->
+        val rootNode = event.source ?: rootInActiveWindow
+        rootNode?.also { root ->
             fun traverse(node: AccessibilityNodeInfo?) {
                 node ?: return
                 node.text?.let { sb.append(it).append(' ') }
@@ -1320,9 +1469,11 @@ class DechainerAccessibilityService : AccessibilityService() {
         val restrictedGroupPackages = AppGroupRepository.getGroups()
             .filter { it.timeLimit.isSet || it.timeWindows.isNotEmpty() }
             .flatMap { it.packageNames }
+        val screenRulePackages = compiledScreenRules
+            .mapNotNull { it.rule.packageName.takeIf { pkg -> pkg.isNotBlank() } }
 
         return targetPackages
-            .union(passiveForbiddenPatterns.keys)
+            .union(screenRulePackages)
             .union(limitPrefs.all.keys)
             .union(weeklyLimitPrefs.all.keys)
             .union(reopenPrefs.all.keys)
@@ -1554,29 +1705,37 @@ class DechainerAccessibilityService : AccessibilityService() {
         if (!screenOff && reopenPrefs.getInt(pkg, 0) > 0 && getRemainingSecondsToReopen(pkg) == 0)
             pendingLeaves[pkg] = SystemClock.elapsedRealtime()
 
-        if (sessionStartTime == 0L) return
+        synchronized(usageLock) {
+            if (sessionStartTime == 0L) return
 
-        val config = trackingConfigFor(pkg)
-        val currentSessionMillis = SystemClock.elapsedRealtime() - sessionStartTime
+            val config = trackingConfigFor(pkg)
+            val currentSessionMillis = SystemClock.elapsedRealtime() - sessionStartTime
 
-        if (config.appLimitMinutes > 0) {
-            usagePrefs.edit { putLong(pkg, usagePrefs.getLong(pkg, 0L) + currentSessionMillis) }
-            val appUsageMap = usagePrefs.all.mapNotNull { (p, v) ->
-                (v as? Long)?.takeIf { it > 0L }?.let { p to it }
-            }.toMap()
-            StatsRepository.updateDailyUsage(
-                applicationContext,
-                LocalDate.now().toString(),
-                appUsageMap.values.sum(),
-                appUsageMap
-            )
+            val hasIndividualLimit = config.appLimitMinutes > 0
+            val hasGroupLimit = config.group != null && config.groupLimitMinutes > 0
+
+            if (hasIndividualLimit || hasGroupLimit) {
+                usagePrefs.edit { putLong(pkg, usagePrefs.getLong(pkg, 0L) + currentSessionMillis) }
+                StatsRepository.setLiveUsageDate(applicationContext, lastCheckDate)
+                val appUsageMap = usagePrefs.all.mapNotNull { (p, v) ->
+                    (v as? Long)?.takeIf { it > 0L }?.let { p to it }
+                }.toMap()
+                StatsRepository.updateDailyUsage(
+                    applicationContext,
+                    lastCheckDate,
+                    appUsageMap.values.sum(),
+                    appUsageMap
+                )
+            }
+            if (hasGroupLimit) {
+                val groupId = config.group!!.id
+                groupUsagePrefs.edit { putLong(groupId, groupUsagePrefs.getLong(groupId, 0L) + currentSessionMillis) }
+            }
+
+            sessionStartTime = 0
+            activeTrackedPackage = null
+            activeSessionStartMs = 0L
         }
-        if (config.group != null && config.groupLimitMinutes > 0) {
-            val groupId = config.group.id
-            groupUsagePrefs.edit { putLong(groupId, groupUsagePrefs.getLong(groupId, 0L) + currentSessionMillis) }
-        }
-
-        sessionStartTime = 0
     }
 
     private fun executeBlocking(reopening: Boolean = false, remainingSeconds: Int = 0, outsideWindow: Boolean = false) {
@@ -1661,6 +1820,7 @@ class DechainerAccessibilityService : AccessibilityService() {
             activeStageId = null
             UsageWarningNotifier.resetAll(applicationContext)
             lastCheckDate = today
+            StatsRepository.setLiveUsageDate(applicationContext, today)
         }
     }
 

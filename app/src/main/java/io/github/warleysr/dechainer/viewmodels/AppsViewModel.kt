@@ -80,7 +80,7 @@ class AppsViewModel : ViewModel() {
 
     fun setAppTimeLimit(packageName: String, limit: TimeLimit) {
         AppRepository.setAppTimeLimit(packageName, limit)
-        loadApps()
+        apps = apps.map { if (it.packageName == packageName) it.copy(timeLimit = limit) else it }
     }
 
     fun getAppUsage(packageName: String, inMinutes: Boolean = false): Long {
@@ -89,6 +89,7 @@ class AppsViewModel : ViewModel() {
 
     fun setAppReopenTime(packageName: String, seconds: Int) {
         AppRepository.setAppReopenTime(packageName, seconds)
+        apps = apps.map { if (it.packageName == packageName) it.copy(reopeningSeconds = seconds) else it }
     }
 
     fun getAppReopenTime(packageName: String): Int {
@@ -97,7 +98,7 @@ class AppsViewModel : ViewModel() {
 
     fun setAppTimeWindows(packageName: String, windows: TimeWindows) {
         AppRepository.setAppTimeWindows(packageName, windows)
-        loadApps()
+        apps = apps.map { if (it.packageName == packageName) it.copy(timeWindows = windows) else it }
     }
 
     fun setAppTimeWindows(packageName: String, windows: List<TimeWindow>) {
