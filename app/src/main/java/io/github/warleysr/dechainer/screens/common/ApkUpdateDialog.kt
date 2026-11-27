@@ -367,7 +367,10 @@ fun GitHubUpdateDialog(
                         }
                         if (release.releaseNotes.isNotBlank()) {
                             Spacer(Modifier.height(12.dp))
-                            Text(release.releaseNotes, style = MaterialTheme.typography.bodySmall)
+                            MarkdownText(
+                                markdown = release.releaseNotes,
+                                modifier = Modifier.fillMaxWidth()
+                            )
                         }
                         if (isAutoPrompt) {
                             Spacer(Modifier.height(12.dp))
