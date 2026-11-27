@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit
 import androidx.core.content.edit
 import io.github.warleysr.dechainer.activities.AccessibilityRequestActivity
 import io.github.warleysr.dechainer.activities.BlockedWordActivity
+import io.github.warleysr.dechainer.activities.EmbeddedBrowserBlockedActivity
 import io.github.warleysr.dechainer.activities.NsfwContentBlockedActivity
 import io.github.warleysr.dechainer.activities.OutsideTimeWindowActivity
 import io.github.warleysr.dechainer.activities.ReopeningLimitActivity
@@ -66,6 +67,7 @@ import io.github.warleysr.dechainer.security.SecurityManager
 import io.github.warleysr.dechainer.utils.HomeScreenDetector
 import io.github.warleysr.dechainer.utils.NightLightOverlay
 import io.github.warleysr.dechainer.utils.BlockedWordMatcher
+import io.github.warleysr.dechainer.utils.EmbeddedBrowserDetector
 import io.github.warleysr.dechainer.utils.NsfwContentDetector
 import io.github.warleysr.dechainer.utils.ScreenRuleMatcher
 import io.github.warleysr.dechainer.utils.WindowHierarchyTracker
@@ -121,7 +123,10 @@ class DechainerAccessibilityService : AccessibilityService() {
 
     private val windowHierarchyTracker = WindowHierarchyTracker()
     private val activityClassCache = HashMap<String, Boolean>()
+    private val browserRestrictionsSupportCache = HashMap<String, Boolean>()
     private var lastScreenBlockElapsedMs = 0L
+    private var lastEmbeddedBrowserScanElapsedMs = 0L
+    private var lastEmbeddedBrowserBlockElapsedMs = 0L
 
     private var wasTypingActively = false
     private var lastActiveTypedText = ""
@@ -183,6 +188,7 @@ class DechainerAccessibilityService : AccessibilityService() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != Intent.ACTION_PACKAGE_ADDED) return
             val packageName = intent.data?.encodedSchemeSpecificPart ?: return
+            browserRestrictionsSupportCache.remove(packageName)
 
             val isUpdate = intent.getBooleanExtra(Intent.EXTRA_REPLACING, false)
             if (!isUpdate) {
@@ -524,6 +530,8 @@ class DechainerAccessibilityService : AccessibilityService() {
         fun prepareServiceDisable() { disablingService = true }
 
         private const val SCREEN_BLOCK_DEBOUNCE_MS = 450L
+        private const val EMBEDDED_BROWSER_SCAN_INTERVAL_MS = 500L
+        private const val EMBEDDED_BROWSER_BLOCK_DEBOUNCE_MS = 1500L
     }
 
     override fun onServiceConnected() {
@@ -795,6 +803,7 @@ class DechainerAccessibilityService : AccessibilityService() {
 
                 checkPassiveScreenRules(newPackage, currentPath, event)
             }
+            checkEmbeddedBrowser(newPackage, forceImmediate = true)
         }
 
         // Passive blocking: when a forbidden word appears in a targeted window/hierarchy
@@ -804,6 +813,8 @@ class DechainerAccessibilityService : AccessibilityService() {
             if (nsfwEnabled && pkg in nsfwTargetPackages) {
                 maybeScanForNsfwContent(pkg)
             }
+
+            checkEmbeddedBrowser(pkg)
 
             if (!ratingPrefs.contains(pkg) && !checkingRating) {
                 if (AppRepository.isManuallyUnsuspended(pkg)) {
@@ -963,6 +974,56 @@ class DechainerAccessibilityService : AccessibilityService() {
                 ).apply {
                     flags = FLAG_ACTIVITY_NEW_TASK
                     putExtra("word", forbiddenWord)
+                }
+                startActivity(intent)
+            }
+        }
+    }
+
+    private fun supportsBrowserRestrictionsCached(pkg: String): Boolean {
+        browserRestrictionsSupportCache[pkg]?.let { return it }
+        val supported = BrowserRestrictionsManager(applicationContext).supportsRestrictions(pkg)
+        if (browserRestrictionsSupportCache.size > 200) browserRestrictionsSupportCache.clear()
+        browserRestrictionsSupportCache[pkg] = supported
+        return supported
+    }
+
+    private fun checkEmbeddedBrowser(pkg: String, forceImmediate: Boolean = false) {
+        if (pkg == packageName || EmbeddedBrowserDetector.isExemptPackage(pkg)) return
+        if (supportsBrowserRestrictionsCached(pkg)) return
+        if (AppRepository.isManuallyUnsuspended(pkg)) return
+
+        val nowMs = SystemClock.elapsedRealtime()
+        if (nowMs - lastEmbeddedBrowserBlockElapsedMs < EMBEDDED_BROWSER_BLOCK_DEBOUNCE_MS) return
+        if (!forceImmediate && nowMs - lastEmbeddedBrowserScanElapsedMs < EMBEDDED_BROWSER_SCAN_INTERVAL_MS) return
+        lastEmbeddedBrowserScanElapsedMs = nowMs
+
+        val root = rootInActiveWindow ?: return
+        val result = try {
+            if (root.packageName?.toString() != pkg) null
+            else EmbeddedBrowserDetector.detect(pkg, root)
+        } finally {
+            root.recycle()
+        } ?: return
+
+        lastEmbeddedBrowserBlockElapsedMs = nowMs
+        Timber.d(
+            "Embedded browser detected in $pkg (signal=${result.signal}, host=${result.detectedHost})"
+        )
+        suspendPackage(pkg, reason = SuspensionReason.UNSUPPORTED_BROWSER, details = result.detectedHost)
+        showEmbeddedBrowserBlockedActivity(result.detectedHost)
+    }
+
+    private fun showEmbeddedBrowserBlockedActivity(detectedHost: String?) {
+        serviceScope.launch {
+            withContext(Dispatchers.Main) {
+                val intent = Intent(
+                    this@DechainerAccessibilityService, EmbeddedBrowserBlockedActivity::class.java
+                ).apply {
+                    flags = FLAG_ACTIVITY_NEW_TASK
+                    if (!detectedHost.isNullOrBlank()) {
+                        putExtra(EmbeddedBrowserBlockedActivity.EXTRA_HOST, detectedHost)
+                    }
                 }
                 startActivity(intent)
             }

@@ -729,6 +729,8 @@
     <string name="stats_app_block_breakdown">Visual: %1$d · Palavras: %2$d · Telas: %3$d</string>
     <string name="stats_relapse_history_title">Histórico de recaídas</string>
     <string name="stats_relapse_no_note">Sem observação</string>
+    <string name="embedded_browser_blocked">Navegador embutido identificado</string>
+    <string name="embedded_browser_blocked_description">Foi identificado um navegador embutido neste aplicativo. Por isso, o aplicativo será suspenso. Se quiser utilizá-lo, retire a suspensão manualmente no Dechainer.</string>
 </resources>
 
 

@@ -731,6 +731,8 @@
     <string name="stats_app_block_breakdown">Visual: %1$d · Words: %2$d · Activities: %3$d</string>
     <string name="stats_relapse_history_title">Relapse log</string>
     <string name="stats_relapse_no_note">No note</string>
+    <string name="embedded_browser_blocked">Embedded browser detected</string>
+    <string name="embedded_browser_blocked_description">An embedded browser was detected in this app, so it will be suspended as an unsupported browser. If you want to use it, manually remove the suspension in Dechainer.</string>
 </resources>
 
 
